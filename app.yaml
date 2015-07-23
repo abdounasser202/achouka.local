@@ -1,17 +1,43 @@
-application: comatrans-pos-2015
+application: comatrans-online-2015
 version: 1
 runtime: python27
 api_version: 1
-threadsafe: yes
+threadsafe: true
 
-handlers:
-- url: /favicon\.ico
-  static_files: favicon.ico
-  upload: favicon\.ico
+default_expiration: "5d"
 
-- url: .*
-  script: main.app
+builtins:
+- appstats: on
+- admin_redirect: on
+- deferred: on
+- remote_api: on
 
 libraries:
-- name: webapp2
-  version: "2.5.2"
+- name: jinja2
+  version: "2.6"
+- name: markupsafe
+  version: "0.15"
+
+inbound_services:
+- warmup
+
+handlers:
+- url: /favicon.ico
+  static_files: application/static/img/favicon.ico
+  upload: application/static/img/favicon.ico
+
+- url: /robots.txt
+  static_files: application/static/robots.txt
+  upload: application/static/robots.txt
+
+- url: /gae_mini_profiler/static
+  static_dir: lib/gae_mini_profiler/static
+
+- url: /gae_mini_profiler/.*
+  script: lib.gae_mini_profiler.main.application
+
+- url: /static
+  static_dir: application/static
+
+- url: .*
+  script: run.application.app
