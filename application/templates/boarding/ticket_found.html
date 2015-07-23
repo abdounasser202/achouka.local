@@ -1,0 +1,119 @@
+<form action="" id="formulaire">
+    <div class="col-lg-12">
+        <div class="panel panel-info panel-pos">
+          <div class="panel-heading text-center"><h4>Question</h4></div>
+          <div class="panel-body">
+            {% for question in questions %}
+                <div class="checkbox" {% if question.key.id() in quest_obligated and obligated == true  %} style ="color:red;" {% endif %}>
+                  <label>
+                    <input type="checkbox" name="questions" value="{{ question.key.id() }}" {% if question_request and  question.key.id() in question_request %} checked="checked" {% endif %} >
+                    {{ question.question }}
+                  </label>
+                  <p class="text-right {% if question.key.id() not in quest_obligated %} hidden {% endif %}"><small>(*) Obligation</small></p>
+                </div>
+            {% else %}
+                <div class="panel-body text-center">
+                    <h3>No request Question</h3>
+                </div>
+            {% endfor %}
+
+          </div>
+        </div>
+    </div>
+    <div class="col-lg-12">
+    <div class="ticket_background clearfix">
+          <div class="col-lg-6"></div>
+          <div class="col-lg-6 info_left">
+              Ticket Type<br><i id="type_ticket">{{ ticket.class_name.get().name }} - {{ ticket.type_name.get().name }} - {% if ticket.journey_name %} {{ ticket.journey_name.get().name }} {% else %} Return Ticket {% endif %} </i>
+          </div>
+          <div class="col-lg-12">
+              <div class="form-group">
+                <label for="exampleInputEmail1">NAME/NOM</label>
+                <input type="text" class="form-control disabled" disabled="disabled" value ="{{ ticket.customer.get().last_name }} {{ ticket.customer.get().first_name }}" id="name">
+              </div>
+          </div>
+          <div class="col-lg-6">
+              <div class="form-group">
+                <label for="exampleInputEmail1">FROM/DE</label>
+                <input type="text" class="form-control disabled" disabled="disabled" value="{{ ticket.travel_ticket.get().destination_start.get().name }}">
+              </div>
+          </div>
+          <div class="col-lg-6">
+              <div class="form-group">
+                <label for="exampleInputEmail1">DESTINATION/A</label>
+                <input type="text" class="form-control disabled" disabled="disabled" value="{{ ticket.travel_ticket.get().destination_check.get().name }}">
+              </div>
+          </div>
+         <div class="col-lg-6">
+              <div class="form-group">
+                <label for="exampleInputEmail1">DATE/DE</label>
+                <input type="text" class="form-control disabled" disabled="disabled" value="{{ ticket.departure.get().departure_date|format_date("%d-%m-%Y") }}">
+              </div>
+          </div>
+          <div class="col-lg-6">
+              <div class="form-group">
+                <label for="exampleInputEmail1">TIME/HEURE</label>
+                <input type="text" class="form-control disabled" disabled="disabled" value="{{ ticket.departure.get().schedule|add_time(ticket.departure.get().time_delay)|format_date("%H:%M") }}">
+              </div>
+          </div>
+         <div class="col-lg-6">
+              <div class="form-group">
+                <label for="exampleInputEmail1">SOLDE AT/LIEU DE VENTE</label>
+                <input type="text" class="form-control disabled" disabled="disabled" value="{{ ticket.agency.get().name }}">
+              </div>
+          </div>
+          <div class="col-lg-6">
+              <div class="form-group">
+                <label for="exampleInputEmail1">AGENCE CODE</label>
+                <input type="text" class="form-control disabled" disabled="disabled" value="{{ ticket.ticket_seller.get().key.id() }}">
+              </div>
+          </div>
+    </div>
+     <div class="col-lg-12">
+        <br/>
+        <a href="{{ url_for('Update_Ticket_For_Boarding', ticket_id=ticket.key.id()) }}" class="btn btn-success pull-right" data-loading-text="Confirmation..." id="submit" data-backdrop="static">Create Boarding Pass</a>
+    </div>
+    </div>
+</form>
+<!-- Modal -->
+<div class="modal fade" id="myModal" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+
+    </div>
+  </div>
+</div>
+<script>
+    var modals = '{{ modal }}';
+
+    if(modals == 'true'){
+        var url_modal = '{{ url_for('modal_generate_pdf_boarding', ticket_id=ticket.key.id()) }}';
+        $('#myModal').modal('show');
+        $.get(url_modal, function(data) {
+          $('.modal-content').empty().html(data);
+        });
+        $("#submit").removeClass('btn-success');
+        $("#submit").addClass('btn-danger');
+        $("#submit").addClass('disabled');
+        $("#submit").text('Created Boarding');
+    }
+
+    $('#myModal').on('hidden.bs.modal', function () {
+             $('#FindTicketBoarding').html('');
+    });
+
+    $('#submit').click(function(e) {
+            e.preventDefault();
+            var url = $(this).attr('href');
+            $(this).button('loading');
+            $.ajax({
+                url: url,
+                data: $('#formulaire').serialize(),
+                type: 'POST',
+                success: function(data) {
+                    $('#NoFoundTicketBoarding').addClass('hidden');
+                    $('#FindTicketBoarding').removeClass('hidden').html(data);
+                }
+            });
+        });
+</script>

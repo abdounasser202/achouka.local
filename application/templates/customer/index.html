@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+<div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-recording.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Recording') }}">Recording</a></li>
+                          <li class="active">Customer</li>
+                        </ol>
+                        <nav class="navbar navbar-toolbar navbar-default" role="navigation">
+                          <div class="container-fluid">
+                            <div class="btn-toolbar" role="toolbar">
+                               <div class="btn-group pull-left">
+                                   <a href="{{ url_for('Customer_Edit') }}" class="btn btn-danger btn-lg">Create</a>
+                               </div>
+                            </div>
+                          </div>
+                        </nav>
+                        {% include 'includes/flash_message.html' %}
+
+                        <table class="table table-hover" id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>First name </th>
+                                    <th>Last name</th>
+                                    <th>Birthday</th>
+                                    <th class="nosort"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for customer in customers %}
+                                <tr>
+                                    <td>{{ customer.first_name }}</td>
+                                    <td>{{ customer.last_name }}</td>
+                                    <td>{{ customer.birthday|format_date("%d-%m-%Y") }} </td>
+                                    <td>
+                                        <a href="{{ url_for('Customer_Edit', customer_id=customer.key.id()) }}" class="btn btn-link btn-xs">Edit</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+
+                            </tbody>
+                        </table>
+
+                </section>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

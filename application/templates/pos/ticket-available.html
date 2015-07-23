@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+
+{% block layout_content %}
+
+    <div class="container">
+        <div class="row">
+                <div class="col-lg-12">
+                    <section class="clearfix">
+
+                    <h2>Ticket Available</h2>
+                    <hr/>
+                    <div class="col-lg-8">
+                        <div class="panel panel-info">
+                                <div class="panel-heading"><span class="lead">Local Ticket Type</span></div>
+                                      <div class="panel-body">
+                                        <table class="table table-hover" id="dataTableStat2">
+                                            <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th class="nosort text-center">Number</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                               {% for type in ticket_type_purchase %}
+                                                   {% if type['travel'].get().destination_start == current_agency.destination and type['number'] >= 1 %}
+                                                        <tr>
+                                                            <td>
+                                                                <strong>{{ type['name_ticket'] }}</strong>  ({{ type['travel'].get().destination_start.get().name }} - {{ type['travel'].get().destination_check.get().name }})<br/>
+                                                                <small>{{ type['class'].get().name }} - {{ type['type'].get().name }} - {{ type['journey'].get().name }}</small>
+
+                                                            </td>
+                                                            <td class="text-center">{{ type['number'] }}</td>
+                                                        </tr>
+                                                   {% endif %}
+                                               {% endfor %}
+                                            </tbody>
+                                        </table>
+                                      </div>
+                                </div>
+                                <hr/>
+                                <div class="panel panel-info">
+                                    <div class="panel-heading"><span class="lead">Foreign Ticket Type</span></div>
+                                      <div class="panel-body">
+                                        <table class="table table-hover" id="dataTableStat3">
+                                            <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th class="nosort text-center">Number</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for type in ticket_type_purchase %}
+                                                   {% if type['travel'].get().destination_start != current_agency.destination and type['number'] >= 1 %}
+                                                        <tr>
+                                                            <td>
+                                                                <strong>{{ type['name_ticket'] }}</strong>  ({{ type['travel'].get().destination_start.get().name }} - {{ type['travel'].get().destination_check.get().name }})<br/>
+                                                                <small>{{ type['class'].get().name }} - {{ type['type'].get().name }} - {{ type['journey'].get().name }}</small>
+
+                                                            </td>
+                                                            <td class="text-center">{{ type['number'] }}</td>
+                                                        </tr>
+                                                   {% endif %}
+                                               {% endfor %}
+                                            </tbody>
+                                        </table>
+                                      </div>
+                                </div>
+
+                    </div>
+                    <div class="col-lg-4">
+                         <div class="well text-center">
+                            <small>Unsold ticket</small>
+                            <h3>{{ current_agency.TicketUnsold() }}</h3>
+                         </div>
+                    </div>
+
+                    </section>
+                </div>
+        </div>
+    </div>
+{% endblock %}
+{% block footer_script %}
+    <script>
+        $('#dataTableStat2').dataTable({
+            "paging": true,
+            "bFilter": true,
+            'aoColumnDefs': [
+                {'bSortable': false, 'aTargets': ['nosort']},
+                {'bSearchable': false, "aTargets": ['nosort']}
+            ],
+             "order": [[ 0, "asc" ]]
+        });
+         $('#dataTableStat3').dataTable({
+            "paging": true,
+            "bFilter": true,
+            'aoColumnDefs': [
+                {'bSortable': false, 'aTargets': ['nosort']},
+                {'bSearchable': false, "aTargets": ['nosort']}
+            ],
+             "order": [[ 0, "asc" ]]
+        });
+
+
+    </script>
+{% endblock %}

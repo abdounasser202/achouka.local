@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+<div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-settings.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Settings') }}">Settings</a></li>
+                          <li class="active">Profil</li>
+                        </ol>
+                        <nav class="navbar navbar-toolbar navbar-default" role="navigation">
+                          <div class="container-fluid">
+                            <div class="btn-toolbar" role="toolbar">
+                               <div class="btn-group pull-left">
+                                   <a href="{{ url_for('Profil_Edit') }}" class="btn btn-danger btn-lg">New</a>
+                               </div>
+                            </div>
+                          </div>
+                        </nav>
+                        {% include 'includes/flash_message.html' %}
+
+                        <table class="table table-hover"  id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>Profil Name</th>
+                                    <th>Profil Type</th>
+                                    <th class="nosort"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for profil in profil_lists %}
+                                    <tr {% if profil.enable %} class="success" {% endif %}>
+                                        <td>{{ profil.name }} </td>
+                                        <td>
+                                            {% if profil.standard %}
+                                               <span class="label label-danger">Unchangeable</span>
+                                            {% else %}
+                                                <span class="label label-info">Changeable</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if profil.standard %}
+                                                {% if current_user.has_roles('super_admin') %}
+                                                    <a class="btn btn-link btn-xs" href="{{ url_for('Profil_Edit', profil_id=profil.key.id()) }}">Edit</a>
+                                                {% endif %}
+                                                    <a class="btn btn-link btn-xs" href="{{ url_for('Profil_View', profil_id=profil.key.id()) }}">View</a>
+                                            {% else %}
+                                                <a class="btn btn-link btn-xs" href="{{ url_for('Profil_Edit', profil_id=profil.key.id()) }}">Edit</a>
+                                                <a class="btn btn-link btn-xs" href="{{ url_for('Profil_Delete', profil_id=profil.key.id()) }}">Delete</a>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+
+                            </tbody>
+                        </table>
+                </section>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

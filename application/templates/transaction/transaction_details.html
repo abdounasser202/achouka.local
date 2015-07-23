@@ -1,0 +1,54 @@
+<div class="modal-header bg-primary">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <div class="pull-right text-right bg-info text-danger" style="margin-right:40px; margin-top: -6px; padding: 10px;">
+            <strong>AMOUNT : </strong> {{ current_transaction_get_id.amount|format_price() }} {{ current_transaction_get_id.destination.get().currency.get().code }}
+        </div>
+
+        <h4 class="modal-title">Detail Transaction : {{ current_transaction_get_id.key.id() }}</h4>
+</div>
+
+<div class="modal-body scrollable-shadow" style="height: 600px; overflow-y: auto">
+     <h3 class="text-primary">User/Employee : {{ current_transaction_get_id.user.get().last_name }} {{ current_transaction_get_id.user.get().first_name }}</h3>
+     <hr/>
+     <table class="table table-hover" id="dataTable1">
+        <thead>
+        <tr>
+            <th>Ticket Type</th>
+            <th>Travel</th>
+            <th>Amount</th>
+        </tr>
+        </thead>
+        <tbody>
+            {% for transaction in current_transaction_get_id.relation_parent_child() %}
+                <tr class="{% if transaction.amount < transaction.ticket.get().sellprice %} warning {% endif %}">
+
+                    <td>
+                        {{ transaction.ticket.get().class_name.get().name }}
+                        -
+                        {{ transaction.ticket.get().type_name.get().name }}
+                        -
+                        {{ transaction.ticket.get().journey_name.get().name }}
+                    </td>
+                    <td>{{ transaction.ticket.get().travel_ticket.get().destination_start.get().name }}
+                    -
+                    {{ transaction.ticket.get().travel_ticket.get().destination_check.get().name }}</td>
+                 <td>{{ transaction.amount|format_price() }} {{ current_transaction_get_id.destination.get().currency.get().code }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+</div>
+<script>
+    $('#dataTable1').dataTable({
+        "paging": true,
+        "bFilter": false,
+        'aoColumnDefs': [
+            {'bSortable': false, 'aTargets': ['nosort']},
+            {'bSearchable': false, "aTargets": ['nosort']}
+        ]
+    });
+</script>

@@ -1,0 +1,68 @@
+<div class="alert alert-info">
+    {{ customer_count }} customer(s) found
+</div>
+<table class="table table-hover table-condensed" id="posTable">
+    <thead>
+    <tr>
+        <th>Customer name</th>
+        <th class="nosort">Date of birth</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for customer in customer %}
+        {% if not birth_and_full %}
+            <tr>
+                <td><strong>
+                    {% if current_departure %}
+                        <a href="{{ url_for('create_customer_and_ticket_pos', customer_id=customer.key.id(), departure_id=current_departure.key.id()) }}" class="CustomerExist">{{ customer.last_name }} {{ customer.first_name }}</a>
+                    {% else %}
+                        {{ customer.last_name }} {{ customer.first_name }}
+                    {% endif %}
+                </strong>
+                </td>
+                <td>{{ customer.birthday|format_date("%d-%m-%Y") }}</td>
+            </tr>
+        {% endif %}
+
+        {% if birth_and_full %}
+            {% if customer.key.id() in list_customer_ids %}
+                <tr>
+                    <td><strong>
+                        {% if current_departure %}
+                            <a href="{{ url_for('create_customer_and_ticket_pos', customer_id=customer.key.id(), departure_id=current_departure.key.id()) }}" class="CustomerExist">{{ customer.last_name }} {{ customer.first_name }}</a>
+                        {% else %}
+                            {{ customer.last_name }} {{ customer.first_name }}
+                        {% endif %}
+                    </strong>
+                    </td>
+                    <td>{{ customer.birthday|format_date("%d-%m-%Y") }}</td>
+                </tr>
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+    </tbody>
+</table>
+
+<script>
+    $('#posTable').dataTable({
+        "paging": true,
+	    "bFilter": false,
+		'aoColumnDefs': [
+    	    {'bSortable': false, 'aTargets': ['nosort']},
+    	    {'bSearchable': false, "aTargets": ['nosort']}
+		]
+    });
+
+    $('.CustomerExist').click(function(e){
+        e.preventDefault();
+        url = $(this).attr('href');
+        $.ajax({
+            url: url,
+            type: 'POST',
+            success: function(data) {
+                $('#ScreenIndexPos').hide();
+                $('#ScreenCreateTicket').removeClass('hidden').html(data);
+            }
+        });
+    });
+</script>

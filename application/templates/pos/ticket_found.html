@@ -1,0 +1,176 @@
+
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="panel panel-primary">
+          <div class="panel-body">
+              <div class="page-header clearfix" style="margin: 0 !important;">
+                  <div class="col-lg-7 text-left"><h3 style="margin: 0;">TICKET ID : <b>{{ ticket.key.id() }}</b> </h3></div>
+                  <div class="col-lg-5 text-right">
+                  <div class="btn-group">
+                      {% if ticket.is_return and ticket.statusValid and ticket.departure.get().destination.get().destination_check == agency_current_user.destination and ticket.is_boarding %}
+                            <a href="{{ url_for('create_customer_and_ticket_return', ticket_id=ticket.key.id()) }}" class="btn btn-info" id="CreateReturnTicket" disabled="disabled">Print return ticket</a>
+                      {% endif %}
+                      <a class="btn" id="CloseSearchTicket">close</a>
+                  </div>
+                  </div>
+              </div>
+              <br/>
+              <div class="row">
+                  <div class="col-lg-6">
+                      <div class="panel panel-default">
+                          <div class="panel-body">
+                              <table class="table">
+                                  <tr>
+                                      <td><strong>Reservation Date</strong></td>
+                                      <td>{{ ticket.date_reservation|format_date("%d-%m-%Y") }}</td>
+                                  </tr>
+                                  <tr>
+                                      <td><strong>Seller ID</strong></td>
+                                      <td>{{ ticket.ticket_seller.get().key.id() }}</td>
+                                  </tr>
+                                  <tr>
+                                      <td><strong>Kind</strong></td>
+                                      <td>
+                                          {% if ticket.is_ticket %}
+                                                Ticket
+                                          {% else %}
+                                                E-ticket
+                                          {% endif %}
+                                      </td>
+                                  </tr>
+                                  <tr>
+                                      <td><strong>Status</strong></td>
+                                      <td>
+                                          {% if ticket.statusValid %}
+                                                Valid
+                                          {% else %}
+                                                Not valid
+                                          {% endif %}
+                                      </td>
+                                  </tr>
+                              </table>
+                          </div>
+                      </div>
+                  </div>
+                  <div class="col-lg-6">
+                      <div class="panel panel-default">
+                          <div class="panel-body">
+                              <table class="table">
+                                  <tr>
+                                      <td><strong>Type</strong></td>
+                                      <td>{{ ticket.type_name.get().name }}</td>
+                                  </tr>
+                                  <tr>
+                                      <td><strong>journey</strong></td>
+                                      <td>{{ ticket.journey_name.get().name }}</td>
+                                  </tr>
+                                  <tr>
+                                      <td><strong>Class</strong></td>
+                                      <td>
+                                          {{ ticket.class_name.get().name }}
+                                      </td>
+                                  </tr>
+                                  <tr>
+                                      <td><strong>Price</strong></td>
+                                      <td>
+                                          {{ ticket.sellprice }} {{ ticket.sellpriceCurrency.get().code }}
+                                      </td>
+                                  </tr>
+                              </table>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+              <div class="row">
+                  <div class="col-lg-12">
+                      <div class="panel panel-default">
+                          <div class="panel-body">
+                              <table class="table">
+                                  <tr>
+                                      <td><strong>Journey</strong></td>
+                                      <td>
+                                            {{ ticket.departure.get().destination.get().destination_start.get().name }}
+                                            -
+                                            {{ ticket.departure.get().destination.get().destination_check.get().name }}
+                                      </td>
+                                  </tr>
+                                  <tr>
+                                      <td><strong>Date</strong></td>
+                                      <td>{{ ticket.departure.get().departure_date|format_date("%A %d %B  %Y") }}</td>
+                                  </tr>
+                                  <tr>
+                                      <td><strong>Time</strong></td>
+                                      <td>{{ ticket.departure.get().schedule|add_time(ticket.departure.get().time_delay)|format_date("%H:%M") }}</td>
+                                  </tr>
+                                  <tr>
+                                      <td><strong>Customer</strong></td>
+                                      <td>
+
+                                          {{ ticket.customer.get().first_name }} {{ ticket.customer.get().last_name }}
+
+                                      </td>
+                                  </tr>
+                              </table>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          <div class="row">
+              <div class="col-lg-12">
+                  <div class="panel panel-default">
+                          <div class="panel-body">
+                              <table class="table">
+                                  {% for answer in ticket.answer_question() %}
+                                  <tr>
+                                      <td>{{ answer.question_id.get().question }}</td>
+                                      <td>
+                                          {{ answer.response }}
+                                      </td>
+                                  </tr>
+                                  {% else %}
+                                      <tr><h3 class="text-center">No questions asked</h3></tr>
+                                  {% endfor %}
+                              </table>
+                          </div>
+                      </div>
+              </div>
+          </div>
+
+          </div>
+        </div>
+    </div>
+</div>
+<script>
+    $('#CloseSearchTicket').on('click', function(e){
+        e.preventDefault();
+        $('#list_all_departure').show();
+        $('#info_ticket').addClass('hidden').html('');
+    });
+
+    console.log($('#permanent_current_departure').text());
+
+    if($('#current_departure_start').text() != '' && $('#current_departure_start').text() != ''){
+        if ($('#current_departure_start').text() == {{ ticket.departure.get().destination.get().destination_check.get().key.id() }}  && $('#current_departure_check').text() == {{ ticket.departure.get().destination.get().destination_start.get().key.id() }}){
+           $('#CreateReturnTicket').removeAttr('disabled')
+        }
+    }
+
+    var val_id = $('#CurrentDeparture').val();
+    $('#CreateReturnTicket').attr({'href': "{{url_for('create_customer_and_ticket_return', ticket_id=ticket.key.id())}}"+"/"+val_id});
+
+    $('#CreateReturnTicket').on('click', function(e){
+        e.preventDefault();
+        var url = $(this).attr('href');
+        $.ajax({
+                url: url,
+                type: 'GET',
+                success: function(data) {
+                    $('#info_ticket').addClass('hidden').html('');
+                    $('#ScreenIndexPos').hide();
+                    $('#ScreenCreateTicket').removeClass('hidden').html(data);
+                }
+        });
+
+    })
+</script>

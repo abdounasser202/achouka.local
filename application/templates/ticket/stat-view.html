@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-recording.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Recording') }}">Recording</a></li>
+                          <li><a href="{{ url_for('Ticket_Index') }}">Ticket purchases</a></li>
+                          <li class="active">Statistics</li>
+                        </ol>
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <h3>{{ current_agency.name }}</h3>
+                                <hr/>
+                                <div class="panel panel-info">
+                                    <div class="panel-heading"><span class="lead">Purchase</span></div>
+                                      <div class="panel-body">
+                                        <table class="table table-hover" id="dataTableStat1">
+                                            <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Travel</th>
+                                                <th>Number</th>
+                                                <th class="nosort">Type</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {% for purchase in ticket_purchase %}
+                                                <tr>
+                                                    <td>{{ purchase['date'] }}</td>
+                                                    <td>{{ purchase["travel"].get().destination_start.get().name }} - {{ purchase["travel"].get().destination_check.get().name }}</td>
+                                                    <td>{{ purchase["number"] }}</td>
+                                                    <td>{{ purchase["class"].get().name }} - {{ purchase["type"].get().name }} - {{ purchase["journey"].get().name }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                            </tbody>
+                                        </table>
+                                      </div>
+                                </div>
+                                <hr/>
+
+                                <div class="panel panel-info">
+                                    <div class="panel-heading"><span class="lead">Local Ticket Type</span></div>
+                                      <div class="panel-body">
+                                        <table class="table table-hover" id="dataTableStat2">
+                                            <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th class="nosort text-center">Number</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                               {% for type in ticket_type_purchase %}
+                                                   {% if type['travel'].get().destination_start == current_agency.destination and type['number'] >= 1 %}
+                                                        <tr>
+                                                            <td>
+                                                                <strong>{{ type['name_ticket'] }}</strong>  ({{ type['travel'].get().destination_start.get().name }} - {{ type['travel'].get().destination_check.get().name }})<br/>
+                                                                <small>{{ type['class'].get().name }} - {{ type['type'].get().name }} - {{ type['journey'].get().name }}</small>
+
+                                                            </td>
+                                                            <td class="text-center">{{ type['number'] }}</td>
+                                                        </tr>
+                                                   {% endif %}
+                                               {% endfor %}
+                                            </tbody>
+                                        </table>
+                                      </div>
+                                </div>
+                                <hr/>
+                                <div class="panel panel-info">
+                                    <div class="panel-heading"><span class="lead">Foreign Ticket Type</span></div>
+                                      <div class="panel-body">
+                                        <table class="table table-hover" id="dataTableStat3">
+                                            <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th class="nosort text-center">Number</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for type in ticket_type_purchase %}
+                                                   {% if type['travel'].get().destination_start != current_agency.destination and type['number'] >= 1 %}
+                                                        <tr>
+                                                            <td>
+                                                                <strong>{{ type['name_ticket'] }}</strong>  ({{ type['travel'].get().destination_start.get().name }} - {{ type['travel'].get().destination_check.get().name }})<br/>
+                                                                <small>{{ type['class'].get().name }} - {{ type['type'].get().name }} - {{ type['journey'].get().name }}</small>
+
+                                                            </td>
+                                                            <td class="text-center">{{ type['number'] }}</td>
+                                                        </tr>
+                                                   {% endif %}
+                                               {% endfor %}
+                                            </tbody>
+                                        </table>
+                                      </div>
+                                </div>
+
+                            </div>
+
+                            <div class="col-lg-4">
+
+                                {% if not current_user.has_roles(('admin','super_admin')) and current_user.has_roles('manager_agency') %}
+                                        <a href="{{ url_for('Select_Travel', agency_id=agency_id) }}" class="btn btn-info btn-block"  data-toggle="modal" data-target="#myModal" data-backdrop="static">Purchase</a>
+                                        <br/>
+                                {% endif %}
+                                <div class="well text-center">
+                                    <small>Unsold ticket</small>
+                                    <h3>{{ current_agency.TicketUnsold() }}</h3>
+                                </div>
+                            </div>
+                        </div>
+
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="myModal" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+
+
+        </div>
+      </div>
+    </div>
+{% endblock %}
+{% block footer_script %}
+    <script>
+        $('#dataTableStat1').dataTable({
+            "paging": true,
+            "bFilter": false,
+            'aoColumnDefs': [
+                {'bSortable': false, 'aTargets': ['nosort']},
+                {'bSearchable': false, "aTargets": ['nosort']}
+            ],
+             "order": [[ 0, "desc" ]]
+        });
+
+        $('#dataTableStat2').dataTable({
+            "paging": true,
+            "bFilter": true,
+            'aoColumnDefs': [
+                {'bSortable': false, 'aTargets': ['nosort']},
+                {'bSearchable': false, "aTargets": ['nosort']}
+            ],
+             "order": [[ 0, "asc" ]]
+        });
+         $('#dataTableStat3').dataTable({
+            "paging": true,
+            "bFilter": true,
+            'aoColumnDefs': [
+                {'bSortable': false, 'aTargets': ['nosort']},
+                {'bSearchable': false, "aTargets": ['nosort']}
+            ],
+             "order": [[ 0, "asc" ]]
+        });
+
+
+    </script>
+{% endblock %}

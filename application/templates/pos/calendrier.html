@@ -1,0 +1,90 @@
+<div id="pos" style="height: 341px;">
+
+                            <div id="carousel-example-generic" class="carousel" data-ride="carousel" data-interval="false" data-pause="true">
+
+                              <!-- Wrapper for slides -->
+                              <div class="carousel-inner" data-wrap="false">
+                                  {% for month in cal_list %}
+                                    {% set current_month = loop.index %}
+                                    <div class="item {% if current_month == current_month_active %} active {% endif %}">
+                                        <h3 class="text-center">{{ ['January', 'Febuary', 'March', 'April',
+                                                'May', 'June', 'July', 'August',
+                                                'September', 'October', 'November', 'December'][loop.index0] }} {{ year }}</h3>
+                                        <table class="table table-bordered">
+                                            <thead>
+                                                <tr>
+                                                    <th class="text-center">Mon</th>
+                                                    <th class="text-center">Tu</th>
+                                                    <th class="text-center">Wed</th>
+                                                    <th class="text-center">Thi</th>
+                                                    <th class="text-center">Fri</th>
+                                                    <th class="text-center">Sa</th>
+                                                    <th class="text-center">Su</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for week in month %}
+                                                <tr class="text-center">
+                                                    {% for date in week %}
+                                                        {% if date.month == current_month %}
+                                                            {% if date.day == current_day_active and date.month == current_month_active %}
+                                                                <td class="info precedent" id="{{ date.day }}{{ date.month }}{{ year }}" >
+                                                                    <a href="{{ url_for('List_All_Departure', current_month_active=date.month, current_day_active=date.day) }}" class="btn btn-xs disabled">
+                                                            {% else %}
+                                                                <td id="{{ date.day }}{{ date.month }}{{ year }}">
+                                                                    <a href="{{ url_for('List_All_Departure', current_month_active=date.month, current_day_active=date.day) }}" class="btn btn-link btn-xs">
+                                                            {% endif %}
+                                                        {% else %}
+                                                        <td class="active">
+                                                            <a  class="btn disabled btn-xs">
+                                                        {% endif %}
+                                                        {{ date.day }}</a>
+                                                        </td>
+                                                    {% endfor %}
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                  {% endfor %}
+                                </div>
+
+                              </div>
+
+                              <!-- Controls -->
+                              <a class="left carousel-control" href="#carousel-example-generic" data-slide="prev">
+                                <span class="icon-prev"></span>
+                              </a>
+                              <a class="right carousel-control" href="#carousel-example-generic" data-slide="next">
+                                <span class="icon-next"></span>
+                              </a>
+</div>
+
+<script>
+
+    $('#pos').on('click', '.btn', function(e){
+        e.preventDefault();
+        var parent = $(this).parent().attr('id');
+        var precedent = $('.precedent').attr('id');
+
+        $('#'+parent).addClass('info').addClass('precedent');
+        $('#'+parent+" > a.btn").addClass('disabled').removeClass('btn-link');
+
+        $('#'+precedent).removeClass('info').removeClass('precedent');
+        $('#'+precedent+" > a.btn").removeClass('disabled').addClass('btn-link');
+
+        var url = $(this).attr('href');
+        $.ajax({
+            url: url,
+            type: 'GET',
+            success: function(data) {
+                $('#info_ticket').addClass('hidden');
+                $('#list_all_departure').html(data);
+                $('#list_all_departure').show();
+            }
+        });
+
+
+    });
+
+</script>

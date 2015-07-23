@@ -1,0 +1,81 @@
+<div class="modal-header {% if title %} bg-info {% else %} bg-warning {% endif %}">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+    <h4 class="modal-title" id="myModalLabel">Select Ticket Type for your ticket</h4>
+</div>
+
+<form class="form-horizontal" id="formulaire">
+    <div class="modal-body">
+          <table class="table table-hover" id="dataTables">
+               <thead>
+                    <tr>
+                       <th>Name</th>
+                       <th>Type</th>
+                       <th>Class</th>
+                       <th>Journey</th>
+                    </tr>
+               </thead>
+               <tbody>
+               {% for type in ticket_type %}
+                   <tr id="{{ type.key.id() }}" class="line">
+                       <td>{{ type.name }}</td>
+                       <td>{{ type.type_name.get().name }}</td>
+                       <td>{{ type.class_name.get().name }}</td>
+                       <td>{{ type.journey_name.get().name }}</td>
+                   </tr>
+               {% endfor %}
+               </tbody>
+           </table>
+    </div>
+    <div class="modal-footer">
+        {% if title %}
+            <a href="{{ url_for('Select_Foreign_Travel', agency_id=agency_id) }}" class="btn btn-danger" id="return">Return</a>
+        {% else %}
+            <a href="{{ url_for('Select_Travel', agency_id=agency_id) }}" class="btn btn-danger" id="return">Return</a>
+        {% endif %}
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" data-href="" class="btn btn-success disabled" id="submit">Continued</button>
+
+    </div>
+</form>
+
+<script>
+    $('a#return').click(function(e) {
+      e.preventDefault();
+      var url = $(this).attr('href');
+      $.get(url, function(data) {
+          $('.modal-content').html(data);
+      });
+    });
+
+    $('.line').on('click', function(){
+        var id = "/"+$(this).attr('id');
+        var url = "{{ url_for('Ticket_Edit', agency_id=agency_id) }}"+id;
+
+        $('.pred').removeClass('info');
+        var pred = $('.pred').attr('id');
+        $(pred).removeClass('pred');
+
+        $(this).addClass('info');
+        $(this).addClass('pred');
+        $('#submit').removeClass('disabled');
+        $('#submit').attr({'data-href': url});
+    });
+
+    $('#submit').on('click', function(){
+        $.ajax({
+                url: $(this).attr('data-href'),
+                type: 'GET',
+                success: function(data) {
+                    $('.modal-content').html(data);
+                }
+            });
+    });
+
+
+    $('#dataTables').dataTable({
+    'aoColumnDefs': [
+        {'bSortable': false, 'aTargets': ['nosort']},
+        {'bSearchable': false, "aTargets": ['nosort']}
+    ]
+    });
+</script>

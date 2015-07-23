@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+<div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-settings.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Settings') }}">Settings</a></li>
+                          <li class="active">Agency</li>
+                        </ol>
+                        <nav class="navbar navbar-toolbar navbar-default" role="navigation">
+                          <div class="container-fluid">
+                            <div class="btn-toolbar" role="toolbar">
+                               <div class="btn-group pull-left">
+                                   <a href="{{ url_for('Agency_Edit') }}" class="btn btn-danger btn-lg">New</a>
+                               </div>
+                            </div>
+                          </div>
+                        </nav>
+                        {% include 'includes/flash_message.html' %}
+
+                        <table class="table table-hover"  id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>Name </th>
+                                    <th>Type Agency</th>
+                                    <th>Phone</th>
+                                    <th>town destination</th>
+                                    <th class="nosort"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for agence in agency %}
+                            <tr {% if agence.status %} class="success" {% endif %}>
+                                <td>{{ agence.name }}</td>
+                                <td>
+                                    {% if agence.is_achouka %}
+                                        Agency
+                                    {% else %}
+                                        Partner
+                                    {% endif %}
+                                </td>
+                                <td>{{ agence.phone }}</td>
+                                <td>
+                                    {{ agence.destination.get().name }}
+                                </td>
+                                <td class="nosearch">
+                                    <a href="{{ url_for('Agency_Edit', agency_id = agence.key.id()) }}" class="btn btn-link btn-xs">Edit</a>
+                                    {% if agence.status %}
+                                        <a href="{{ url_for('Active_Agency', agency_id=agence.key.id()) }}" class="btn  btn-danger btn-xs ">Disable</a>
+                                    {% else %}
+                                        <a href="{{ url_for('Active_Agency', agency_id=agence.key.id()) }}"  class="btn  btn-success btn-xs">Activate</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+
+                            </tbody>
+                        </table>
+
+                </section>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+<div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-settings.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Settings') }}">Settings</a></li>
+                          <li class="active">Currency</li>
+                        </ol>
+                        <nav class="navbar navbar-toolbar navbar-default" role="navigation">
+                          <div class="container-fluid">
+                            <div class="btn-toolbar" role="toolbar">
+                               <div class="btn-group pull-left">
+                                   <a href="{{ url_for('Currency_Edit') }}" class="btn btn-danger btn-lg">New</a>
+                               </div>
+                                <div class="btn-group pull-left">
+                                   <a href="{{ url_for('Currency_Equiv') }}" class="btn btn-info btn-lg">Convert</a>
+                               </div>
+                            </div>
+                          </div>
+                        </nav>
+                        {% include 'includes/flash_message.html' %}
+
+                        <table class="table table-hover"  id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>Code </th>
+                                    <th>Name currency</th>
+                                    <th class="nosort"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for currency in currencys %}
+                                <tr>
+                                    <td>{{ currency.code }}</td>
+                                    <td>{{ currency.name }}</td>
+                                    <td>
+                                        <a href="{{ url_for('Currency_Edit', currency_id = currency.key.id()) }}" class="btn btn-link btn-xs">Edit</a>
+                                        <a href="{{ url_for('Currency_Delete', currency_id = currency.key.id()) }}" class="btn btn-link  btn-xs">Delete</a>
+                                    </td>
+                                </tr>
+
+                            {% endfor %}
+
+                            </tbody>
+                        </table>
+
+                </section>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

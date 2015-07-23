@@ -1,0 +1,105 @@
+<ul class="list-group list-menu">
+  <li class="list-group-header"><i class="fa fa-hdd-o"></i> - Recording</li>
+
+{% if current_user.has_roles(('super_admin','manager_agency')) %}
+  <li class="list-group-item {% if submenu == 'transaction' %} active {% endif %}">
+    <div class="list-group-item-wrapper">
+      <div class="dropdown pull-right">
+        <a href="#" class="dropdown-toggle" data-toggle="dropdown"><span class="caret"></span></a>
+        <ul role="menu" class="dropdown-menu">
+          <li><a href="{{ url_for('Transaction_Index') }}">List</a></li>
+          <li><a href="#">New</a></li>
+        </ul>
+      </div>
+
+      <a href="{{ url_for('Transaction_Index') }}">
+        Transaction
+      </a>
+    </div>
+  </li>
+
+
+  <li class="list-group-item {% if submenu == 'ticket' %} active {% endif %}">
+    <div class="list-group-item-wrapper">
+      <div class="dropdown pull-right">
+        <a href="#" class="dropdown-toggle" data-toggle="dropdown"><span class="caret"></span></a>
+        <ul role="menu" class="dropdown-menu">
+          <li><a href="{{ url_for('Ticket_Index') }}">List</a></li>
+        </ul>
+      </div>
+
+      <a href="{{ url_for('Ticket_Index') }}">
+        Ticket purchases
+      </a>
+    </div>
+  </li>
+{% endif %}
+{% if current_user.has_roles(('super_admin','admin')) %}
+  <li class="list-group-item {% if submenu == 'travel' %} active {% endif %}">
+    <div class="list-group-item-wrapper">
+      <div class="dropdown pull-right">
+        <a href="#" class="dropdown-toggle" data-toggle="dropdown"><span class="caret"></span></a>
+        <ul role="menu" class="dropdown-menu">
+          <li><a href="{{ url_for('Travel_Index') }}">List</a></li>
+          <li><a href="{{ url_for('Travel_Edit') }}">New</a></li>
+        </ul>
+      </div>
+
+      <a href="{{ url_for('Travel_Index') }}">
+        Travel
+      </a>
+    </div>
+  </li>
+
+{% endif %}
+
+{% if current_user.has_roles(('super_admin','manager_agency')) %}
+  <li class="list-group-item {% if submenu == 'departure' %} active {% endif %}">
+    <div class="list-group-item-wrapper">
+      <div class="dropdown pull-right">
+        <a href="#" class="dropdown-toggle" data-toggle="dropdown"><span class="caret"></span></a>
+        <ul role="menu" class="dropdown-menu">
+          <li><a href="{{ url_for('Departure_Index') }}">List</a></li>
+          <li><a href="{{ url_for('Departure_Edit') }}">New</a></li>
+        </ul>
+      </div>
+
+      <a href="{{ url_for('Departure_Index') }}">
+        Departure
+      </a>
+    </div>
+  </li>
+ <li class="list-group-item {% if submenu == 'customer' %} active {% endif %}">
+    <div class="list-group-item-wrapper">
+      <div class="dropdown pull-right">
+        <a href="#" class="dropdown-toggle" data-toggle="dropdown"><span class="caret"></span></a>
+        <ul role="menu" class="dropdown-menu">
+          <li><a href="{{ url_for('Customer_Index') }}">List</a></li>
+          <li><a href="{{ url_for('Customer_Edit') }}">New</a></li>
+        </ul>
+      </div>
+
+      <a href="{{ url_for('Customer_Index') }}">
+        Customer
+      </a>
+    </div>
+  </li>
+
+    <li class="list-group-item {% if submenu == 'user' %} active {% endif %}">
+        <div class="list-group-item-wrapper">
+          <div class="dropdown pull-right">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown"><span class="caret"></span></a>
+            <ul role="menu" class="dropdown-menu">
+              <li><a href="{{ url_for('User_Index') }}">List</a></li>
+              <li><a href="#">New</a></li>
+            </ul>
+          </div>
+
+          <a href="{{ url_for('User_Index') }}">
+            User Agency
+          </a>
+        </div>
+      </li>
+{% endif %}
+
+</ul>

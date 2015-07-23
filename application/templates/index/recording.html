@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block layout_content %}
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-recording.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                    <div class="row">
+                        <ol class="breadcrumb breadcrumb-sm">
+                          <li class="active">Recording</li>
+                        </ol>
+                        {% if current_user.has_roles(('super_admin','manager_agency')) %}
+                              <div class="col-lg-4">
+                                  <div class="well-custom well-small">
+                                            <div class="caption">
+                                                <h3 class="text-center">Transaction</h3>
+                                                <p><a href="{{ url_for('Transaction_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
+                                            </div>
+                                        </div>
+                              </div>
+                              <div class="col-lg-4">
+                                  <div class="well-custom well-small">
+                                            <div class="caption">
+                                                <h3 class="text-center">Ticket purchases</h3>
+                                                <p><a href="{{ url_for('Ticket_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
+                                            </div>
+                                        </div>
+                              </div>
+                        {% endif %}
+                        {% if current_user.has_roles(('super_admin','admin')) %}
+                                <div class="col-lg-4">
+                                  <div class="well-custom well-small">
+                                            <div class="caption">
+                                                <h3 class="text-center">Travel</h3>
+                                                <p><a href="{{ url_for('Travel_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
+                                            </div>
+                                        </div>
+                              </div>
+                        {% endif %}
+                        {% if current_user.has_roles(('super_admin','manager_agency')) %}
+                              <div class="col-lg-4">
+                                  <div class="well-custom well-small">
+                                            <div class="caption">
+                                                <h3 class="text-center">Departure</h3>
+                                                <p><a href="{{ url_for('Departure_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
+                                            </div>
+                                        </div>
+                              </div>
+
+                          <div class="col-lg-4">
+                              <div class="well-custom well-small">
+                                        <div class="caption">
+                                            <h3 class="text-center">Customer</h3>
+                                            <p><a href="{{ url_for('Customer_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
+                                        </div>
+                              </div>
+                          </div>
+                          <div class="col-lg-4">
+                              <div class="well-custom well-small">
+                                        <div class="caption">
+                                            <h3 class="text-center">User</h3>
+                                            <p><a href="{{ url_for('User_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
+                                        </div>
+                              </div>
+                          </div>
+                        {% endif %}
+
+
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+{% endblock %}

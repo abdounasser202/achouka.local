@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+<div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-recording.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Recording') }}">Recording</a></li>
+                          <li class="active">Ticket purchases</li>
+                        </ol>
+                        <!--<nav class="navbar navbar-toolbar navbar-default" role="navigation">
+                          <div class="container-fluid">
+                            <div class="btn-toolbar" role="toolbar">
+                               <div class="btn-group pull-left">
+                                   <a href="#" class="btn btn-danger btn-lg" data-toggle="modal" data-target="#myModal">New</a>
+                               </div>
+                            </div>
+                          </div>
+                        </nav> -->
+                        {% include 'includes/flash_message.html' %}
+
+                          <table class="table table-hover" id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>Agency </th>
+                                    <th>Total ticket </th>
+                                    <th>Unsold ticket</th>
+                                    <th>Date last purchase</th>
+                                    <th class="nosort"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ticket in ticket_list %}
+                                    <tr >
+                                        <td><a href="{{ url_for('Stat_View', agency_id=ticket.key.id()) }}">{{ ticket.name }}</a></td>
+                                        <td>
+                                            {{ ticket.TicketCount() }}
+                                        </td>
+                                        <td>
+                                            {{ ticket.TicketUnsold() }}
+                                        </td>
+                                        <td>
+                                            {% if ticket.DateLastPurchase()  %}
+                                                {{ ticket.DateLastPurchase()|format_date("%d-%m-%Y %H:%M") }}
+                                            {% else %}
+                                                No date
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('Select_Travel', agency_id=ticket.key.id()) }}" class="btn btn-info btn-xs"  data-toggle="modal" data-target="#myModal" data-backdrop="static">Purchase</a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+
+                            </tbody>
+                        </table>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="myModal" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+
+
+        </div>
+      </div>
+    </div>
+
+{% endblock %}

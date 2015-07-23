@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+<div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-recording.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Recording') }}">Recording</a></li>
+                          <li class="active">Departure</li>
+                        </ol>
+                        <nav class="navbar navbar-toolbar navbar-default" role="navigation">
+                          <div class="container-fluid">
+                            <div class="btn-toolbar" role="toolbar">
+                               <div class="btn-group pull-left">
+                                   <a href="{{ url_for('Departure_Edit') }}" class="btn btn-danger btn-lg">New</a>
+                               </div>
+                            </div>
+                          </div>
+                        </nav>
+
+                        {% include 'includes/flash_message.html' %}
+
+                        <table class="table table-hover"  id="dataTableDeparture">
+                            <thead>
+                                <tr>
+                                    <th>Departure Date</th>
+                                    <th class="text-center">Scheduled departure time</th>
+                                    <th class="text-center">Expected departure time (delay)</th>
+                                    <th>Journey</th>
+                                    <th>Vessel</th>
+                                    <th class="nosort"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for departure in departures %}
+                                    <tr>
+                                        <td>{{ departure.departure_date|format_date("%Y-%m-%d") }}</td>
+                                        <td>{{ departure.schedule|format_date("%H:%M") }}</td>
+                                        <td>{{ departure.schedule|add_time(departure.time_delay)|format_date("%H:%M") }} {% if departure.time_delay %} ( + {{ departure.time_delay }} ) {% endif %}</td>
+                                        <td>
+                                            {{ departure.destination.get().destination_start.get().name }}
+                                            -
+                                            {{ departure.destination.get().destination_check.get().name }}
+                                        </td>
+                                        
+                                        <td>{{ departure.vessel.get().name }} ( {{ departure.vessel.get().capacity  }} )</td>
+                                        
+                                        <td>
+                                            {% if departure.departure_date >= date_day  and departure.schedule|add_time(departure.time_delay) >= time_now %}
+                                                {% if not departure.reserved() %}
+                                                    <a class="btn btn-link btn-xs" href="{{ url_for('Departure_Edit', departure_id = departure.key.id()) }}">Edit</a>
+                                                {% endif %}
+                                                <a class="btn btn-link btn-xs" href="{{ url_for('Time_Delay_Edit',departure_id = departure.key.id()) }}"  data-toggle="modal" data-target="#myModal">Edit delay</a>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+
+                                {% endfor %}
+
+                            </tbody>
+                        </table>
+                </section>
+            </div>
+        </div>
+    </div>
+    <!-- Modal -->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+
+        </div>
+      </div>
+    </div>
+
+{% endblock %}
+{% block footer_script %}
+    <script>
+        $('#dataTableDeparture').dataTable({
+            'aoColumnDefs': [
+                {'bSortable': false, 'aTargets': ['nosort']},
+                {'bSearchable': false, "aTargets": ['nosort']}
+            ],
+             "order": [[ 0, "desc" ], [ 1, "desc" ]]
+        });
+    </script>
+{% endblock %}
+

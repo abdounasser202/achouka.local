@@ -1,0 +1,55 @@
+                                    <div class="row">
+                                        <div class="col-lg-12">
+                                            <div class="panel panel-primary">
+                                              <div class="panel-body">
+                                                  <form>
+                                                      <fieldset>
+                                                          <legend class="text-center">JOURNEY DATE : <strong>{{ date|format_date("%A %d %B  %Y") }}</strong></legend>
+                                                      </fieldset>
+                                                  </form>
+                                                        <table class="table table-hover table-condensed" id="posTable">
+                                                            <thead>
+                                                            <tr>
+                                                                <th>Journey</th>
+                                                                <th>Time</th>
+                                                            </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                            {% for departure in departure_list %}
+                                                                <tr {% if departure.departure_date >= date_day  and departure.schedule|add_time(departure.time_delay) >= time_now %} class="select_departure"  {% else %} class="danger" {% endif %} id="{{ departure.key.id() }}">
+                                                                    <td>
+                                                                        {{ departure.destination.get().destination_start.get().name }}
+                                                                        -
+                                                                        {{ departure.destination.get().destination_check.get().name }}
+                                                                    </td>
+                                                                    <td>{{ departure.schedule|add_time(departure.time_delay)|format_date("%H:%M") }}</td>
+
+                                                                </tr>
+                                                            {% endfor %}
+                                                            </tbody>
+                                                        </table>
+                                              </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <script>
+                                        $('#posTable').dataTable({
+                                            "paging": true,
+                                            "bFilter": true,
+                                            'aoColumnDefs': [
+                                                {'bSortable': false, 'aTargets': ['nosort']}
+                                            ]
+                                        });
+
+                                        $('.select_departure').on('click', function(){
+                                            $(this).addClass('info');
+                                            var url_pos = "{{ url_for('Pos') }}";
+                                            var id_departure = $(this).attr('id');
+                                            window.location.replace(window.location.origin+url_pos+"/"+id_departure);
+
+                                        });
+
+
+                                    </script>
+
+

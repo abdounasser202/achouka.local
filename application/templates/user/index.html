@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+<div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-settings.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Settings') }}">Settings</a></li>
+                          <li class="active">Administrator </li>
+                        </ol>
+                        <nav class="navbar navbar-toolbar navbar-default" role="navigation">
+                          <div class="container-fluid">
+                            <div class="btn-toolbar" role="toolbar">
+                                   <div class="btn-group pull-left">
+                                       <a href="{{ url_for('User_Admin_Edit') }}" class="btn btn-danger btn-lg">Create Admin</a>
+                                   </div>
+                            </div>
+                          </div>
+                        </nav>
+                        {% include 'includes/flash_message.html' %}
+
+                         <table class="table table-hover" id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>First name </th>
+                                    <th>Last name</th>
+                                    <th>Email Adresse</th>
+                                    <th>Last Logged</th>
+                                    <th class="nosort"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for user in user %}
+                                {% if user.user_id in user_admins %}
+                                    <tr>
+                                        <td>{{ user.user_id.get().first_name }}</td>
+                                        <td>{{ user.user_id.get().last_name }}</td>
+                                        <td>{{ user.user_id.get().email }} </td>
+                                        <td>{{ user.user_id.get().date_last_logged }} </td>
+                                        <td>
+                                            <a href="" class="btn btn-link btn-xs">Reset password </a>
+                                            <a href="" class="btn btn-link btn-xs">Change email </a>
+
+                                            {% if user.user_id not in super_admin_id %}
+                                                <a href="{{ url_for('User_Admin_Edit',  user_id=user.user_id.get().key.id()) }}" class="btn btn-link btn-xs">Edit </a>
+                                            {% endif %}
+
+{#                                            {% if user.user_id in super_admin_id %}#}
+{#                                                <a href="#" class="btn btn-link btn-xs">Change currency </a>#}
+{#                                            {% endif %}#}
+                                            {% if current_user.key != user.user_id %}
+                                                {% if user.user_id.get().is_enabled %}
+                                                    <a href="{{url_for('activate_user_admin', user_id=user.user_id.get().key.id())}}" class="btn btn-danger btn-xs">Disabled</a>
+                                                {% else %}
+                                                    <a href="{{url_for('activate_user_admin', user_id=user.user_id.get().key.id())}}" class="btn btn-success btn-xs">Activate</a>
+                                                {% endif %}
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            {% endfor %}
+
+                            </tbody>
+                        </table>
+
+                </section>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

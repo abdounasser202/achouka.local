@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+<div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-settings.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Settings') }}">Settings</a></li>
+                          <li class="active">Ticket Type </li>
+                        </ol>
+                        <nav class="navbar navbar-toolbar navbar-default" role="navigation">
+                          <div class="container-fluid">
+                            <div class="btn-toolbar" role="toolbar">
+                               <div class="btn-group pull-left">
+                                   <a href="{{ url_for('TicketType_Edit') }}" class="btn btn-danger btn-lg">New</a>
+                               </div>
+                               <div class="btn-group pull-left">
+                                   <a href="{{ url_for('Ticket_Type_Name_Index') }}" class="btn btn-default btn-lg">Ticket Type</a>
+                               </div>
+                               <div class="btn-group pull-left">
+                                   <a href="{{ url_for('JourneyType_Index') }}" class="btn btn-default btn-lg">Journey Type</a>
+                               </div>
+                                <div class="btn-group pull-left">
+                                   <a href="{{ url_for('ClassType_Index') }}" class="btn btn-default btn-lg">Class Type</a>
+                               </div>
+
+                            </div>
+                          </div>
+                        </nav>
+                        {% include 'includes/flash_message.html' %}
+
+                        <table class="table table-hover" id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Travel</th>
+                                    <th>Class</th>
+                                    <th>Type</th>
+                                    <th>Journey</th>
+                                    <th>Price</th>
+                                    <th class="nosort"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for type in tickettype %}
+                                    <tr {% if type.active %} class="success" {% endif %}>
+                                        <td>{{ type.name }}</td>
+                                        <td>{{ type.travel.get().destination_start.get().name }} - {{ type.travel.get().destination_check.get().name }}</td>
+                                        <td>
+                                            {{ type.class_name.get().name }}
+                                        </td>
+                                        <td>
+                                            {{ type.type_name.get().name }}
+                                        </td>
+                                        <td>
+                                            {{ type.journey_name.get().name }}
+                                        </td>
+                                        <td>{{ type.price }} {{ type.currency.get().code }}</td>
+                                        <td>
+                                            <a href="{{ url_for('TicketType_Edit', tickettype_id=type.key.id()) }}" class="btn btn-link  btn-xs">Edit</a>
+                                            {% if type.active %}
+                                                <button  class="btn btn-danger btn-xs verified-disabled" id="{{ type.key.id() }}">Disable</button>
+                                            {% else %}
+                                                <a href="{{ url_for('Active_tickettype', tickettype_id=type.key.id()) }}"  class="btn  btn-success btn-xs">Activate</a>
+                                                <a href="{{ url_for('delete_tickettype', tickettype_id=type.key.id()) }}" class="btn btn-link btn-xs">Delete</a>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+
+                            </tbody>
+                        </table>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="myModal" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h4 class="modal-title" id="myModalLabel">Warning</h4>
+            </div>
+          <div class="modal-body">
+            contenue message
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            <a class="btn btn-primary" href="#" id="Disabled">Confirm Disable</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+{% endblock %}
+{% block footer_script %}
+    <script>
+{#        Preverification de la desactivation d'un type de ticket #}
+        $('.verified-disabled').on('click', function(e){
+            e.preventDefault();
+            var id = $(this).attr('id');
+            $.ajax({
+                url: "/Verified_Disabled/"+id,
+                type: 'GET',
+                contentType: 'application/json;charset=UTF-8',
+                dataType: "json",
+                success: function(data) {
+                    if (data['statut'] == 'OK'){
+                        $('#myModal').modal('show');
+                        $('#Disabled').attr({'href': '/Active_tickettype/'+id});
+                    }else{
+                        window.location.replace(window.location.origin+"/Active_tickettype/"+id);
+                    }
+                }
+            });
+        })
+    </script>
+{% endblock %}
+

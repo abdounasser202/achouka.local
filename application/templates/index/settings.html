@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block layout_content %}
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-settings.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                    <div class="row">
+                        <ol class="breadcrumb breadcrumb-sm">
+                          <li class="active">Settings</li>
+                        </ol>
+                      <div class="col-lg-4">
+                          <div class="well-custom well-small">
+                                    <div class="caption">
+                                        <h3 class="text-center">Vessel</h3>
+                                        <p><a href="{{ url_for('Vessel_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
+                                    </div>
+                                </div>
+                      </div>
+
+                        <div class="col-lg-4">
+                          <div class="well-custom well-small">
+                                    <div class="caption">
+                                        <h3 class="text-center">Currency</h3>
+                                        <p><a href="{{ url_for('Currency_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
+                                    </div>
+                                </div>
+                      </div>
+                        <div class="col-lg-4">
+                          <div class="well-custom well-small">
+                                    <div class="caption">
+                                        <h3 class="text-center">Destination</h3>
+                                        <p><a href="{{ url_for('Destination_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
+                                    </div>
+                                </div>
+                      </div>
+                      <div class="col-lg-4">
+                          <div class="well-custom well-small">
+                                    <div class="caption">
+                                        <h3 class="text-center">Ticket Type</h3>
+                                        <p><a href="{{ url_for('TicketType_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
+                                    </div>
+                                </div>
+                      </div>
+
+                      <div class="col-lg-4">
+                          <div class="well-custom well-small">
+                                    <div class="caption">
+                                        <h3 class="text-center">Agency</h3>
+                                        <p><a href="{{ url_for('Agency_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
+                                    </div>
+                                </div>
+                      </div>
+                         {% if current_user.has_roles('super_admin') %}
+                      <div class="col-lg-4">
+                          <div class="well-custom well-small">
+                                    <div class="caption">
+                                        <h3 class="text-center">Role</h3>
+                                        <p><a href="{{ url_for('Role_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
+                                    </div>
+                                </div>
+                      </div>
+                         {% endif %}
+
+                        <div class="col-lg-4">
+                          <div class="well-custom well-small">
+                                    <div class="caption">
+                                        <h3 class="text-center">Profil</h3>
+                                        <p><a href="{{ url_for('Profil_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
+                                    </div>
+                                </div>
+                        </div>
+                        <div class="col-lg-4">
+                          <div class="well-custom well-small">
+                                    <div class="caption">
+                                        <h3 class="text-center">Question</h3>
+                                        <p><a href="{{ url_for('Question_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
+                                    </div>
+                                </div>
+                        </div>
+                        <div class="col-lg-4">
+                          <div class="well-custom well-small">
+                                    <div class="caption">
+                                        <h3 class="text-center">Admin</h3>
+                                        <p><a href="{{ url_for('User_Admin_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
+                                    </div>
+                                </div>
+                        </div>
+
+
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+{% endblock %}

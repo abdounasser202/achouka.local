@@ -1,0 +1,107 @@
+<div class="modal-header {% if title %} bg-info {% else %} bg-warning {% endif %}">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+    <h4 class="modal-title" id="myModalLabel">Select {{ title }} Travel</h4>
+</div>
+
+
+<div class="modal-body">
+       <table class="table table-hover" id="dataTables">
+           <thead>
+                <tr>
+                   <th class="text-center">Travel</th>
+                </tr>
+           </thead>
+           <tbody>
+           {% for travel in travellist %}
+               <tr class="line" id="{{ travel.key.id() }}">
+                   <td class="text-center">{{ travel.destination_start.get().name }} - {{ travel.destination_check.get().name }}</td>
+               </tr>
+           {% endfor %}
+           </tbody>
+       </table>
+
+</div>
+<div class="modal-footer">
+    {% if current_user.has_roles(('super_admin','admin')) and not foreign_view %}
+        <a href="{{ url_for('Select_Foreign_Travel', agency_id=agency_id) }}" class="btn btn-info" id="Foreign">Foreign Ticket</a>
+    {% endif %}
+    {% if foreign_view %}
+        <a href="{{ url_for('Select_Travel', agency_id=agency_id) }}" class="btn btn-danger" id="return">Return</a>
+    {% endif %}
+    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+    <button type="button" data-href="" class="btn btn-success disabled" id="submit">Continued</button>
+</div>
+
+
+<script>
+     $('.line').on('click', function(){
+        var id = "/"+$(this).attr('id');
+        var url = "{{ url_for('Select_TicketType', agency_id=agency_id) }}"+id+"?title={{ title }}";
+
+        $('.pred').removeClass('info');
+        var pred = $('.pred').attr('id');
+        $(pred).removeClass('pred');
+
+        $(this).addClass('info');
+        $(this).addClass('pred');
+        $('#submit').removeClass('disabled');
+        $('#submit').attr({'data-href': url});
+    });
+
+     $('#submit').on('click', function(){
+        $.ajax({
+                url: $(this).attr('data-href'),
+                type: 'GET',
+                success: function(data) {
+                    $('.modal-content').html(data);
+                }
+            });
+    });
+
+{#    $('.select').click(function(e) {#}
+{#        e.preventDefault();#}
+{#        var btn = $(this);#}
+{#        var url = $(this).attr('href');#}
+{#        btn.button('loading');#}
+{#        $(this).removeClass('unselect');#}
+{#        $('.btn.unselect').addClass('disabled');#}
+{#        $.ajax({#}
+{#            url: url,#}
+{#            type: 'GET',#}
+{#            success: function(data) {#}
+{#                $('.modal-content').html(data);#}
+{#            }#}
+{#        });#}
+{#    });#}
+
+    $('#Foreign').click(function(e) {
+        e.preventDefault();
+        var btn = $(this);
+        var url = $(this).attr('href');
+        btn.button('loading');
+        $('.btn.unselect').addClass('disabled');
+        $.ajax({
+            url: url,
+            type: 'GET',
+            success: function(data) {
+                $('.modal-content').html(data);
+            }
+        });
+    });
+
+
+    $('a#return').click(function(e) {
+      e.preventDefault();
+      var url = $(this).attr('href');
+      $.get(url, function(data) {
+          $('.modal-content').html(data);
+      });
+    });
+
+    $('#dataTables').dataTable({
+    'aoColumnDefs': [
+        {'bSortable': false, 'aTargets': ['nosort']},
+        {'bSearchable': false, "aTargets": ['nosort']}
+    ]
+    });
+</script>

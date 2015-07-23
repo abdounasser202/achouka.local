@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+<div class="container-fluid">
+        <div class="row">
+
+            <div class="col-lg-2">
+                    {% include 'includes/menu-settings.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Settings') }}">Settings</a></li>
+                          <li><a href="{{ url_for('TicketType_Index') }}">Ticket Type</a></li>
+                          <li class="active">Ticket Type Name</li>
+                        </ol>
+                        <nav class="navbar navbar-toolbar navbar-default" role="navigation">
+                          <div class="container-fluid">
+                              <div class="navbar-brand">Edit ticket type name</div>
+                              <div class="btn-toolbar" role="toolbar">
+
+                                  <div class="pull-right">
+                                      <form class="navbar-form " role="search" method="post">
+                                          {{ form.hidden_tag() }}
+                                        <div class="form-group">
+                                             {{ form.name(class_='form-control input-lg', placeholder='Ticket type name')|safe }}
+                                        </div>
+                                          {% if ticket_type_name_id %}
+                                               <button type="submit" class="btn btn-warning">Update</button>
+                                          {% else %}
+                                               <button type="submit" class="btn btn-primary">Save</button>
+                                          {% endif %}
+
+                                      </form>
+                                  </div>
+                              </div>
+
+                          </div>
+                        </nav>
+                        {% include 'includes/flash_message.html' %}
+
+                         <table class="table table-hover"  id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>Ticket Type Name</th>
+                                    <th class="nosort">Is default ?</th>
+                                    <th class="nosort">Is special ?</th>
+                                    <th class="nosort"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for ticket in ticket_list %}
+                            <tr>
+                                <td>{{ ticket.name }}</td>
+                                <td>
+                                    {% if ticket.default == False %}
+                                        <a href="{{ url_for('Ticket_Type_Name_Default', ticket_type_name_id=ticket.key.id()) }}" class="btn btn-danger btn-xs"> None </a>
+                                    {% else %}
+                                        <a href="{{ url_for('Ticket_Type_Name_Default', ticket_type_name_id=ticket.key.id()) }}" class="btn btn-success btn-xs"> OK </a>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if ticket.special == False %}
+                                        <a href="{{ url_for('Ticket_Type_Name_Special', ticket_type_name_id=ticket.key.id()) }}" class="btn btn-danger btn-xs"> Not OK </a>
+                                    {% else %}
+                                        <a href="{{ url_for('Ticket_Type_Name_Special', ticket_type_name_id=ticket.key.id()) }}" class="btn btn-success btn-xs"> OK </a>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    <a href="{{ url_for('Ticket_Type_Name_Index', ticket_type_name_id=ticket.key.id()) }}" class="btn btn-link btn-xs">Edit</a>
+
+
+
+
+
+                                    <a href="{{ url_for('Delete_Ticket_Type_Name', ticket_type_name_id=ticket.key.id()) }}" class="btn btn-link btn-xs">Delete</a>
+                                </td>
+
+                            </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+
+                </section>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

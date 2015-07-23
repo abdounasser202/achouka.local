@@ -1,0 +1,435 @@
+<form method="post" id="formulaire">
+    <div class="row">
+        <div class="col-lg-12"><button class="btn btn-link pull-right" id="CloseScreenCreateTicket">X</button></div>
+        <div class="col-lg-4">
+            <div class="panel panel-info panel-pos">
+              <div class="panel-heading text-center"><h4>Customer Information</h4></div>
+              <div class="panel-body">
+                  {{ form.hidden_tag() }}
+                <div class="form-group  {% if form.first_name.errors %} has-error {% endif %} has-feedback">
+                    <label>{{ form.first_name.label }} :</label>
+                    {{ form.first_name(class_='form-control')|safe }}
+                    {% for message in form.first_name.errors %}
+                        <span class="help-block text-danger">{{ message }}</span>
+                      {% endfor %}
+                </div>
+                <div class="form-group {% if form.last_name.errors %} has-error {% endif %} has-feedback">
+                    <label>{{ form.last_name.label }} :</label>
+                    {{ form.last_name(class_='form-control')|safe }}
+                    {% for message in form.last_name.errors %}
+                        <span class="help-block text-danger">{{ message }}</span>
+                      {% endfor %}
+                </div>
+                <div class="form-group {% if form.birthday.errors %} has-error {% endif %} has-feedback">
+                    <label>{{ form.birthday.label }} :</label>
+                    {{ form.birthday(class_='form-control', id="datepickerbirth")|safe }}
+                    {% for message in form.birthday.errors %}
+                        <span class="help-block text-danger">{{ message }}</span>
+                      {% endfor %}
+                </div>
+                
+                <div class="form-group {% if form.passport_number.errors %} has-error {% endif %} has-feedback">
+                    <label>{{ form.passport_number.label }} :</label>
+                    {{ form.passport_number(class_='form-control', id="passport")|safe }}
+                    {% for message in form.passport_number.errors %}
+                        <span class="help-block text-danger">{{ message }}</span>
+                      {% endfor %}
+                </div>
+                
+                <div class="form-group {% if form.nic_number.errors %} has-error {% endif %} has-feedback">
+                    <label>{{ form.nic_number.label }} :</label>
+                    {{ form.nic_number(class_='form-control', id="nic")|safe }}
+                    {% for message in form.nic_number.errors %}
+                        <span class="help-block text-danger">{{ message }}</span>
+                      {% endfor %}
+                </div>
+                
+                <div class="form-group {% if form.email.errors %} has-error {% endif %} has-feedback">
+                    <label>{{ form.email.label }} :</label>
+                    {{ form.email(class_='form-control')|safe }}
+                    {% for message in form.email.errors %}
+                        <span class="help-block text-danger">{{ message }}</span>
+                      {% endfor %}
+                </div>
+                <div class="form-group {% if form.dial_code.errors %} has-error {% endif %} has-feedback">
+                    <label>{{ form.dial_code.label }} :</label>
+                     <select name="dial_code" id="" class="form-control g-select input-lg">
+                        <option value="">{{ form.dial_code.label }}</option>
+                        {% for key, val in number_list.items() %}
+                            <option value="{{ val }}" {% if form.dial_code.data == val %} selected {% endif %}>{{ key }} ({{ val }})</option>
+                        {% endfor %}
+                    </select>
+                    {% for message in form.dial_code.errors %}
+                        <span class="help-block text-danger">{{ message }}</span>
+                      {% endfor %}
+                </div>
+                <div class="form-group {% if form.phone.errors %} has-error {% endif %} has-feedback">
+                    <label>{{ form.phone.label }} :</label>
+                    {{ form.phone(class_='form-control')|safe }}
+                    {% for message in form.phone.errors %}
+                        <span class="help-block text-danger">{{ message }}</span>
+                    {% endfor %}
+                </div>
+                  <div class="form-group">
+                    <label>{{ form.profession.label }} :</label>
+                    {{ form.profession(class_='form-control')|safe }}
+                </div>
+                  <div class="form-group">
+                    <label>{{ form.nationality.label }} :</label>
+                    <select name="nationality" id="" class="form-control g-select input-lg">
+                        <option value="">{{ form.nationality.label }}</option>
+                        {% for key, val in nationalList.items() %}
+                            <option value="{{ key }}" {% if form.nationality.data == key %} selected {% endif %}>{{ val }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+              </div>
+            </div>
+        </div>
+        <div class="col-lg-8">
+            <div class="row">
+                <div class="col-lg-6">
+
+            <div class="panel panel-info panel-pos">
+              <div class="panel-heading text-center"><h4>Ticket Type</h4> </div>
+              <div class="panel-body text-center">
+                  <div class="alert alert-danger hidden" id="alert"> </div>
+                  <div class="row">
+                      {% for type_name in ticket_type_name %}
+                          {% if not type_name.special and not type_name.is_child %}
+                              <div class="col-lg-6">
+                                    <div class="radio">
+                                      <label>
+                                        <input type="radio" name="type_name" class="TicketTypeName" value="{{ type_name.key.id() }}" {% if type_name.default or type_name.key.id() == form.type_name.data|int %} checked {% endif %}>
+                                        {{ type_name.name }}
+                                      </label>
+                                    </div>
+                              </div>
+                          {% endif %}
+                      {% endfor %}
+                      <div class="col-lg-12">
+                            <div class="radio">
+                                <div class="">
+                                    <div class="col-lg-1">
+                                        {% for type_name in ticket_type_name %}
+                                              {% if type_name.special %}
+                                                  {% if form.type_name.data|int == type_name.key.id() %}
+                                                        {% set checked = True %}
+                                                  {% endif %}
+                                              {% endif %}
+                                          {% endfor %}
+                                        <label>
+                                            <input type="radio" name="type_name" value="" class="CheckBox-Select" {% if checked %} checked {% endif %}>
+                                        </label>
+                                    </div>
+                                    <div class="col-lg-10">
+                                      <select name="type_name_select" id="CheckBox-Select" class="form-control"  disabled="disabled">
+                                          {% for type_name in ticket_type_name %}
+                                              {% if type_name.special %}
+                                                  <option value="{{ type_name.key.id() }}" {% if form.type_name.data|int == type_name.key.id() %} selected {% endif %}>{{ type_name.name }}</option>
+                                              {% endif %}
+                                          {% else %}
+                                              <option value="">No Special</option>
+                                          {% endfor %}
+                                      </select>
+                                    </div>
+                                </div>
+                            </div>
+                      </div>
+                  </div>
+
+                  <hr/>
+                    <div class="row">
+                        {% for class in class_ticket %}
+                                  <div class="col-lg-6">
+                                        <div class="radio">
+                                          <label>
+                                            <input type="radio" name="class_name" class="ClassTicket" value="{{ class.key.id() }}" {% if class.default or form.class_name.data|int == class.key.id() %} checked {% endif %}>
+                                            {{ class.name }}
+                                          </label>
+                                        </div>
+                                  </div>
+                        {% endfor %}
+                    </div>
+                  <hr/>
+                  <div class="row">
+                      {% for journey in journey_ticket %}
+                          <div class="col-lg-6">
+                                <div class="radio">
+                                  <label>
+                                    <input type="radio" name="journey_name" class="JourneyTicket" value="{{ journey.key.id() }}" {% if journey.default or form.journey_name.data|int == journey.key.id() %} checked {% endif %}>
+                                    {{ journey.name }}
+                                  </label>
+                                </div>
+                          </div>
+                      {% endfor %}
+                  </div>
+
+              </div>
+            </div>
+
+        </div>
+        <div class="col-lg-6">
+                    <div class="text-center well">
+                      <h1 style="margin:0;">
+                              <span class="text-muted" id="TicketPrice">
+                              </span>
+                              <span class="text-primary" id="TicketCurrency">
+                              </span>
+                      </h1>
+                    </div>
+                    <div class="panel panel-info panel-pos">
+                      <div class="panel-heading text-center"><h4>Question</h4></div>
+                      <div class="panel-body">
+                        {% for question in questions %}
+                            <div class="checkbox" {% if question.key.id() in quest_obligated and obligated == true  %} style ="color:red;" {% endif %}>
+                              <label>
+                                <input type="checkbox" name="questions" value="{{ question.key.id() }}" {% if question_request and  question.key.id() in question_request %} checked="checked" {% endif %} >
+                                {{ question.question }}
+                              </label>
+                              <p class="text-right {% if question.key.id() not in quest_obligated %} hidden {% endif %}"><small>(*) Obligation</small></p>
+                            </div>
+                        {% else %}
+                            <div class="panel-body text-center">
+                                <h3>No request Question</h3>
+                            </div>
+                        {% endfor %}
+
+                      </div>
+                    </div>
+        </div>
+                <div class="col-lg-12">
+                    <div class="ticket_background clearfix">
+                          <div class="col-lg-6"></div>
+                          <div class="col-lg-6 info_left">
+                              Ticket Type<br><i id="type_ticket"> </i>
+                          </div>
+                          <div class="col-lg-12">
+                              <div class="form-group">
+                                <label for="exampleInputEmail1">NAME/NOM</label>
+                                <input type="text" class="form-control disabled" disabled="disabled" value ="{{ form.first_name.data }} {{ form.last_name.data }}" id="name">
+                              </div>
+                          </div>
+                          <div class="col-lg-6">
+                              <div class="form-group">
+                                <label for="exampleInputEmail1">FROM/DE</label>
+                                <input type="text" class="form-control disabled" disabled="disabled" value="{{ print_depature.destination.get().destination_start.get().name }}">
+                              </div>
+                          </div>
+                          <div class="col-lg-6">
+                              <div class="form-group">
+                                <label for="exampleInputEmail1">DESTINATION/A</label>
+                                <input type="text" class="form-control disabled" disabled="disabled" value="{{ print_depature.destination.get().destination_check.get().name }}">
+                              </div>
+                          </div>
+                         <div class="col-lg-6">
+                              <div class="form-group">
+                                <label for="exampleInputEmail1">DATE/DE</label>
+                                <input type="text" class="form-control disabled" disabled="disabled" value="{{ print_depature.departure_date|format_date("%d-%m-%Y") }}">
+                              </div>
+                          </div>
+                          <div class="col-lg-6">
+                              <div class="form-group">
+                                <label for="exampleInputEmail1">TIME/HEURE</label>
+                                <input type="text" class="form-control disabled" disabled="disabled" value="{{ print_depature.schedule|add_time(print_depature.time_delay)|format_date("%H:%M") }}">
+                              </div>
+                          </div>
+                         <div class="col-lg-6">
+                              <div class="form-group">
+                                <label for="exampleInputEmail1">SOLDE AT/LIEU DE VENTE</label>
+                                <input type="text" class="form-control disabled" disabled="disabled" value="{{ current_user.agencys() }}">
+                              </div>
+                          </div>
+                          <div class="col-lg-6">
+                              <div class="form-group">
+                                <label for="exampleInputEmail1">AGENCE CODE</label>
+                                <input type="text" class="form-control disabled" disabled="disabled" value="{{ current_user.key.id() }}">
+                              </div>
+                          </div>
+                    </div>
+                </div>
+            <div class="col-lg-12">
+                <br/>
+                <a href="{{ url_for('create_customer_and_ticket_pos', customer_id=customer_id, departure_id=departure_id) }}" class="btn btn-success pull-right" data-loading-text="Confirmation..." id="submit" data-backdrop="static" disabled="disabled">Confirm Sell Ticket</a>
+            </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Modal -->
+<div class="modal fade" id="myModal" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+
+    </div>
+  </div>
+</div>
+<script>
+    $('#datepickerbirth').inputmask("date", { placeholder:"__/__/____"});
+
+    $("select.g-select").each(function() {
+        var e = $(this);
+        e.select2()
+    });
+
+    $('#CloseScreenCreateTicket').click(function(e) {
+            e.preventDefault();
+            $('#ScreenIndexPos').show();
+            $('#ScreenCreateTicket').addClass('hidden').html('');
+    });
+
+
+    /*---------------------------------
+
+     Traitement de l'affichage du prix
+
+     ----------------------------------*/
+
+    /* Prix au chargement */
+    var data = {};
+    data['type_name'] =  $('input:checked.TicketTypeName').val();
+    data['class_name'] = $('input:checked.ClassTicket').val();
+    data['journey_name'] = $('input:checked.JourneyTicket').val();
+    data['current_departure'] = $('#current_departure').val();
+    AjaxPrice(data);
+
+    var modals = '{{ modal }}';
+
+    if(modals == 'true'){
+        {% if ticket_update %}
+            var url_modal = '{{ url_for('modal_generate_pdf_ticket', ticket_id=ticket_update.id()) }}';
+        {% endif %}
+        $('#myModal').modal('show');
+        $.get(url_modal, function(data) {
+          $('.modal-content').empty().html(data);
+        });
+        $("#submit").removeClass('btn-success');
+        $("#submit").addClass('btn-danger');
+        $("#submit").addClass('disabled');
+        $("#submit").text('Sale made');
+    }
+
+
+    $(document).ready(function(){
+        $("input#last_name,input#first_name").on('change', function() {
+            var last_name = $("input#last_name").val();
+            var first_name = $("input#first_name").val();
+            $('#name').val(last_name+" "+first_name)
+
+        });
+
+        $("input.TicketTypeName,input.ClassTicket,input.JourneyTicket,input.CheckBox-Select").on('change', function(){
+
+            data['type_name'] =  $('input:checked.TicketTypeName').val();
+            data['class_name'] = $('input:checked.ClassTicket').val();
+            data['journey_name'] = $('input:checked.JourneyTicket').val();
+            data['current_departure'] = $('#current_departure').val();
+
+            var InputCheckbox = $('input.CheckBox-Select');
+            var SelectCheckbox = $('#CheckBox-Select');
+
+            if (InputCheckbox.is(':checked')){
+                SelectCheckbox.removeAttr('disabled');
+                var selectVal = SelectCheckbox.val();
+                if(!selectVal){
+                    $('#alert').removeClass('hidden');
+                    $('#alert').text('Any special ticket is created');
+                    SelectCheckbox.attr({disabled : 'disabled'});
+                    $('#submit').attr({disabled:'disabled'});
+
+                    $('#TicketPrice').text('Undefined');
+                    $('#TicketCurrency').text('');
+                    data['type_name'] = null;
+                }else{
+
+                    InputCheckbox.val(selectVal);
+                    data['type_name'] =  $('input.CheckBox-Select').val();
+                }
+            }else{
+                SelectCheckbox.attr({disabled:'disabled'});
+            }
+            AjaxPrice(data);
+
+        });
+
+        $('#CheckBox-Select').on('change', function(){
+
+            var selectVal  = $(this).val();
+            $('input.CheckBox-Select').val(selectVal);
+
+            data['class_name'] = $('input:checked.ClassTicket').val();
+            data['journey_name'] = $('input:checked.JourneyTicket').val();
+            data['type_name'] =  $('input.CheckBox-Select').val();
+            AjaxPrice(data);
+
+        });
+
+        $('#submit').click(function(e) {
+            e.preventDefault();
+            var url = $(this).attr('href');
+            $(this).button('loading');
+            $.ajax({
+                url: url,
+                data: $('#formulaire').serialize(),
+                type: 'POST',
+                success: function(data) {
+                    $('#ScreenIndexPos').hide();
+                    $('#ScreenCreateTicket').removeClass('hidden').html(data);
+                }
+            });
+        });
+
+        $('#myModal').on('hidden.bs.modal', function () {
+
+            var url_remaining = "{{ url_for('remaining_ticket') }}";
+
+            $.ajax({
+                url: url_remaining,
+                type: 'GET',
+                contentType: 'application/json;charset=UTF-8',
+                dataType: "json",
+                success: function(data) {
+                    $('#remaining_ticket').text(data['ticket']);
+                    $('#ScreenCreateTicket').addClass('hidden').html('');
+                    $('#ScreenIndexPos').show();
+                    $('.datepickerbirth').val('');
+                    $('.datepickerbirth').focus();
+                }
+            });
+        });
+
+    });
+
+    function AjaxPrice(datas){
+        var url = "{{ url_for('Search_Ticket_Type') }}";
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: JSON.stringify(datas),
+            contentType: 'application/json;charset=UTF-8',
+            dataType: "json",
+            success: function(data) {
+                if(data['statut'] == 'OK'){
+                    $('#TicketPrice').text(data['price']);
+                    $('#TicketCurrency').text(data['currency']);
+                }else{
+                    $('#TicketPrice').text(data['value']);
+                    $('#TicketCurrency').text('');
+                }
+                if(data['haveticket'] == 'true'){
+                    $('#alert').html('');
+                    $('#alert').addClass('hidden');
+                    $('#submit').removeAttr('disabled');
+                }else{
+                    $('#alert').removeClass('hidden');
+                    $('#alert').text('You don\'t have this ticket type. Request purchase from manager');
+                    $('#submit').attr({disabled:'disabled'});
+                }
+
+                $('#type_ticket').text(data['class_name']+" - "+data['type_name']+" - "+data['journey_name'])
+            }
+        });
+    }
+</script>

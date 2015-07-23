@@ -1,0 +1,278 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-recording.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Recording') }}">Recording</a></li>
+                          <li><a href="{{ url_for('Transaction_Index') }}">Transaction</a></li>
+                          <li class="active">Statistics</li>
+                        </ol>
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <h3>{{ current_agency.name }}</h3>
+                                <hr/>
+                                <ul id="myTab" class="nav nav-tabs nav-tabs-google">
+                                  <li class="active"><a href="#employee" data-toggle="tab">Employee transaction</a></li>
+                                  <li ><a href="#transaction" data-toggle="tab">Transaction information</a></li>
+                                </ul>
+                                <br/>
+                                <div id="myTabContent" class="tab-content">
+                                <div class="tab-pane fade " id="transaction">
+                                    <div class="panel panel-info">
+                                        <div class="panel-heading"><span class="lead">Transaction List</span></div>
+                                          <div class="panel-body">
+                                            <table class="table table-hover" id="dataTableStat1">
+                                                <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Reason</th>
+                                                    <th>Amount</th>
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for transaction in transaction_agency_query %}
+                                                        <tr class="{% if not transaction.is_payment %} danger {% else %} success {% endif %} transaction_details" id="{{ transaction.key.id() }}">
+                                                            <td>{{ transaction.transaction_date }}</td>
+                                                            <td>{{ transaction.reason }}</td>
+                                                            <td>{{ transaction.amount|format_price() }} {{ transaction.destination.get().currency.get().code }} </td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                          </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade active in" id="employee">
+                                    <div class="panel panel-info">
+                                        <div class="panel-heading"><span class="lead">Employee local ticket transaction</span></div>
+                                        <div class="panel-body">
+                                            <table class="table table-hover" id="dataTableStat2">
+                                                <thead>
+                                                <tr>
+                                                    <th>Employee</th>
+                                                    <th>Selling Ticket </th>
+                                                    <th>Escrow Amount</th>
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for user in user_agency %}
+                                                        {% if user.escrow_amount() %}
+                                                            <tr id="{{ user.key.id() }}" class="dblClickEmpLocal">
+                                                                <td><strong>{{ user.last_name }} {{ user.first_name }}</strong></td>
+                                                                <td>{{ user.ticket_number_selling() }}</td>
+                                                                <td>{{ user.escrow_amount() }}</td>
+                                                            </tr>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <hr/>
+                                    <div class="panel panel-info">
+                                        <div class="panel-heading"><span class="lead">Employee foreign ticket transaction</span></div>
+                                        <div class="panel-body">
+                                            <table class="table table-hover" id="dataTableStat3">
+                                                <thead>
+                                                <tr>
+                                                    <th>Employee</th>
+                                                    <th>Travel</th>
+                                                    <th>Selling Ticket</th>
+                                                    <th>Escrow Amount</th>
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for user in user_agency %}
+                                                        {% for ticket in user.foreign_escrow_and_number_ticket() %}
+                                                            {% if ticket['travel'].get().destination_start != user.agency.get().destination and ticket['ticket_seller'] == user.key and ticket['escrow'] > 0 %}
+                                                                <tr id="{{ user.key.id() }}_{{ ticket['travel'].get().key.id() }}" class="dblClickEmpForeign">
+                                                                    <td><strong>{{ user.last_name }} {{ user.first_name }}</strong></td>
+                                                                    <td>{{ ticket['travel'].get().destination_start.get().name }} - {{ ticket['travel'].get().destination_check.get().name }}</td>
+                                                                    <td>{{ ticket['number'] }}</td>
+                                                                    <td>{{ ticket['escrow']|format_price() }} {{ ticket['travel'].get().destination_start.get().currency.get().code }}</td>
+                                                                </tr>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            </div>
+
+                            <div class="col-lg-4">
+
+
+                                <div class="well text-center">
+                                    POS <small>Escrow Amount </small>
+                                    <br/><br/>
+                                    <table class="table table-condensed">
+                                        <tbody>
+                                            <tr>
+                                                <td>LOCAL</td>
+                                                <td>{{ current_agency.escrow_amount()|format_price() }} {{ current_agency.destination.get().currency.get().code }}</td>
+                                            </tr>
+                                            {% for destination in current_agency.escrow_amount_foreign() %}
+                                                {% if destination['amount'] != 0  %}
+                                                    <tr>
+                                                        <td>{{ destination['destination'].get().name }}</td>
+                                                        <td>
+                                                            {{ destination['amount']|format_price() }}
+
+                                                            {{ destination['destination'].get().currency.get().code }}
+                                                        </td>
+                                                    </tr>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <hr/>
+                                {% if current_user.has_roles(('admin','super_admin'))  %}
+                                        {% include 'includes/flash_message.html' %}
+                                        <a href="{{ url_for('Payment_admin_local', agency_id=current_agency.key.id()) }}" class="btn btn-danger btn-block"  data-toggle="modal" data-target="#myModal" data-backdrop="static">Payment for local ticket</a>
+                                        <br/>
+                                        <a href="{{ url_for('Payment_admin_foreign', agency_id=current_agency.key.id()) }}" class="btn btn-danger btn-block"  data-toggle="modal" data-target="#myModal" data-backdrop="static">Payment for foreign ticket</a>
+                                        <br/>
+                                {% endif %}
+                                <div class="well text-center">
+                                    Agency <small>Escrow Amount </small>
+                                    <br/><br/>
+                                    <table class="table table-condensed">
+                                        <tbody>
+                                            <tr>
+                                                <td>LOCAL</td>
+                                                <td>{{ current_agency.escrow_amount(True)|format_price() }} {{ current_agency.destination.get().currency.get().code }}</td>
+                                            </tr>
+                                            {% for destination in current_agency.escrow_amount_foreign(true) %}
+                                                {% if destination['amount'] != 0  %}
+                                                    <tr>
+                                                        <td>{{ destination['destination'].get().name }}</td>
+                                                        <td>
+                                                            {{ destination['amount']|format_price() }}
+
+                                                            {{ destination['destination'].get().currency.get().code }}
+                                                        </td>
+                                                    </tr>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+
+                            </div>
+                        </div>
+
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="myModal" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+
+
+        </div>
+      </div>
+    </div>
+{% endblock %}
+{% block footer_script %}
+    <script>
+        $('#dataTableStat1').dataTable({
+            "paging": true,
+            "sPaginationType":"full_numbers",
+            "iDisplayLength": 25,
+            "bFilter": false,
+            'aoColumnDefs': [
+                {'bSortable': false, 'aTargets': ['nosort']},
+                {'bSearchable': false, "aTargets": ['nosort']}
+            ],
+             "order": [[ 0, "desc" ]]
+        });
+
+        $('#dataTableStat2').dataTable({
+            "paging": true,
+            "bFilter": true,
+            'aoColumnDefs': [
+                {'bSortable': false, 'aTargets': ['nosort']},
+                {'bSearchable': false, "aTargets": ['nosort']}
+            ],
+             "order": [[ 0, "asc" ]]
+        });
+         $('#dataTableStat3').dataTable({
+            "paging": true,
+            "bFilter": true,
+            'aoColumnDefs': [
+                {'bSortable': false, 'aTargets': ['nosort']},
+                {'bSearchable': false, "aTargets": ['nosort']}
+            ],
+             "order": [[ 0, "asc" ]]
+        });
+
+        $('#myTab a').click(function (e) {
+          e.preventDefault();
+          $(this).tab('show')
+        });
+
+
+            $('.dblClickEmpLocal, .dblClickEmpForeign').mousedown(function(e){
+                e.preventDefault();
+            });
+
+            $('.dblClickEmpLocal').on('click',function(e){
+                e.preventDefault();
+                var id = $(this).attr('id');
+                var url_modal = "{{ url_for('Transaction_user') }}"+"/"+id;
+                $('#myModal').modal( {
+                    backdrop: 'static',
+                    show: true
+                });
+                $.get(url_modal, function(data) {
+                  $('.modal-content').empty().html(data);
+                });
+            });
+
+            $('.dblClickEmpForeign').on('click',function(e){
+                e.preventDefault();
+                var id = $(this).attr('id');
+                var data = id.split('_');
+                var url_modal = "{{ url_for('Transaction_foreign_user') }}"+"/"+data[0]+"/"+data[1];
+                $('#myModal').modal( {
+                    backdrop: 'static',
+                    show: true
+                });
+                $.get(url_modal, function(data) {
+                  $('.modal-content').empty().html(data);
+                });
+            });
+
+        $('.transaction_details').on('click', function(e){
+            e.preventDefault();
+            var id = $(this).attr('id');
+            var url_modal = "{{ url_for('Transaction_detail') }}"+"/"+id;
+            $('#myModal').modal( {
+                backdrop: 'static',
+                show: true
+            });
+            $.get(url_modal, function(data) {
+              $('.modal-content').empty().html(data);
+            });
+        })
+
+
+    </script>
+{% endblock %}

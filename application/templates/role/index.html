@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+<div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-settings.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Settings') }}">Settings</a></li>
+                          <li class="active">Role Management</li>
+                        </ol>
+                        <nav class="navbar navbar-toolbar navbar-default" role="navigation">
+                          <div class="container-fluid">
+                              <div class="navbar-brand">Edit role</div>
+                              <div class="btn-toolbar" role="toolbar">
+                                   <div class="btn-group pull-left">
+                                       <a href="{{ url_for('Generate_Role') }}" class="btn btn-info btn-lg">Generate all role</a>
+                                   </div>
+                                  <div class="pull-right">
+                                      <form class="navbar-form " role="search" method="post">
+                                          {{ form.hidden_tag() }}
+                                        <div class="form-group">
+                                             {{ form.name(class_='form-control input-lg', placeholder='Role name')|safe }}
+                                        </div>
+                                          {% if role_id %}
+                                               <button type="submit" class="btn btn-warning">Update</button>
+                                          {% else %}
+                                               <button type="submit" class="btn btn-primary">Save</button>
+                                          {% endif %}
+
+                                      </form>
+                                  </div>
+                              </div>
+
+                          </div>
+                        </nav>
+                        {% include 'includes/flash_message.html' %}
+
+                         <table class="table table-hover"  id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>Name role</th>
+                                    <th class="nosort"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for role in role_list %}
+                            <tr>
+                                <td>{{ role.name }}</td>
+                                <td>
+                                    <a href="{{ url_for('Role_Index', role_id=role.key.id()) }}" class="btn btn-link btn-xs">Edit</a>
+                                    {% if role.visible %}
+                                        <a class="btn btn-danger btn-xs" href="{{ url_for('Active_Role', role_id=role.key.id()) }}">Hidden</a>
+                                    {% else %}
+                                        <a class="btn btn-success btn-xs" href="{{ url_for('Active_Role', role_id=role.key.id()) }}">Visible</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+
+                            </tbody>
+                        </table>
+
+                </section>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

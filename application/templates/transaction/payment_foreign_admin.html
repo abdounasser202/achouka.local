@@ -1,0 +1,83 @@
+<div class="modal-header bg-primary">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+
+        <h4 class="modal-title">Agency : {{ agency_get_id.name }} </h4>
+</div>
+<div class="modal-body">
+     <table class="table table-hover" id="dataTableModal">
+        <thead>
+        <tr>
+            <th>Travel</th>
+            <th>Amount</th>
+        </tr>
+        </thead>
+        <tbody>
+            {% for destination in agency_get_id.escrow_amount_foreign(True) %}
+                <tr class="line" id="{{ destination['destination'].get().key.id() }}">
+                    <td>{{ destination['destination'].get().name }}</td>
+                    <td>{{ destination['amount']|format_price() }} {{ destination['destination'].get().currency.get().code }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+    <button type="button" data-href="" class="btn btn-success disabled" id="submit">Continued</button>
+</div>
+<script>
+
+    $('.modal-content').on('click', '.line', function(e){
+        e.preventDefault();
+        var id = "/"+$(this).attr('id');
+        var url = "{{ url_for('Payment_admin_foreign_single',agency_id=agency_get_id.key.id()) }}"+id;
+
+        $('.pred').removeClass('info');
+        var pred = $('.pred').attr('id');
+        $(pred).removeClass('pred');
+
+        $(this).addClass('info');
+        $(this).addClass('pred');
+        $('#submit').removeClass('disabled');
+        $('#submit').attr({'data-href': url});
+    });
+
+    $('.modal-content').on('click', '#submit',function(e){
+        e.preventDefault();
+        var url = $(this).attr('data-href');
+        $.ajax({
+            url: url,
+            type: 'GET',
+            success: function(data) {
+                $('.modal-content').html(data);
+            }
+        });
+    });
+
+{#    $('a.select').on('click',function(e){#}
+{#        e.preventDefault();#}
+{#        var btn = $(this);#}
+{#        var url = $(this).attr('href');#}
+{#        btn.button('loading');#}
+{#        $(this).removeClass('unselect');#}
+{#        $('.btn.unselect').addClass('disabled');#}
+{#        $.ajax({#}
+{#            url: url,#}
+{#            type: 'GET',#}
+{#            success: function (data) {#}
+{#                $('.modal-content').html(data);#}
+{#            }#}
+{#        });#}
+{#    });#}
+
+    $('#dataTableModal').dataTable({
+        "paging": true,
+        "bFilter": false,
+        'aoColumnDefs': [
+            {'bSortable': false, 'aTargets': ['nosort']},
+            {'bSearchable': false, "aTargets": ['nosort']}
+        ]
+    });
+
+</script>

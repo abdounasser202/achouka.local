@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+<div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-settings.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Settings') }}">Settings</a></li>
+                          <li><a href="{{ url_for('TicketType_Index') }}">Ticket Type</a></li>
+                          <li class="active">Class Type</li>
+                        </ol>
+                        <nav class="navbar navbar-toolbar navbar-default" role="navigation">
+                          <div class="container-fluid">
+                              <div class="navbar-brand">Edit Class Type</div>
+                              <div class="btn-toolbar" role="toolbar">
+                                  <div class="pull-right">
+                                      <form class="navbar-form " role="search" method="post">
+                                          {{ form.hidden_tag() }}
+                                        <div class="form-group">
+                                             {{ form.name(class_='form-control input-lg', placeholder='Class Type Name')|safe }}
+                                        </div>
+                                          {% if class_type_id %}
+                                               <button type="submit" class="btn btn-warning">Update</button>
+                                          {% else %}
+                                               <button type="submit" class="btn btn-primary">Save</button>
+                                          {% endif %}
+
+                                      </form>
+                                  </div>
+                              </div>
+
+                          </div>
+                        </nav>
+                        {% include 'includes/flash_message.html' %}
+
+                         <table class="table table-hover"  id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>Name Class Type</th>
+                                    <th class="nosort">Is default ?</th>
+                                    <th class="nosort"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for class_type in class_type_list %}
+                                <tr>
+                                    <td>{{ class_type.name }}</td>
+                                    <td>
+                                         {% if class_type.default == False %}
+                                            <a href="{{ url_for('ClassType_Default', class_type_id=class_type.key.id()) }}" class="btn btn-danger btn-xs"> None </a>
+                                        {% else %}
+                                            <a href="{{ url_for('ClassType_Default', class_type_id=class_type.key.id()) }}" class="btn btn-success btn-xs"> OK </a>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('ClassType_Index', class_type_id=class_type.key.id()) }}" class="btn btn-link btn-xs">Edit</a>
+                                        <a href="{{ url_for('ClassType_Delete', class_type_id=class_type.key.id()) }}" class="btn btn-link btn-xs">Delete</a>
+
+                                    </td>
+                                </tr>
+                            {% endfor %}
+
+                            </tbody>
+                         </table>
+
+                </section>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

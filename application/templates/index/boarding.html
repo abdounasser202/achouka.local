@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+
+
+{% block layout_content %}
+
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-12">
+                <section class="clearfix">
+                    <div class="page-header clearfix text-center" style="margin: 0 !important;">
+                                <h3 style='margin: 0;'>Boarding Pass</h3>
+                    </div>
+                    <br/>
+                    <div class="col-lg-10 col-lg-offset-1">
+                        <div class="panel panel-primary">
+                          <div class="panel-body">
+                              <form action="#" class="form-horizontal clearfix" id="SearchTicket">
+                                  <fieldset>
+                                      <legend class="text-center">SEARCH TICKET TO GENERATE BOARDING PASS</legend>
+                                      <div class="form-group">
+                                        <label class="col-sm-2 control-label">TICKET CODE :</label>
+                                        <div class="col-sm-8">
+                                            <input type="text" class="form-control" placeholder="Enter ticket number" name="number_ticket" id="number_ticket" autofocus autocomplete="false" >
+                                            <input type="hidden" name="departure_id" id="departure_id" value="{% if current_departure %} {{ current_departure.key.id() }} {% endif %}" />
+                                        </div>
+                                          <div class="col-sm-2">
+                                              <button type="submit" href="{{ url_for('Search_Ticket_Boarding') }}" class="btn" id="SubmitTicketNumber"><i class="fa fa-search"></i>  Find</button>
+                                          </div>
+
+                                      </div>
+
+                                  </fieldset>
+                              </form>
+                          </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-12" style="margin-bottom:20px;" >
+                        <div class="row">
+                            <div class="col-lg-4">
+                                 <div class="panel panel-info">
+                                  <div class="panel-heading text-center">CURRENT JOURNEY</div>
+                                      <div id="current_departure">
+                                        <br/><br/>
+                                        {% if current_departure %}
+                                            <span id="current_departure_start" class="hidden">{{ current_departure.destination.get().destination_start.get().key.id() }}</span>
+                                            <span id="current_departure_check" class="hidden">{{ current_departure.destination.get().destination_check.get().key.id() }}</span>
+                                            <table class="table text-center">
+                                                <tbody>
+                                                    <tr>
+                                                        <td><strong>Journey</strong></td>
+                                                        <td>
+                                                            {{ current_departure.destination.get().destination_start.get().name }}
+                                                            -
+                                                            {{ current_departure.destination.get().destination_check.get().name }}
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>Date</strong></td>
+                                                        <td>{{ current_departure.departure_date|format_date("%A %d %B  %Y") }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>Time</strong></td>
+                                                        <td>{{ current_departure.schedule|add_time(current_departure.time_delay)|format_date("%H:%M") }}</td>
+                                                    </tr>
+
+                                                </tbody>
+                                            </table>
+
+                                        {% else %}
+                                              <div class="panel-body text-center">
+                                                <h3>No up coming journey</h3>
+                                              </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="panel-footer">
+
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-8" id="FindTicketBoarding">
+
+                            </div>
+                            <div class="col-lg-8 hidden" id="NoFoundTicketBoarding">
+                                <div class="alert alert-danger text-center">
+                                    <h3 style="margin-top: 10px;">No current departure</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+                </section>
+                    </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block footer_script %}{# defer-capable JS block #}
+    <script>
+        $('#number_ticket').inputmask("9999999999999999", { placeholder:"****************"});
+
+        // Traitement de la recherche de ticket
+        $('#SubmitTicketNumber').click(function(e){
+            e.preventDefault();
+            if($('#departure_id').val() != ""){
+                url = $(this).attr('href');
+                $.ajax({
+                    url: url,
+                    data: $('#SearchTicket').serialize(),
+                    type: 'POST',
+                    success: function(data) {
+                        $('#NoFoundTicketBoarding').addClass('hidden');
+                        $('#FindTicketBoarding').removeClass('hidden').html(data);
+                    }
+                });
+            }else{
+                $('#NoFoundTicketBoarding').removeClass('hidden');
+            }
+
+        });
+
+        $('#myModal').on('hidden.bs.modal', function () {
+             $('#FindTicketBoarding').html('');
+        });
+
+    </script>
+{% endblock %}

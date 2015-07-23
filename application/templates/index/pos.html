@@ -1,0 +1,278 @@
+{% extends 'base.html' %}
+
+
+{% block layout_content %}
+
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-12">
+                <section>
+                    <div class="page-header clearfix text-center" style="margin: 0 !important;">
+                                <h3 style='margin: 0;'>Welcome to COMATRANS POS <small>sell ticket</small> </h3>
+                    </div>
+                    <div id="ScreenCreateTicket" class="hidden"></div>
+                    <div id="ScreenIndexPos" style="margin-top: 20px;">
+                        <div class="row">
+                            <div class="col-lg-4">
+                                <div class="panel panel-primary">
+                                  <div class="panel-heading text-center">SEARCH TICKET/E-TICKET</div>
+                                  <div class="panel-body">
+                                      <form class="form-horizontal" id="SearchTicket">
+                                          <div class="form-group">
+                                            <div class="col-sm-12">
+                                              <input type="text" name="number_ticket" class="form-control" id="number_ticket">
+                                            </div>
+                                          </div>
+                                          <button type="submit" href="{{ url_for('search_ticket_pos') }}" class="btn btn-block" id="SubmitTicket">Search</button>
+                                      </form>
+                                  </div>
+                                </div>
+                                <div class="panel panel-info">
+                                  <div class="panel-heading text-center">CURRENT JOURNEY</div>
+                                      <div id="current_departure" class="update">
+                                        <br/><br/>
+                                        {% if current_departure %}
+                                            <span id="current_departure_start" class="hidden">{{ current_departure.destination.get().destination_start.get().key.id() }}</span>
+                                            <span id="current_departure_check" class="hidden">{{ current_departure.destination.get().destination_check.get().key.id() }}</span>
+                                            <table class="table text-center">
+                                                <tbody>
+                                                    <tr>
+                                                        <td><strong>Journey</strong></td>
+                                                        <td>
+                                                            {{ current_departure.destination.get().destination_start.get().name }}
+                                                            -
+                                                            {{ current_departure.destination.get().destination_check.get().name }}
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>Date</strong></td>
+                                                        <td>{{ current_departure.departure_date|format_date("%A %d %B  %Y") }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>Time</strong></td>
+                                                        <td>{{ current_departure.schedule|add_time(current_departure.time_delay)|format_date("%H:%M") }}</td>
+                                                    </tr>
+
+                                                </tbody>
+                                            </table>
+
+                                        {% else %}
+                                              <div class="panel-body text-center">
+                                                <h3>No up coming journey</h3>
+                                              </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="panel-footer">
+                                        <button class="btn btn-info btn-block btn-sm" id="change_current_departure">Change Current Journey</button>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <div class="col-lg-8">
+                                <div id="info_ticket" class="hidden"></div>
+                                <div id="list_all_departure">
+                                    <div class="row">
+                                        <div class="col-lg-12">
+                                            <div class="panel panel-primary">
+                                              <div class="panel-body">
+                                                  <form action="#" class="form-inline clearfix" id="SearchCustomer">
+                                                      <fieldset>
+                                                          <legend>SELL A TICKET</legend>
+                                                          <div class="form-group birth" style=" width: 45%;">
+                                                            <label>Date of birth :</label>
+                                                            <input type="text" class="form-control datepickerbirth" name="birthday" id="datepickerbirth" autofocus autocomplete="false" >
+                                                            <input type="hidden" name="current_departure" value="{% if current_departure %}{{ current_departure.key.id() }}{% endif %}" id="CurrentDeparture"/>
+                                                          </div>
+                                                          <div class="form-group" style=" width: 40%;">
+                                                            <label>Full Name :</label>
+                                                            <input type="text" class="form-control" name="full_name" style=" width: 68%;" autocomplete="false">
+                                                          </div>
+                                                          <button type="submit" class="btn" id="SubmitCustomer"><i class="fa fa-search"></i>  Find</button>
+
+
+                                                          <div class="pull-right" style="margin-top: 24px;">
+                                                              <a href="{{ url_for('create_customer_and_ticket_pos') }}" class="btn btn-primary btn-sm" id="CreateCustomer" >Create customer</a>
+                                                          </div>
+                                                      </fieldset>
+                                                  </form>
+                                              </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-lg-12">
+                                            <div id="Error_no_select_departure" class="hidden">
+                                                <div class="alert alert-danger text-center">
+                                                    <h3 style="margin-top: 10px;">No current departure</h3>
+                                                </div>
+                                            </div>
+                                            <div id="result_search_customer">
+                                                <table class="table table-hover table-condensed" id="posTable">
+                                                    <thead>
+                                                    <tr>
+                                                        <th>Customer name</th>
+                                                        <th class="nosort">Date of birth</th>
+                                                    </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </div>
+                    </div>
+
+                </section>
+                    </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block footer_script %}{# defer-capable JS block #}
+    <script>
+        $('#ScreenCreateTicket').empty();
+        // fonction de verification de date
+        function ValidateDate(dtValue)
+        {
+            var dtRegex = new RegExp(/\b\d{1,2}[\/-]\d{1,2}[\/-]\d{4}\b/);
+            return dtRegex.test(dtValue);
+        }
+
+        $('#number_ticket').inputmask("9999999999999999", { placeholder:"****************"});
+
+        // traitement de la recherche de client
+        $('button#SubmitCustomer').click(function(e) {
+            e.preventDefault();
+            searchcustomer();
+        });
+
+        $(document).ready(function() {
+            // Traitement a la saisie de la date de naissance
+            $('#datepickerbirth').on('change', function () {
+                searchcustomer();
+            });
+
+            // affichage du calendrier
+            $('#change_current_departure.btn-info').on('click', function(e){
+                e.preventDefault();
+                var url_calendrier = "{{ url_for('Calendrier') }}";
+                var url_list_all_departure = "{{ url_for('List_All_Departure') }}";
+
+                var ajax1 = $.ajax({
+                    url: url_calendrier,
+                    type: 'GET'
+                });
+
+                var ajax2 = $.ajax({
+                    url: url_list_all_departure,
+                    type: 'GET'
+                });
+
+                $.when(ajax1, ajax2).done(function(rq1, rq2){
+                    $('#current_departure').removeClass('update');
+                    $('#current_departure').html('');
+                    $('#current_departure').html(rq1[0]);
+                    $('#current_departure').parent().children('.panel-heading').text('CALENDAR DEPARTURE');
+                    $('#change_current_departure.btn-info').removeClass('btn-info');
+                    $('#change_current_departure').addClass('btn-danger');
+                    $('#change_current_departure.btn-danger').text('Click here to reset');
+                    $('#info_ticket').addClass('hidden');
+                    $('#list_all_departure').show();
+
+                    $('#list_all_departure').html('');
+                    $('#list_all_departure').html(rq2[0]);
+                });
+
+
+
+            });
+
+            // click quand je suis sur le calendrier
+            $('#change_current_departure').on('click', function(e){
+                e.preventDefault();
+                if($("#change_current_departure").hasClass('btn-danger')){
+                   window.location.replace(window.location.origin+"{{ url_for('Pos') }}");
+                }
+            })
+
+            // Traitement de la recherche de ticket
+            $('#SubmitTicket').click(function(e){
+                e.preventDefault();
+                url = $(this).attr('href');
+                $.ajax({
+                    url: url,
+                    data: $('#SearchTicket').serialize(),
+                    type: 'POST',
+                    success: function(data) {
+                        $('#list_all_departure').hide();
+                        $('#info_ticket').removeClass('hidden').html(data);
+                    }
+                });
+            })
+
+        });
+        // traitement de la creation du client
+        $('#CreateCustomer').click(function(e){
+            e.preventDefault();
+            url = $(this).attr('href');
+
+            dtVal = $('#SearchCustomer #datepickerbirth').val();
+            departure = $('#SearchCustomer #CurrentDeparture').val();
+
+
+                if (ValidateDate(dtVal)){
+                     if (departure != ''){
+                           $.ajax({
+                                url: url,
+                                data: $('#SearchCustomer').serialize(),
+                                type: 'GET',
+                                success: function(data) {
+                                    $('#ScreenIndexPos').hide();
+                                    $('#ScreenCreateTicket').removeClass('hidden').html(data);
+                                }
+                            });
+                     }else{
+                        $('#Error_no_select_departure').removeClass('hidden');
+                        $('#result_search_customer').hide();
+                     }
+                }else{
+                    $('#SearchCustomer .form-group').addClass('has-error')
+                }
+
+
+        });
+        // fonction de la recherche de client
+        function searchcustomer(){
+            departure = $('#SearchCustomer #CurrentDeparture').val();
+            if (departure != ''){
+                    $.ajax({
+                        url: '{{ url_for('search_customer_pos') }}',
+                        data: $('#SearchCustomer').serialize(),
+                        type: 'POST',
+                        success: function(data) {
+                            $('#SearchCustomer .form-group.birth').removeClass('has-error');
+                            $('#Error_no_select_departure').addClass('hidden');
+                            $('#result_search_customer').show().html(data);
+
+                        }
+                    }).fail(function(){
+                        $('#SearchCustomer .form-group.birth').addClass('has-error')
+                    });
+             }else{
+                $('#Error_no_select_departure').removeClass('hidden');
+                $('#result_search_customer').hide();
+             }
+        }
+
+
+
+    </script>
+{% endblock %}

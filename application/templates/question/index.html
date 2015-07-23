@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+<div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-settings.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Settings') }}">Settings</a></li>
+                          <li class="active">Question</li>
+                        </ol>
+                        <nav class="navbar navbar-toolbar navbar-default" role="navigation">
+                          <div class="container-fluid">
+                            <div class="btn-toolbar" role="toolbar">
+                               <div class="btn-group pull-left">
+                                   <a href="{{ url_for('Question_Edit') }}" class="btn btn-danger btn-lg">Create</a>
+                               </div>
+                            </div>
+                          </div>
+                        </nav>
+                        {% include 'includes/flash_message.html' %}
+
+                        <table class="table table-hover"  id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>Question</th>
+                                    <th>This question is for POS</th>
+                                    <th>This question is mandatory ?</th>
+                                    <th class="nosort"></th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                            {% for item in items %}
+                            <tr>
+                                <td>{{ item.question }}</td>
+                                <td>{{ item.is_pos }}</td>
+                                <td>{{ item.is_obligate }}</td>
+                                <td class="nosearch">
+                                    <a href="{{ url_for('Question_Edit', question_id = item.key.id()) }}" class="btn btn-link btn-xs">Edit</a>
+                                    <a href="{{ url_for('Question_Active', question_id = item.key.id()) }}" class="btn btn-xs
+                                    {% if item.active %}
+                                        btn-danger">Disabled
+                                    {% else %}
+                                        btn-success">Activate
+                                    {% endif %}
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+
+                            </tbody>
+                        </table>
+
+                </section>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

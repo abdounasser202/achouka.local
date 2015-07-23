@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1" />
+    <title>{% block title%}Achouka Application{% endblock %}</title>
+    <link rel="stylesheet" type="text/css" href="/static/css/bootstrap.css">
+    <link rel="stylesheet" type="text/css" href="/static/css/todc-bootstrap.css">
+    <link rel="stylesheet" type="text/css" href="/static/css/dataTables.bootstrap.css">
+    <link rel="stylesheet" type="text/css" href="/static/css/font-awesome.css">
+    <link rel="stylesheet" type="text/css" href="/static/css/select2.css">
+    <link rel="stylesheet" type="text/css" href="/static/css/bootstrap-datepicker.css">
+    <link rel="stylesheet" type="text/css" href="/static/css/bootstrap-datetimepicker.css">
+    <style>  </style> <!-- Bootstrap -->
+    <link href="/static/css/app.css" rel="stylesheet" />
+    <link rel="shortcut icon" href="/static/img/favicon.ico" />
+
+    <link href='http://fonts.googleapis.com/css?family=Kreon:400,700|Roboto:900,900italic,400italic,700italic,700,400' rel='stylesheet' type='text/css'>
+    <script type="text/javascript" src="/static/js/jquery-1.11.2.js"></script>
+
+    {% block style_block %}{# page-specific CSS #}    {% endblock %}
+
+    {% block head_script %}
+        <script>
+        $( document ).ready(function() {
+            counter2 = {
+                $element : null,
+                count : 0,
+                maxCount : 10,
+                object_count: 0,
+                depart:0,
+                interval : null,
+                //Initialize
+                init : function(compteur){
+                    this.$element = compteur;
+                    this.run();
+                    this.interval = window.setInterval("counter2.run();", 1000);
+                },
+                // Run
+                run : function(){
+                    if(this.count === this.maxCount){
+                        {% if session.get('agence_id') %}
+                            var url = "{{ url_for('reset_remaining_ticket') }}";
+                            $.get(url, function(data) {
+                                $('#remaining_ticket').text(data)
+                            });
+                        {% endif %}
+
+                        {% if not departure_id %}
+                            {% if menu == "pos" or menu == "boarding" %}
+                                var url = "{{ url_for('reset_current_departure') }}";
+                                $.get(url, function(data) {
+                                    $('#current_departure.update').html(data);
+                                    this.object_count = 1
+                                });
+                            {% endif %}
+                        {% else %}
+                            if (this.depart == 12){
+                                window.location.replace(window.location.origin+"{{ url_for('Pos') }}")
+                            }
+                            this.depart++;
+                        {% endif %}
+
+                        this.count = 0
+
+                    }
+
+                    if(this.count == 0 && this.object_count == 1){
+                        $('#CurrentDeparture').val($('#current_departure_id').text());
+                        this.object_count = 0
+                    }
+                    this.$element.html(this.count);
+                    this.count++;
+                }
+            };
+            $.fn.counter_2 = function(){
+                counter2.init(this);
+            };
+            $('#refrech').counter_2();
+
+        });
+        </script>
+    {% endblock %}
+</head>
+<body>
+    {% block layout_body %}
+
+        {% block layout_before_content %}
+            {% include 'includes/nav.html' %}
+            <div id="refrech" class="hidden"></div>
+        {% endblock %}
+
+        {% block layout_content %}           {% endblock %}
+
+        {% block layout_after_content %}
+            <!-- Modal -->
+            <div class="modal fade" id="modal_expire" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-body">
+                    <h4>Your session will expire in <span id="middle_close"></span> seconds</h4>
+                  </div>
+                   <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="hidden" id="myCount"></div>
+
+            <script>
+                    counter = {
+                            $element : null,
+                            count : 0,
+                            maxCount : 1200,
+                            middleCount: 1140,
+                            minCount: 60,
+                            interval : null,
+                            //Initialize
+                            init : function(compteur){
+                                this.$element = compteur;
+                                this.run();
+                                this.interval = window.setInterval("counter.run();", 1000);
+                            },
+                            // Run
+                            run : function(){
+
+                                if (this.count === this.middleCount){
+            {#                        window.clearInterval(this.interval);#}
+                                    $('#modal_expire').modal({
+                                        show:true,
+                                        backdrop:'static'
+                                    });
+
+                                }
+                                if (this.count >= this.middleCount){
+                                    $('#middle_close').text(this.minCount);
+                                    this.minCount--;
+                                }
+
+                                if(this.count === this.maxCount){
+                                    window.clearInterval(this.interval);
+                                    window.location.replace(window.location.origin+"{{ url_for('Home') }}?url="+window.location.href)
+                                }
+
+                                this.$element.html(this.count);
+                                this.count++;
+                            }
+                        };
+
+                        $.fn.counter = function(){
+                            counter.init(this);
+                        };
+
+                        var url_resset = "{{ url_for('set_session') }}";
+                        $.ajax({
+                            url: url_resset,
+                            contentType: 'application/json;charset=UTF-8',
+                            dataType: "json",
+                            success: function(data) {
+                                counter.count = 0
+                            }
+                        });
+
+
+
+                        $('body').on('click', function(){
+                            var url_resset = "{{ url_for('set_session') }}";
+                             $.ajax({
+                                url: url_resset,
+                                contentType: 'application/json;charset=UTF-8',
+                                dataType: "json",
+                                success: function(data) {
+                                    counter.count = 0
+                                }
+                            });
+                        });
+                        $('#myCount').counter();
+
+                </script>
+
+        {% endblock %}
+
+    {% endblock %}
+
+    <script type="text/javascript" src="/static/js/moment.js"></script>
+    <script type="text/javascript" src="/static/js/bootstrap.js"></script>
+    <script type="text/javascript" src="/static/js/bootstrap-datepicker.js"></script>
+    <script type="text/javascript" src="/static/js/bootstrap-datetimepicker.min.js"></script>
+    <script type="text/javascript" src="/static/js/dataTables.min.js"></script>
+    <script type="text/javascript" src="/static/js/dataTables.bootstrap.js"></script>
+    <script type="text/javascript" src="/static/js/select2.full.js"></script>
+    <script type="text/javascript" src="/static/js/inputmask.js"></script>
+    <script type="text/javascript" src="/static/js/jquery.inputmask.js"></script>
+    <script type="text/javascript" src="/static/js/jquery.inputmask.bundle.min.js"></script>
+    <script type="text/javascript" src="/static/js/app.js"></script>
+    {% block footer_script %}{# defer-capable JS block #}{% endblock %}
+
+    {{ profiler_includes|safe }}
+</body>
+</html>

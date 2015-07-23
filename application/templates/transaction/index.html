@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+<div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-recording.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Recording') }}">Recording</a></li>
+                          <li class="active">Transaction</li>
+                        </ol>
+                        <nav class="navbar navbar-toolbar navbar-default" role="navigation">
+                          <div class="container-fluid">
+                            <div class="btn-toolbar" role="toolbar">
+                               <div class="btn-group pull-left">
+                                   {#<a href="#" class="btn btn-danger btn-lg">Create a payment</a>#}
+                               </div>
+                            </div>
+                          </div>
+                        </nav>
+                        {% include 'includes/flash_message.html' %}
+
+                        <table class="table table-hover" id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>Name Agency</th>
+                                    <th>Escrow Amount</th>
+                                    <th class="nosort">Foreign Escrow Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for agency in List_agency %}
+                                <tr>
+                                    <td><a href="{{ url_for('Transaction_Agency', agency_id=agency.key.id()) }}">{{ agency.name }}</a></td>
+                                    <td>{{ agency.escrow_amount(true)|format_price() }} {{ agency.destination.get().currency.get().code }}</td>
+                                    <td>
+
+                                        {% for foreign in agency.escrow_amount_foreign(true) %}
+
+                                            <strong>{{ foreign['destination'].get().name }} : </strong> <span class="text-primary">{{ foreign['amount']|format_price() }} {{ foreign['destination'].get().currency.get().code }}</span>
+                                            {% if loop.index > 1 %} | {% endif %}
+                                        {% else %}
+                                            Not Found
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+
+                            </tbody>
+                        </table>
+
+                </section>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

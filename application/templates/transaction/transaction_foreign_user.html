@@ -1,0 +1,159 @@
+<div class="modal-header bg-primary">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <div class="pull-right text-right bg-info text-danger" style="margin-right:40px; margin-top: -6px; padding: 10px;">
+            <strong>ESCROW : </strong> {{ user_get_id.foreign_escrow_and_number_ticket(travel_id)[0]['escrow'] }} {{ user_get_id.foreign_escrow_and_number_ticket(travel_id)[0]['travel'].get().destination_start.get().currency.get().code }}
+        </div>
+
+        <h4 class="modal-title">USER : {{ user_get_id.last_name }} {{ user_get_id.first_name }}</h4>
+</div>
+<div class="modal-body scrollable-shadow" style="height: 600px; overflow-y: auto">
+        <h3 class="text-primary">Expected Payment from {{ travel_get_id.destination_start.get().name }} to {{ travel_get_id.destination_check.get().name }}</h3>
+        <hr/>
+        <table class="table table-hover" id="dataTable1">
+            <thead>
+            <tr>
+                <th>Ticket Type</th>
+                <th>Number</th>
+                <th>Amount</th>
+            </tr>
+            </thead>
+            <tbody>
+                {% for ticket in user_tickets %}
+                        <tr>
+                            <td>{{ ticket['class'].get().name }} - {{ ticket['type'].get().name }} - {{ ticket['journey'].get().name }}</td>
+                            <td>{{ ticket['number'] }}</td>
+                            <td>{{ ticket['amount']|format_price() }} {{ ticket['currency'].get().code }}</td>
+                        </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <br/>
+
+        <h3 class="text-primary">No payment balance from {{ travel_get_id.destination_start.get().name }} to {{ travel_get_id.destination_check.get().name }}</h3>
+        <hr/>
+        <table class="table table-hover" id="dataTable2">
+            <thead>
+            <tr>
+                <th>Ticket Type</th>
+                <th>Amount</th>
+                <th>Balance</th>
+            </tr>
+            </thead>
+            <tbody>
+                {% for ticket in user_tickets_tab_unsolved_payment %}
+                        <tr>
+                            <td>{{ ticket['class'].get().name }} - {{ ticket['type'].get().name }} - {{ ticket['journey'].get().name }}</td>
+                            <td>{{ ticket['amount']|format_price() }} {{ ticket['currency'].get().code }}</td>
+                            <td>{{ ticket['balance']|format_price() }} {{ ticket['currency'].get().code }}</td>
+                        </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+</div>
+<div class="modal-footer bg-info">
+<form class="form-horizontal" id="formulaires">
+            <div class="col-lg-7">
+    {% if not current_user.has_roles(('admin','super_admin')) and current_user.has_roles('manager_agency') %}
+
+                <div class="form-group text-left" id="form-input">
+                    <label for="amount_received" class="col-sm-6 control-label">Amount received ( {{ user_get_id.foreign_escrow_and_number_ticket(travel_id)[0]['travel'].get().destination_start.get().currency.get().code }} ) :</label>
+                    <div class="col-sm-6">
+                      <input type="text" class="form-control" id="amount_received" name="amount">
+                        <span class="help-block hidden text-danger" id="help-error">Amount required or the data is not numeric and greater than zero</span>
+                    </div>
+                </div>
+
+    {% endif %}
+            </div>
+</form>
+    <div class="col-lg-5">
+        <button type="button" class="btn" data-dismiss="modal">Close</button>
+        {% if not current_user.has_roles(('admin','super_admin')) and current_user.has_roles('manager_agency') %}
+            <button type="button" class="btn btn-primary" id="submit">Valid payment</button>
+        {% endif %}
+    </div>
+
+
+</div>
+{% if not current_user.has_roles(('admin','super_admin')) and current_user.has_roles('manager_agency') %}
+ <!-- Modal -->
+    <div class="modal fade modal2" id="modal2" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-footer">
+                <div class="col-lg-8 text-danger text-left" style="padding: 7px;">
+                    <strong>Do you confirm this received amount  : <span id="amr"></span> {{ user_get_id.foreign_escrow_and_number_ticket(travel_id)[0]['travel'].get().destination_start.get().currency.get().code }} </strong>
+                </div>
+                <div class="col-lg-4">
+                    <button type="button" class="btn btn-success" id="confirm" data-loading-text="Waiting...">Confirm</button>
+
+                    <button type="button" class="btn btn-danger" id="CloseModal2">Cancel</button>
+                </div>
+
+            </div>
+
+        </div>
+      </div>
+    </div>
+{% endif %}
+<script>
+    $('#dataTable1').dataTable({
+        "paging": true,
+        "bFilter": true,
+        'aoColumnDefs': [
+            {'bSortable': false, 'aTargets': ['nosort']},
+            {'bSearchable': false, "aTargets": ['nosort']}
+        ]
+    });
+    $('#dataTable2').dataTable({
+        "paging": true,
+        "bFilter": true,
+        'aoColumnDefs': [
+            {'bSortable': false, 'aTargets': ['nosort']},
+            {'bSearchable': false, "aTargets": ['nosort']}
+        ]
+    });
+{% if not current_user.has_roles(('admin','super_admin')) and current_user.has_roles('manager_agency') %}
+    $('#submit').on('click', function(e){
+        e.preventDefault();
+        if($('#amount_received').val() != "" && $.isNumeric($('#amount_received').val()) && $('#amount_received').val() > 0){
+            $('#modal2').attr({style:'display:block;padding-right: 17px;background-color: rgba(255,255,255,0.5);padding-top: 275px;'}).addClass('in');
+            $('.modal-backdrop').after('<div class="modal-backdrop fade in"></div>');
+            $(this).addClass('disabled');
+            $('#help-error').addClass('hidden');
+            $('#form-input').removeClass('has-error');
+            $('#amr').text($('#amount_received').val());
+
+        }else{
+            $('#help-error').removeClass('hidden');
+            $('#form-input').addClass('has-error');
+        }
+    });
+    $('#CloseModal2').on('click', function(e){
+        e.preventDefault();
+        $('#modal2').attr({style:'display:none;'}).removeClass('in');
+        $('.modal-backdrop:last-child').remove();
+        $('#submit').removeClass('disabled');
+    });
+
+    $('#confirm').on('click', function(e){
+        e.preventDefault();
+        var btn = $(this);
+        btn.button('loading');
+        $('#CloseModal2').addClass('hidden');
+        $.ajax({
+            url: "{{ url_for('Transaction_foreign_user', user_id=user_get_id.key.id(), travel_id=travel_id) }}",
+            type: 'POST',
+            data: $('#formulaires').serialize(),
+            success: function(data) {
+                btn.addClass('disabled');
+                btn.html('<i class="glyphicon glyphicon-ok"></i> Success');
+                window.location.replace(window.location.origin+"{{ url_for('Transaction_Agency', agency_id=user_get_id.agency.get().key.id() ) }}").delay(2000);
+            }
+        });
+    });
+
+{% endif %}
+
+</script>

@@ -1,0 +1,20 @@
+<div class="modal-header bg-primary">
+
+<h4 class="modal-title" id="myModalLabel">Print Ticket</h4>
+</div>
+<div class="modal-body" style="height: 414px;">
+
+    <iframe id="frame" src="{{url_for('generate_pdf_boarding', ticket_id=ticket_id, _external=True)}}#zoom=100" height="100%" width="100%" style="border:none"></iframe><br/>
+
+</div>
+<div class="modal-footer">
+<input type="button" class="btn btn-primary" onclick="Print()"value="Print" />
+<button type="button" class="btn btn-default" data-dismiss="modal" id="Close">Close</button>
+</div>
+
+<!-- Code JavaScript -->
+<script>
+    function Print(){
+        document.getElementById("frame").contentWindow.print();
+    }
+</script>
