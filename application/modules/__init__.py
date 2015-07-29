@@ -48,7 +48,7 @@ from operator import itemgetter
 global_current_country = {
     "CM": "Cameroon",
     "NGN": "Nigeria",
-    "GB": "Gabon"
+    "GA": "Gabon"
 }
 
 

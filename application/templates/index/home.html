@@ -11,30 +11,68 @@
                         {{ form.hidden_tag() }}
 
                         <img src="/static/img/Comatrans-Transparent-Black-H.png" alt=""/>
-                        <h2 class="form-signin-heading text-center">Please sign in</h2>
+                        <h2 class="form-signin-heading text-center">
+                            {% if exist_agency %}
+                                    <span class="label label-info" style="font-size: 17px;">{{ exist_agency.name }}</span>
+                                <hr/>
+                            {% endif %}
+                            Please sign in
+                        </h2>
 
-                        {{ form.email(class_='form-control', placeholder='Email') }}
+
                         {% if form.email.errors %}
-                            <ul class="errors">
+                            <ul class="errors list-unstyled bg-danger">
                                 {% for error in form.email.errors %}
                                 <li>{{ error }}</li>
                                 {% endfor %}
                             </ul>
                         {% endif %}
-                        {{ form.password(class_='form-control', placeholder='Password') }}
+                        {{ form.email(class_='form-control', placeholder='Email') }}
+
+
                         {% if form.password.errors %}
-                            <ul class="errors">
+                            <ul class="errors list-unstyled bg-danger">
                                 {% for error in form.password.errors %}
                                 <li>{{ error }}</li>
                                 {% endfor %}
                             </ul>
                         {% endif %}
-                        {{ form.submit(class_='btn btn-primary btn-block') }}
-                    <br/>
-                        {% if not exist %}
-                            <a href="{{ url_for('Super_Admin_Create') }}" class="btn btn-block">Create super admin user</a>
-                        {% endif %}
+                        {{ form.password(class_='form-control', placeholder='Password') }}
 
+                        {% if not exist %}
+
+                            {% if form.url.errors %}
+                                <ul class="errors list-unstyled bg-danger">
+                                    {% for error in form.url.errors %}
+                                    <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                            {{ form.url(class_='form-control', placeholder='Url application online') }}
+
+                            {% if form.token.errors %}
+                                <ul class="errors list-unstyled bg-danger">
+                                    {% for error in form.token.errors %}
+                                    <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                            {{ form.token(class_='form-control', placeholder='Token agency') }}
+
+                        {% endif %}
+                        {% if synchronize %}
+                            <div class="text-center">
+                                <a href="#" class="btn btn-danger btn-block" {% if not connexion %} disabled="disabled" {% endif %}>Synchronization</a>
+                                {% if connexion %}
+                                     <span class="label label-success">Connected <i class="glyphicon glyphicon-ok"></i></span>
+                                {% else %}
+                                     <span class="label label-danger">Disconnected <i class="glyphicon glyphicon-remove"></i></span>
+                                {% endif %}
+                            </div>
+
+                        {% else %}
+                            {{ form.submit(class_='btn btn-primary btn-block') }}
+                        {% endif %}
                 </form>
 
             </div>

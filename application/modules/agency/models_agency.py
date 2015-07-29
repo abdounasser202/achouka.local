@@ -17,9 +17,12 @@ class AgencyModel(ndb.Model):
     address = ndb.StringProperty()
     reduction = ndb.FloatProperty()
     status = ndb.BooleanProperty(default=False)
+    local_status = ndb.BooleanProperty(default=False)
     destination = ndb.KeyProperty(kind=DestinationModel)
     is_achouka = ndb.BooleanProperty()
     is_coorporate = ndb.BooleanProperty()
+    date = ndb.DateTimeProperty()
+
 
     def TicketCount(self):
         from ..ticket.models_ticket import TicketModel

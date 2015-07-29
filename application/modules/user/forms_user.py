@@ -1,13 +1,25 @@
 __author__ = 'wilrona'
 
+
+from ...modules import urlfetch
 from lib.flaskext import wtf
 from lib.flaskext.wtf import validators
 from models_user import UserModel
 
+def validate_url(form, field):
+    validate_url = "http://"+field.data
+    try:
+        result = urlfetch.fetch(validate_url)
+        if result.status_code != 200:
+            raise wtf.ValidationError('Url is not correct.')
+    except urlfetch.DownloadError:
+        raise wtf.ValidationError('Url is not correct error.')
 
 class FormLogin(wtf.Form):
     email = wtf.StringField('Email', validators=[validators.Required()])
-    password = wtf.PasswordField('Password', [validators.Required("Password is required.")])
+    password = wtf.PasswordField('Password', validators=[validators.Required("Password is required.")])
+    url = wtf.StringField('url', validators=[validate_url])
+    token = wtf.StringField('token')
     remember_me = wtf.BooleanField(label='Remember me')
     submit = wtf.SubmitField("Sign In")
 
