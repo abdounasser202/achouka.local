@@ -106,7 +106,7 @@ def Home():
                 form.token.errors.append(result['message'])
             else:
 
-                user_log = UserModel(id=str(result['user']['user_id']))
+                user_log = UserModel(id=result['user']['user_id'])
                 user_log.first_name = result['user']['first_name']
                 user_log.last_name = result['user']['last_name']
                 user_log.dial_code = result['user']['dial_code']
@@ -202,6 +202,7 @@ def Home():
                     agency.destination = destination_save
                     agency.put()
 
+                    flash('', 'danger')
                     return redirect(url_for('Home'))
         else:
             if not user_login.is_active():
@@ -228,7 +229,8 @@ def Home():
             return redirect(url_for('Dashboard'))
 
     synchro = SynchroModel.query().order(-SynchroModel.date).get()
-    synchronize = False
+
+    # Affichage de la connexion au serveur
     connexion = True
     if exist:
         try:
@@ -239,13 +241,15 @@ def Home():
         except urlfetch.DownloadError:
             connexion = False
 
+    # autorisation de la synchronisation
+    synchronize = False
     if synchro:
         date_today = datetime.date.today()
         delta = datetime.timedelta(hours=24)
         date_syncho = synchro.date + delta
-        if date_syncho >= date_today:
+        if date_syncho >= date_today and exist:
             synchronize = True
-    else:
+    elif exist:
         synchronize = True
 
     return render_template('index/home.html', **locals())

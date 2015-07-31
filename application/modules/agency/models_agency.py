@@ -21,8 +21,6 @@ class AgencyModel(ndb.Model):
     destination = ndb.KeyProperty(kind=DestinationModel)
     is_achouka = ndb.BooleanProperty()
     is_coorporate = ndb.BooleanProperty()
-    date = ndb.DateTimeProperty()
-
 
     def TicketCount(self):
         from ..ticket.models_ticket import TicketModel

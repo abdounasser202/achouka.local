@@ -62,7 +62,7 @@
                         {% endif %}
                         {% if synchronize %}
                             <div class="text-center">
-                                <a href="#" class="btn btn-danger btn-block" {% if not connexion %} disabled="disabled" {% endif %}>Synchronization</a>
+                                <a href="{{ url_for('synchronization', token=config_agency.token_agency) }}" class="btn btn-danger btn-block" {% if not connexion %} disabled="disabled" {% endif %}>Synchronization</a>
                                 {% if connexion %}
                                      <span class="label label-success">Connected <i class="glyphicon glyphicon-ok"></i></span>
                                 {% else %}

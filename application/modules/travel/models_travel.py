@@ -8,4 +8,3 @@ class TravelModel(ndb.Model):
     destination_start = ndb.KeyProperty(kind=DestinationModel)
     destination_check = ndb.KeyProperty(kind=DestinationModel)
     datecreate = ndb.DateTimeProperty(auto_now_add=True)
-    date_update = ndb.DateProperty(auto_now=True)

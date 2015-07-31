@@ -7,7 +7,6 @@ from google.appengine.ext import ndb
 class CurrencyModel(ndb.Model):
     code = ndb.StringProperty(required=True)
     name = ndb.StringProperty(required=True)
-    date_update = ndb.DateProperty(auto_now=True)
 
 
 class EquivalenceModel(ndb.Model):

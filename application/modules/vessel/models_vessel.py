@@ -7,5 +7,4 @@ from google.appengine.ext import ndb
 class VesselModel(ndb.Model):
     name = ndb.StringProperty(required=True)
     capacity = ndb.IntegerProperty(required=True)
-    immatricul = ndb.StringProperty() 
-    date_update = ndb.DateProperty(auto_now=True)
+    immatricul = ndb.StringProperty()
