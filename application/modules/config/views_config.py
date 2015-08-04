@@ -319,3 +319,186 @@ def user_api(url, tocken, segment, date):
                 user_role.put()
 
             data_save.put()
+
+
+def departure_api(url, tocken, segment, date):
+    from ..departure.models_departure import DepartureModel, TravelModel, VesselModel
+
+    url = ""+url+segment+tocken+"?last_update="+str(date)
+    result = urlfetch.fetch(url)
+    result = result.content
+    result = json.loads(result)
+
+    if result['status'] and result['status'] == 404:
+        flash(result['message'], "danger")
+        return redirect(url_for('Home'))
+
+    for data_get in result['departure']:
+        old_data = DepartureModel.get_by_id(data_get['departure_id'])
+        if old_data:
+            old_data.departure_date = function.date_convert(data_get['departure_date'])
+            old_data.schedule = function.time_convert(data_get['departure_schedule'])
+            old_data.time_delay = function.time_convert(data_get['departure_delay'])
+
+            travel_departure = TravelModel.get_by_id(data_get['departure_destination'])
+            old_data.destination = travel_departure.key
+
+            vessel_departure = VesselModel.get_by_id(data_get['departure_vessel'])
+            old_data.vessel = vessel_departure.key
+            old_data.put()
+        else:
+            data_save = DepartureModel(id=data_get['departure_id'])
+
+            data_save.departure_date = function.date_convert(data_get['departure_date'])
+            data_save.schedule = function.time_convert(data_get['departure_schedule'])
+            data_save.time_delay = function.time_convert(data_get['departure_delay'])
+
+            travel_departure = TravelModel.get_by_id(data_get['departure_destination'])
+            data_save.destination = travel_departure.key
+
+            vessel_departure = VesselModel.get_by_id(data_get['departure_vessel'])
+            data_save.vessel = vessel_departure.key
+
+            data_save.put()
+
+
+def class_api(url, tocken, segment, date):
+    from ..ticket_type.models_ticket_type import ClassTypeModel
+
+    url = ""+url+segment+tocken+"?last_update="+str(date)
+    result = urlfetch.fetch(url)
+    result = result.content
+    result = json.loads(result)
+
+    if result['status'] and result['status'] == 404:
+        flash(result['message'], "danger")
+        return redirect(url_for('Home'))
+
+    for data_get in result['class']:
+        old_data = ClassTypeModel.get_by_id(data_get['class_id'])
+        if old_data:
+            old_data.default = data_get['class_default']
+            old_data.name = data_get['class_name']
+            old_data.put()
+        else:
+            data_save = ClassTypeModel(id=data_get['class_id'])
+            data_save.default = data_get['class_default']
+            data_save.name = data_get['class_name']
+            data_save.put()
+
+
+def category_api(url, tocken, segment, date):
+    from ..ticket_type.models_ticket_type import TicketTypeNameModel
+
+    url = ""+url+segment+tocken+"?last_update="+str(date)
+    result = urlfetch.fetch(url)
+    result = result.content
+    result = json.loads(result)
+
+    if result['status'] and result['status'] == 404:
+        flash(result['message'], "danger")
+        return redirect(url_for('Home'))
+
+    for data_get in result['category']:
+        old_data = TicketTypeNameModel.get_by_id(data_get['category_id'])
+        if old_data:
+            old_data.is_child = data_get['category_is_child']
+            old_data.default = data_get['category_default']
+            old_data.special = data_get['category_special']
+            old_data.name = data_get['category_name']
+            old_data.put()
+        else:
+            data_save = TicketTypeNameModel(id=data_get['category_id'])
+            data_save.is_child = data_get['category_is_child']
+            data_save.default = data_get['category_default']
+            data_save.special = data_get['category_special']
+            data_save.name = data_get['category_name']
+            data_save.put()
+
+
+def journey_api(url, tocken, segment, date):
+    from ..ticket_type.models_ticket_type import JourneyTypeModel
+
+    url = ""+url+segment+tocken+"?last_update="+str(date)
+    result = urlfetch.fetch(url)
+    result = result.content
+    result = json.loads(result)
+
+    if result['status'] and result['status'] == 404:
+        flash(result['message'], "danger")
+        return redirect(url_for('Home'))
+
+    for data_get in result['journey']:
+        old_data = JourneyTypeModel.get_by_id(data_get['journey_id'])
+        if old_data:
+            old_data.returned = data_get['journey_returned']
+            old_data.default = data_get['journey_default']
+            old_data.name = data_get['journey_name']
+            old_data.put()
+        else:
+            data_save = JourneyTypeModel(id=data_get['journey_id'])
+            data_save.returned = data_get['journey_returned']
+            data_save.default = data_get['journey_default']
+            data_save.name = data_get['journey_name']
+            data_save.put()
+
+
+def tickettype_api(url, tocken, segment, date):
+    from ..ticket_type.models_ticket_type import TicketTypeModel, ClassTypeModel, CurrencyModel, JourneyTypeModel, TicketTypeNameModel, TravelModel
+
+    url = ""+url+segment+tocken+"?last_update="+str(date)
+    result = urlfetch.fetch(url)
+    result = result.content
+    result = json.loads(result)
+
+    if result['status'] and result['status'] == 404:
+        flash(result['message'], "danger")
+        return redirect(url_for('Home'))
+
+    for data_get in result['tickets']:
+        old_data = TicketTypeModel.get_by_id(data_get['ticket_id'])
+        if old_data:
+            old_data.name = data_get['ticket_name']
+            old_data.price = data_get['ticket_price']
+            old_data.active = data_get['ticket_active']
+
+            type_name = TicketTypeNameModel.get_by_id(data_get['ticket_type_name'])
+            old_data.type_name = type_name.key
+
+            journey_name = JourneyTypeModel.get_by_id(data_get['ticket_journey_name'])
+            old_data.journey_name = journey_name.key
+
+            class_name = ClassTypeModel.get_by_id(data_get['ticket_class_name'])
+            old_data.class_name = class_name.key
+
+
+            currency_ticket = CurrencyModel.get_by_id(data_get['ticket_currency'])
+            old_data.currency = currency_ticket.key
+
+            travel_ticket = TravelModel.get_by_id(data_get['ticket_currency'])
+            old_data.travel = travel_ticket
+
+            old_data.put()
+        else:
+            data_save = TicketTypeModel(id=data_get['ticket_id'])
+
+            data_save.name = data_get['ticket_name']
+            data_save.price = data_get['ticket_price']
+            data_save.active = data_get['ticket_active']
+
+            type_name = TicketTypeNameModel.get_by_id(data_get['ticket_type_name'])
+            data_save.type_name = type_name.key
+
+            journey_name = JourneyTypeModel.get_by_id(data_get['ticket_journey_name'])
+            data_save.journey_name = journey_name.key
+
+            class_name = ClassTypeModel.get_by_id(data_get['ticket_class_name'])
+            data_save.class_name = class_name.key
+
+
+            currency_ticket = CurrencyModel.get_by_id(data_get['ticket_currency'])
+            data_save.currency = currency_ticket.key
+
+            travel_ticket = TravelModel.get_by_id(data_get['ticket_currency'])
+            data_save.travel = travel_ticket
+            data_save.put()
