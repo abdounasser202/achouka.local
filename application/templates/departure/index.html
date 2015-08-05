@@ -10,7 +10,7 @@
                 <section>
                         <ol class="breadcrumb">
                           <li><a href="{{ url_for('Recording') }}">Recording</a></li>
-                          <li class="active">Departure</li>
+                          <li class="active">Journeys</li>
                         </ol>
                         <nav class="navbar navbar-toolbar navbar-default" role="navigation">
                           <div class="container-fluid">
@@ -24,45 +24,87 @@
 
                         {% include 'includes/flash_message.html' %}
 
-                        <table class="table table-hover"  id="dataTableDeparture">
-                            <thead>
+                    <div class="row">
+                        <div class="col-lg-9">
+                            <table class="table table-hover" id="dataTableDeparture">
+                                <thead>
                                 <tr>
-                                    <th>Departure Date</th>
-                                    <th class="text-center">Scheduled departure time</th>
-                                    <th class="text-center">Expected departure time (delay)</th>
-                                    <th>Journey</th>
+                                    <th>Date</th>
+                                    <th class="text-center">Scheduled time</th>
+                                    <th class="text-center">Expected  time (delay)</th>
+                                    <th>Travel Line</th>
                                     <th>Vessel</th>
                                     <th class="nosort"></th>
                                 </tr>
-                            </thead>
-                            <tbody>
+                                </thead>
+                                <tbody>
                                 {% for departure in departures %}
                                     <tr>
                                         <td>{{ departure.departure_date|format_date("%Y-%m-%d") }}</td>
-                                        <td>{{ departure.schedule|format_date("%H:%M") }}</td>
-                                        <td>{{ departure.schedule|add_time(departure.time_delay)|format_date("%H:%M") }} {% if departure.time_delay %} ( + {{ departure.time_delay }} ) {% endif %}</td>
+                                        <td class="text-center">{{ departure.schedule|format_date("%H:%M") }}</td>
+                                        <td class="text-center">{{ departure.schedule|add_time(departure.time_delay)|format_date("%H:%M") }}
+                                            {% if departure.time_delay %} ( + {{ departure.time_delay }}
+                                                ) {% endif %}</td>
                                         <td>
                                             {{ departure.destination.get().destination_start.get().name }}
                                             -
                                             {{ departure.destination.get().destination_check.get().name }}
                                         </td>
-                                        
-                                        <td>{{ departure.vessel.get().name }} ( {{ departure.vessel.get().capacity  }} )</td>
-                                        
-                                        <td>
-                                            {% if departure.departure_date >= date_day  and departure.schedule|add_time(departure.time_delay) >= time_now %}
-                                                {% if not departure.reserved() %}
-                                                    <a class="btn btn-link btn-xs" href="{{ url_for('Departure_Edit', departure_id = departure.key.id()) }}">Edit</a>
+
+                                        <td>{{ departure.vessel.get().name }} ( {{ departure.vessel.get().capacity }}
+                                            )
+                                        </td>
+
+                                        <td class="text-right">
+                                            {% if not departure.reserved() and departure.departure_date == date_day and departure.schedule|add_time(departure.time_delay) > time_now %}
+                                                <a class="btn btn-link btn-xs"
+                                                   href="{{ url_for('Departure_Edit', departure_id = departure.key.id()) }}">Edit</a><br/>
+                                            {% endif %}
+
+                                            {% if departure.departure_date >= date_day %}
+                                                {% if not departure.reserved() and departure.departure_date > date_day %}
+                                                    <a class="btn btn-link btn-xs"
+                                                       href="{{ url_for('Departure_Edit', departure_id = departure.key.id()) }}">Edit</a><br/>
                                                 {% endif %}
-                                                <a class="btn btn-link btn-xs" href="{{ url_for('Time_Delay_Edit',departure_id = departure.key.id()) }}"  data-toggle="modal" data-target="#myModal">Edit delay</a>
+                                                {% if departure.departure_date == date_day and departure.schedule|add_time(departure.time_delay) >= time_now %}
+                                                    <a class="btn btn-link btn-xs"
+                                                       href="{{ url_for('Time_Delay_Edit',departure_id = departure.key.id()) }}"
+                                                       data-toggle="modal" data-target="#myModal">Edit delay</a>
+                                                {% endif %}
+
                                             {% endif %}
                                         </td>
                                     </tr>
 
                                 {% endfor %}
 
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-lg-3">
+                            <h4>Last Activity</h4>
+                                    <hr/>
+                                    {% for feed in feed_tab %}
+                                        <blockquote style="padding: 10px 6px;">
+                                            {% if feed['nature'] == 1 %}
+                                                  <p style="font-size: 13px;"><strong>New Record</strong> : {{ feed['data'] }} </p>
+                                            {% endif %}
+                                            {% if feed['nature'] == 4 or feed['nature'] == 0 %}
+                                                  <p style="font-size: 13px;"><strong>Record Updated</strong> : {{ feed['data'] }}<br/>
+                                                  {% if feed['last_value'] %} Preview Modification ({{ feed['last_value'] }}) {% endif %}</p>
+                                            {% endif %}
+                                            <footer style="font-size: 65%;">{{ feed['time']|format_date("%d-%m-%Y %H:%M:%S") }} by {{ feed['user'].get().first_name }} {{ feed['user'].get().last_name }}</footer>
+                                        </blockquote>
+                                    {% else %}
+                                        <blockquote style="padding: 10px 6px;">
+                                            <p style="font-size: 13px;"><strong>No recent activity</strong> </p>
+                                        </blockquote>
+                                    {% endfor %}
+                                    {% if count > 5 %}
+                                        <a href="{{ url_for('Question_Index', modal="1") }}" class="btn btn-link pull-right" data-toggle="modal" data-target="#myModal" data-backdrop="static">view more</a>
+                                    {% endif %}
+                        </div>
+                    </div>
                 </section>
             </div>
         </div>

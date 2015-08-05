@@ -7,19 +7,33 @@ from lib.flaskext.wtf import validators
 from models_user import UserModel
 
 def validate_url(form, field):
-    validate_url = "http://"+field.data
-    try:
-        result = urlfetch.fetch(validate_url)
-        if result.status_code != 200:
-            raise wtf.ValidationError('Url is not correct.')
-    except urlfetch.DownloadError:
-        raise wtf.ValidationError('Url is not correct error.')
+    if field.data:
+        url = field.data
+        url = url.split('http://')
+
+        if len(url) > 1:
+            validate_url = "http://"+url[1]
+        else:
+            validate_url = "http://"+url[0]
+
+        try:
+            result = urlfetch.fetch(validate_url)
+            if result.status_code != 200:
+                raise wtf.ValidationError('Url is not correct.')
+        except urlfetch.DownloadError:
+            raise wtf.ValidationError('Url is not correct error.')
+    else:
+        raise wtf.ValidationError('Url required.')
+
+def validate_token(form, field):
+    if not field.data:
+        raise wtf.ValidationError('token agency required.')
 
 class FormLogin(wtf.Form):
     email = wtf.StringField('Email', validators=[validators.Required()])
     password = wtf.PasswordField('Password', validators=[validators.Required("Password is required.")])
     url = wtf.StringField('url', validators=[validate_url])
-    token = wtf.StringField('token')
+    token = wtf.StringField('token', validators=[validate_token])
     remember_me = wtf.BooleanField(label='Remember me')
     submit = wtf.SubmitField("Sign In")
 

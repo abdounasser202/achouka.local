@@ -13,7 +13,7 @@
                 </div>
             {% else %}
                 <div class="panel-body text-center">
-                    <h3>No request Question</h3>
+                    <h3>No Required Question</h3>
                 </div>
             {% endfor %}
 
@@ -88,7 +88,10 @@
 
     if(modals == 'true'){
         var url_modal = '{{ url_for('modal_generate_pdf_boarding', ticket_id=ticket.key.id()) }}';
-        $('#myModal').modal('show');
+        $('#myModal').modal({
+             show: true,
+             backdrop:"static"
+        });
         $.get(url_modal, function(data) {
           $('.modal-content').empty().html(data);
         });

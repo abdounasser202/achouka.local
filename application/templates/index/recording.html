@@ -16,7 +16,7 @@
                               <div class="col-lg-4">
                                   <div class="well-custom well-small">
                                             <div class="caption">
-                                                <h3 class="text-center">Transaction</h3>
+                                                <h3 class="text-center">Transactions</h3>
                                                 <p><a href="{{ url_for('Transaction_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
                                             </div>
                                         </div>
@@ -24,27 +24,18 @@
                               <div class="col-lg-4">
                                   <div class="well-custom well-small">
                                             <div class="caption">
-                                                <h3 class="text-center">Ticket purchases</h3>
+                                                <h3 class="text-center">Ticket purchase</h3>
                                                 <p><a href="{{ url_for('Ticket_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
                                             </div>
                                         </div>
                               </div>
                         {% endif %}
-                        {% if current_user.has_roles(('super_admin','admin')) %}
-                                <div class="col-lg-4">
-                                  <div class="well-custom well-small">
-                                            <div class="caption">
-                                                <h3 class="text-center">Travel</h3>
-                                                <p><a href="{{ url_for('Travel_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
-                                            </div>
-                                        </div>
-                              </div>
-                        {% endif %}
+
                         {% if current_user.has_roles(('super_admin','manager_agency')) %}
                               <div class="col-lg-4">
                                   <div class="well-custom well-small">
                                             <div class="caption">
-                                                <h3 class="text-center">Departure</h3>
+                                                <h3 class="text-center">Journeys</h3>
                                                 <p><a href="{{ url_for('Departure_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
                                             </div>
                                         </div>

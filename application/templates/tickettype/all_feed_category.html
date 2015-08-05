@@ -1,0 +1,58 @@
+<div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+    <h4 class="modal-title" id="myModalLabel">All Activity</h4>
+</div>
+<div class="modal-body scrollable-shadow" style="height: 400px; overflow-y: auto">
+<table class="table" width="100%" id="dataTables">
+    <thead>
+        <tr>
+            <th class="nosort">Activity</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for feed in feed_tab %}
+            <tr>
+                <td>
+                    <blockquote style="padding: 10px 6px;">
+                        {% if feed['nature'] == 1 %}
+                              <p style="font-size: 13px;"><strong>New Record</strong> : <a href="{{ url_for('Ticket_Type_Name_Index', ticket_type_name_id=feed['id']) }}">{{ feed['data'] }}</a></p>
+                        {% endif %}
+                        {% if feed['nature'] == 4 %}
+                              <p style="font-size: 13px;"><strong>Record Updated</strong> : <a href="{{ url_for('Ticket_Type_Name_Index', ticket_type_name_id=feed['id']) }}">{{ feed['data'] }}</a></p>
+                        {% endif %}
+                        {% if feed['nature'] == 3 %}
+                              <p style="font-size: 13px;"><strong>Record deleted</strong> : {{ feed['data'] }}</p>
+                        {% endif %}
+                        {% if feed['nature'] == 6 %}
+                              <p style="font-size: 13px;"><strong>Record is default (YES)</strong> : <a href="{{ url_for('Ticket_Type_Name_Index', ticket_type_name_id=feed['id']) }}">{{ feed['data'] }}</a></p>
+                        {% endif %}
+                        {% if feed['nature'] == 7 %}
+                              <p style="font-size: 13px;"><strong>Record is default (NO)</strong> : <a href="{{ url_for('Ticket_Type_Name_Index', ticket_type_name_id=feed['id']) }}">{{ feed['data'] }}</a></p>
+                        {% endif %}
+                        {% if feed['nature'] == 8 %}
+                              <p style="font-size: 13px;"><strong>Record is special (YES)</strong> : <a href="{{ url_for('Ticket_Type_Name_Index', ticket_type_name_id=feed['id']) }}">{{ feed['data'] }}</a></p>
+                        {% endif %}
+                        {% if feed['nature'] == 9 %}
+                              <p style="font-size: 13px;"><strong>Record is special (NO)</strong> : <a href="{{ url_for('Ticket_Type_Name_Index', ticket_type_name_id=feed['id']) }}">{{ feed['data'] }}</a></p>
+                        {% endif %}
+                        <footer style="font-size: 65%;">{{ feed['time']|format_date("%d-%m-%Y %H:%M:%S") }} by {{ feed['user'].get().first_name }} {{ feed['user'].get().last_name }}</footer>
+                    </blockquote>
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+</div>
+<div class="modal-footer">
+<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+</div>
+<script>
+    $('#dataTables').dataTable({
+        "paging": true,
+        "bFilter": true,
+        'aoColumnDefs': [
+            {'bSortable': false, 'aTargets': ['nosort']}
+        ]
+    });
+</script>

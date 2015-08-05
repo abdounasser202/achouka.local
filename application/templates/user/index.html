@@ -16,60 +16,111 @@
                           <div class="container-fluid">
                             <div class="btn-toolbar" role="toolbar">
                                    <div class="btn-group pull-left">
-                                       <a href="{{ url_for('User_Admin_Edit') }}" class="btn btn-danger btn-lg">Create Admin</a>
+                                       <a href="{{ url_for('User_Admin_Edit') }}" class="btn btn-danger btn-lg">New Admin</a>
                                    </div>
                             </div>
                           </div>
                         </nav>
                         {% include 'includes/flash_message.html' %}
 
-                         <table class="table table-hover" id="dataTable">
-                            <thead>
+                    <div class="row">
+                        <div class="col-lg-9">
+                            <table class="table table-hover" id="dataTable">
+                                <thead>
                                 <tr>
-                                    <th>First name </th>
+                                    <th>First name</th>
                                     <th>Last name</th>
-                                    <th>Email Adresse</th>
-                                    <th>Last Logged</th>
+                                    <th>Email</th>
+                                    <th>Last Login</th>
                                     <th class="nosort"></th>
                                 </tr>
-                            </thead>
-                            <tbody>
-                            {% for user in user %}
-                                {% if user.user_id in user_admins %}
-                                    <tr>
-                                        <td>{{ user.user_id.get().first_name }}</td>
-                                        <td>{{ user.user_id.get().last_name }}</td>
-                                        <td>{{ user.user_id.get().email }} </td>
-                                        <td>{{ user.user_id.get().date_last_logged }} </td>
-                                        <td>
-                                            <a href="" class="btn btn-link btn-xs">Reset password </a>
-                                            <a href="" class="btn btn-link btn-xs">Change email </a>
+                                </thead>
+                                <tbody>
+                                {% for user in user %}
+                                    {% if user.user_id in user_admins %}
+                                        <tr>
+                                            <td>{{ user.user_id.get().first_name }}</td>
+                                            <td>{{ user.user_id.get().last_name }}</td>
+                                            <td>{{ user.user_id.get().email }} </td>
+                                            <td>{{ user.user_id.get().date_last_logged }} </td>
+                                            <td>
+                                                <a href="" class="btn btn-link btn-xs">Reset password </a>
+                                                <a href="" class="btn btn-link btn-xs">Change email </a>
 
-                                            {% if user.user_id not in super_admin_id %}
-                                                <a href="{{ url_for('User_Admin_Edit',  user_id=user.user_id.get().key.id()) }}" class="btn btn-link btn-xs">Edit </a>
-                                            {% endif %}
-
-{#                                            {% if user.user_id in super_admin_id %}#}
-{#                                                <a href="#" class="btn btn-link btn-xs">Change currency </a>#}
-{#                                            {% endif %}#}
-                                            {% if current_user.key != user.user_id %}
-                                                {% if user.user_id.get().is_enabled %}
-                                                    <a href="{{url_for('activate_user_admin', user_id=user.user_id.get().key.id())}}" class="btn btn-danger btn-xs">Disabled</a>
-                                                {% else %}
-                                                    <a href="{{url_for('activate_user_admin', user_id=user.user_id.get().key.id())}}" class="btn btn-success btn-xs">Activate</a>
+                                                {% if user.user_id not in super_admin_id %}
+                                                    <a href="{{ url_for('User_Admin_Edit',  user_id=user.user_id.get().key.id()) }}"
+                                                       class="btn btn-link btn-xs">Edit </a>
                                                 {% endif %}
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                {% endif %}
-                            {% endfor %}
 
-                            </tbody>
-                        </table>
+                                                {#                                            {% if user.user_id in super_admin_id %}#}
+                                                {#                                                <a href="#" class="btn btn-link btn-xs">Change currency </a>#}
+                                                {#                                            {% endif %}#}
+                                                {% if current_user.key != user.user_id %}
+                                                    {% if user.user_id.get().is_enabled %}
+                                                        <a href="{{ url_for('activate_user_admin', user_id=user.user_id.get().key.id()) }}"
+                                                           class="btn btn-danger btn-xs">Disabled</a>
+                                                    {% else %}
+                                                        <a href="{{ url_for('activate_user_admin', user_id=user.user_id.get().key.id()) }}"
+                                                           class="btn btn-success btn-xs">Activate</a>
+                                                    {% endif %}
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                {% endfor %}
+
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-lg-3">
+                            <h4>Last Activity</h4>
+                                    <hr/>
+                                    {% for feed in feed_tab %}
+                                        <blockquote style="padding: 10px 6px;">
+                                            {% if feed['nature'] == 1 %}
+                                                  <p style="font-size: 13px;">
+                                                  {% if feed['user'] %}
+                                                      <strong>New Record</strong>
+                                                  {% else %}
+                                                      <strong>Login User</strong>
+                                                  {% endif %}
+                                                      :{% if feed['id'] == current_user.key.id() %} {{ feed['data'] }} {% else %} <a href="{{ url_for('User_Admin_Edit', user_id=feed['id']) }}">{{ feed['data'] }}</a> {% endif %}</p>
+                                            {% endif %}
+                                            {% if feed['nature'] == 4 %}
+                                                  <p style="font-size: 13px;"><strong>Record Updated</strong> : <a href="{{ url_for('User_Admin_Edit', user_id=feed['id']) }}">{{ feed['data'] }}</a></p>
+                                            {% endif %}
+                                            {% if feed['nature'] == 3 %}
+                                                  <p style="font-size: 13px;"><strong>Record deleted</strong> : {{ feed['data'] }}</p>
+                                            {% endif %}
+                                            {% if feed['nature'] == 5 %}
+                                                  <p style="font-size: 13px;"><strong>Record activated</strong> : <a href="{{ url_for('User_Admin_Edit', user_id=feed['id']) }}">{{ feed['data'] }}</a></p>
+                                            {% endif %}
+                                            {% if feed['nature'] == 2 %}
+                                                  <p style="font-size: 13px;"><strong>Record disabled</strong> : <a href="{{ url_for('User_Admin_Edit', user_id=feed['id']) }}">{{ feed['data'] }}</a></p>
+                                            {% endif %}
+                                            <footer style="font-size: 65%;">{{ feed['time']|format_date("%d-%m-%Y %H:%M:%S") }} {% if feed['user'] %} by {{ feed['user'].get().first_name }} {{ feed['user'].get().last_name }} {% endif %}</footer>
+                                        </blockquote>
+                                    {% else %}
+                                        <blockquote style="padding: 10px 6px;">
+                                            <p style="font-size: 13px;"><strong>No recent activity</strong> </p>
+                                        </blockquote>
+                                    {% endfor %}
+                        {% if count > 5 %}
+                            <a href="{{ url_for('User_Admin_Index', modal="1") }}" class="btn btn-link pull-right" data-toggle="modal" data-target="#myModal" data-backdrop="static">view more</a>
+                        {% endif %}
+                        </div>
+                    </div>
 
                 </section>
             </div>
         </div>
     </div>
+     <!-- Modal -->
+    <div class="modal fade" id="myModal" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
 
+        </div>
+      </div>
+    </div>
 {% endblock %}

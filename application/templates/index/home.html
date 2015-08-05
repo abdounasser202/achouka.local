@@ -19,26 +19,22 @@
                             Please sign in
                         </h2>
 
-
+                        {{ form.email(class_='form-control', placeholder='Email') }}
                         {% if form.email.errors %}
-                            <ul class="errors list-unstyled bg-danger">
+                            <ul class="errors">
                                 {% for error in form.email.errors %}
                                 <li>{{ error }}</li>
                                 {% endfor %}
                             </ul>
                         {% endif %}
-                        {{ form.email(class_='form-control', placeholder='Email') }}
-
-
+                        {{ form.password(class_='form-control', placeholder='Password') }}
                         {% if form.password.errors %}
-                            <ul class="errors list-unstyled bg-danger">
+                            <ul class="errors">
                                 {% for error in form.password.errors %}
                                 <li>{{ error }}</li>
                                 {% endfor %}
                             </ul>
                         {% endif %}
-                        {{ form.password(class_='form-control', placeholder='Password') }}
-
                         {% if not exist %}
 
                             {% if form.url.errors %}
@@ -73,6 +69,7 @@
                         {% else %}
                             {{ form.submit(class_='btn btn-primary btn-block') }}
                         {% endif %}
+
                 </form>
 
             </div>

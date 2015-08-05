@@ -56,6 +56,8 @@ def Home():
     verified_token = 1
     config_agency = None
 
+    form = FormLogin(request.form)
+
     if exist_super_admin >= 1 and exist_config_active >= 1:
         exist = True
         verified_token = 0
@@ -65,15 +67,18 @@ def Home():
         ).get()
         #information de configuration de l'agence
         config_agency = ConfigModel.query(
-            ConfigModel.id_local_agency == exist_agency.key.id()
+            ConfigModel.local_ref == exist_agency.key
         ).get()
+
+
+
+        form.token.data = config_agency.token_agency
+        form.url.data = config_agency.url_server
 
     # Controle d'une redirection possible vers la precedente page avant deconnexion
     url = None
     if request.args.get('url'):
         url = request.args.get('url')
-
-    form = FormLogin(request.form)
 
     if form.validate_on_submit():
         try:
@@ -89,14 +94,15 @@ def Home():
 
         if not user_login:
 
-            if exist_config_active:
-                url = ""+config_agency.url_server+"/login_user_api/"+password+"/"+form.email.data+"/"+config_agency.token_agency+"?exist="+str(verified_token)
+            if exist_config_active >= 1:
+                url = ""+config_agency.url_server+"/login_user/get/"+password+"/"+form.email.data+"/"+config_agency.token_agency+"?exist="+str(verified_token)
             else:
-                url = "http://"+form.url.data+"/login_user_api/"+password+"/"+form.email.data+"/"+form.token.data+"?exist="+str(verified_token)
+                url = "http://"+form.url.data+"/login_user/get/"+password+"/"+form.email.data+"/"+form.token.data+"?exist="+str(verified_token)
 
             result = urlfetch.fetch(url)
             result = result.content
             result = json.loads(result)
+
             if result['status'] and result['status'] == 404:
                 flash('Username or Password is invalid', 'danger')
             elif result['status'] and result['status'] == 403:
@@ -119,7 +125,7 @@ def Home():
                     user_save = user_log.put()
                     # Traitement des informations du super administrateur
                     if result['role_user']:
-                        role_exist = RoleModel.get_by_id(int(result['role_user']['role_user_id']))
+                        role_exist = RoleModel.get_by_id(result['role_user']['role_user_id'])
 
                         if not role_exist:
                             role_user = RoleModel(id=result['role_user']['role_user_id'])
@@ -133,10 +139,11 @@ def Home():
                         user_role.role_id = role_save
                         user_role.user_id = user_save
                         user_role.put()
+
                 else:
 
                     # traitement des informations des utilisateurs non administrateur
-                    profil_exist = ProfilModel.get_by_id(int(result['profil_user']['profil_id']))
+                    profil_exist = ProfilModel.get_by_id(result['profil_user']['profil_id'])
                     if profil_exist:
                         profil_user = ProfilModel(id=result['profil_user']['profil_id'])
                         profil_user.name = result['profil_user']['profil_name']
@@ -151,7 +158,7 @@ def Home():
 
                     for role in result['profil_user']['profil_roles']:
 
-                        role_exist = RoleModel.get_by_id(int(role['role_id']))
+                        role_exist = RoleModel.get_by_id(role['role_id'])
 
                         if not role_exist:
                             role_user = RoleModel(id=role['role_id'])
@@ -170,13 +177,8 @@ def Home():
                         user_profil.role_id = role_save
                         user_profil.profil_id = profil_save
 
-                if not exist_config_active >= 1:
 
-                    config = ConfigModel()
-                    config.url_server = "http://"+form.url.data
-                    config.token_agency = form.token.data
-                    config.id_local_agency = int(result['current_agency']['agency_id'])
-                    config.put()
+                if not exist_config_active >= 1:
 
                     currency = CurrencyModel(id=result['current_agency']['agency_destination']['destination_currency']['currency_id'])
                     currency.code = result['current_agency']['agency_destination']['destination_currency']['currency_code']
@@ -200,24 +202,38 @@ def Home():
                     agency.status = result['current_agency']['agency_status']
                     agency.local_status = True
                     agency.destination = destination_save
-                    agency.put()
+                    agency_save = agency.put()
 
-                    flash('', 'danger')
+
+                    config = ConfigModel()
+                    config.url_server = "http://"+form.url.data
+                    config.token_agency = form.token.data
+                    config.local_ref = agency_save
+                    config.put()
+
+                    flash('Agency Synchronize', 'success')
                     return redirect(url_for('Home'))
         else:
             if not user_login.is_active():
                 flash('Your account is disabled. Contact Administrator', 'danger')
                 return redirect(url_for('Home', url=url))
 
-            session['user_id'] = user_login.key.id()
             agency = 0
             if user_login.agency:
                 agency = user_login.agency.get().key.id()
+                if not agency.status:
+                    flash('Your agency is disabled in online apps. Contact Administrator', 'danger')
+                    return redirect(url_for('Home', url=url))
+
+                if not agency.local_status:
+                    flash('You can not connect in local. Your agency is disabled. Contact Administrator', 'danger')
+                    return redirect(url_for('Home', url=url))
 
             #implementation de l'heure local
             time_zones = pytz.timezone('Africa/Douala')
             date_auto_nows = datetime.datetime.now(time_zones).strftime("%Y-%m-%d %H:%M:%S")
 
+            session['user_id'] = user_login.key.id()
             session['agence_id'] = agency
             user_login.logged = True
             user_login.date_last_logged = function.datetime_convert(date_auto_nows)
@@ -228,7 +244,11 @@ def Home():
 
             return redirect(url_for('Dashboard'))
 
-    synchro = SynchroModel.query().order(-SynchroModel.date).get()
+    synchro = None
+    if config_agency:
+        synchro = SynchroModel.query(
+            SynchroModel.agency_synchro == config_agency.local_ref
+        ).order(-SynchroModel.date).get()
 
     # Affichage de la connexion au serveur
     connexion = True
@@ -247,7 +267,7 @@ def Home():
         date_today = datetime.date.today()
         delta = datetime.timedelta(hours=24)
         date_syncho = synchro.date + delta
-        if date_syncho >= date_today and exist:
+        if date_syncho <= date_today and exist:
             synchronize = True
     elif exist:
         synchronize = True
@@ -281,13 +301,16 @@ def Dashboard():
     #TRAITEMENT DU TRAFIC GABON
     all_agency = AgencyModel.query()
 
+    the_ticket_agency_gabon = []
+    the_ticket_agency_cm_ngn = []
+
     time_minus_14days = datetime.datetime.now(time_zones) - datetime.timedelta(days=14)
     time_minus_14days = time_minus_14days.strftime("%Y-%m-%d %H:%M:%S")
 
     month_current = function.datetime_convert(date_auto_nows).month
 
     # TRAITEMENT DU DASHBOARD DE SELLER
-    if not current_user.has_roles(('manager_agency', 'super_admin')) and current_user.has_roles('employee_POS'):
+    if not current_user.has_roles(('admin', 'manager_agency', 'super_admin')) and current_user.has_roles('employee_POS'):
 
         user_ticket = TicketModel.query(
             TicketModel.ticket_seller == current_user.key,
@@ -372,25 +395,26 @@ def Dashboard():
             temp_dict = dict(zip(["travel", "currency"], key))
             temp_dict['price'] = 0
             for item in grp:
-                temp_dict['price'] += item['price']
+                temp_dict['price'] += item['amount']
             the_amount_foreign_sale.append(temp_dict)
 
         return render_template('/index/dashboard_pos.html', **locals())
 
 
     # TRAITEMENT DU DASHBOARD DU MANAGER
-    user_agency = AgencyModel.get_by_id(int(session.get('agence_id')))
+    if not current_user.has_roles(('admin','super_admin')) and current_user.has_roles('manager_agency'):
 
-    ticket_agency = TicketModel.query(
-        TicketModel.agency == user_agency.key,
-        TicketModel.selling == True,
-        TicketModel.is_count == True,
-        TicketModel.date_reservation <= function.datetime_convert(date_auto_nows),
-        TicketModel.date_reservation > function.datetime_convert(time_minus_14days)
-    )
-    the_ticket_agency_tab = []
-    for ticket in ticket_agency:
-        if ticket.travel_ticket.get().destination_start == user_agency.destination:
+        user_agency = AgencyModel.get_by_id(int(session.get('agence_id')))
+
+        ticket_agency = TicketModel.query(
+            TicketModel.agency == user_agency.key,
+            TicketModel.selling == True,
+            TicketModel.is_count == True,
+            TicketModel.date_reservation <= function.datetime_convert(date_auto_nows),
+            TicketModel.date_reservation > function.datetime_convert(time_minus_14days)
+        )
+        the_ticket_agency_tab = []
+        for ticket in ticket_agency:
             tickets = {}
             tickets['date'] = function.format_date(ticket.departure.get().departure_date, "%Y-%m-%d")
             tickets['departure'] = ticket.departure
@@ -411,102 +435,108 @@ def Dashboard():
             tickets['currency'] = user_agency.destination.get().currency.get().code
             the_ticket_agency_tab.append(tickets)
 
-    grouper = itemgetter("date", "heure", "departure", "currency")
+        grouper = itemgetter("date", "heure", "departure", "currency")
 
-    the_ticket_agency = []
-    for key, grp in groupby(sorted(the_ticket_agency_tab, key=grouper), grouper):
-        temp_dict = dict(zip(["date", "heure", "departure", "currency"], key))
-        temp_dict['price'] = 0
-        for item in grp:
-            temp_dict['departure_start'] = item['departure_start']
-            temp_dict['departure_check'] = item['departure_check']
-            temp_dict['price'] += item['price']
-        the_ticket_agency.append(temp_dict)
+        the_ticket_agency = []
+        for key, grp in groupby(sorted(the_ticket_agency_tab, key=grouper), grouper):
+            temp_dict = dict(zip(["date", "heure", "departure", "currency"], key))
+            temp_dict['price'] = 0
+            for item in grp:
+                temp_dict['departure_start'] = item['departure_start']
+                temp_dict['departure_check'] = item['departure_check']
+                temp_dict['price'] += item['price']
+            the_ticket_agency.append(temp_dict)
 
-    heure = function.datetime_convert(date_auto_nows).time()
+        heure = function.datetime_convert(date_auto_nows).time()
 
-    from ..departure.models_departure import DepartureModel
+        from ..departure.models_departure import DepartureModel
 
-    departure = DepartureModel.query(
-        DepartureModel.departure_date == datetime.date.today(),
-        DepartureModel.schedule >= heure
-    ).order(
-        -DepartureModel.departure_date,
-        DepartureModel.schedule,
-        DepartureModel.time_delay
-    )
+        departure = DepartureModel.query(
+            DepartureModel.departure_date == datetime.date.today(),
+            DepartureModel.schedule >= heure
+        ).order(
+            -DepartureModel.departure_date,
+            DepartureModel.schedule,
+            DepartureModel.time_delay
+        )
 
-    for dep in departure:
-        if dep.destination.get().destination_start == user_agency.destination:
-            current_departure = dep
-            break
+        for dep in departure:
+            if dep.destination.get().destination_start == user_agency.destination:
+                current_departure = dep
+                break
 
-    for dep in departure:
-        if dep.destination.get().destination_check == user_agency.destination:
-            current_departure_check = dep
-            break
+        for dep in departure:
+            if dep.destination.get().destination_check == user_agency.destination:
+                current_departure_check = dep
+                break
 
-    departure_current = DepartureModel.query(
-        DepartureModel.departure_date == datetime.date.today(),
-        DepartureModel.schedule < heure
-    ).order(
-        -DepartureModel.departure_date,
-        DepartureModel.schedule,
-        DepartureModel.time_delay
-    )
+        departure_current = DepartureModel.query(
+            DepartureModel.departure_date == datetime.date.today(),
+            DepartureModel.schedule < heure
+        ).order(
+            -DepartureModel.departure_date,
+            DepartureModel.schedule,
+            DepartureModel.time_delay
+        )
 
-    for dep in departure_current:
-        interval = datetime.datetime.combine(datetime.date.today(), heure) - datetime.datetime.combine(dep.departure_date, function.add_time(dep.schedule, dep.time_delay))
-        time_travel = function.time_convert(dep.destination.get().time)
-        time_travel = datetime.timedelta(hours=time_travel.hour, minutes=time_travel.minute)
-        if interval <= time_travel:
-            current_departure_in_progress = dep
-            break
-
-
-    ticket_agency = TicketModel.query(
-        TicketModel.agency == user_agency.key,
-        TicketModel.selling == True,
-        TicketModel.is_count == True
-    )
-
-    ticket_sale_local = {}
-    ticket_sale_local['price'] = 0
-    ticket_sale_local['number'] = 0
-    for ticket in ticket_agency:
-        if function.datetime_convert(ticket.date_reservation).month == month_current and ticket.travel_ticket.get().destination_start == user_agency.destination:
-            ticket_sale_local['price'] += ticket.sellprice
-            ticket_sale_local['number'] += 1
-            ticket_sale_local['currency'] = ticket.sellpriceCurrency.get().code
-
-    ticket_sale_foreign_tab = []
-    for ticket in ticket_agency:
-        if function.datetime_convert(ticket.date_reservation).month == month_current and ticket.travel_ticket.get().destination_start != user_agency.destination:
-            ticket_sale_foreign = {}
-            ticket_sale_foreign['travel'] = ticket.travel_ticket
-            ticket_sale_foreign['price'] = ticket.sellprice
-            ticket_sale_foreign['number'] = 1
-            ticket_sale_foreign['currency'] = ticket.sellpriceCurrency.get().code
-            ticket_sale_foreign_tab.append(ticket_sale_foreign)
-
-    groupers = itemgetter("travel", "currency")
-
-    the_ticket_sale_foreign = []
-    for key, grp in groupby(sorted(ticket_sale_foreign_tab, key=groupers), groupers):
-        temp_dict = dict(zip(["travel", "currency"], key))
-        temp_dict['price'] = 0
-        temp_dict['number'] = 0
-        for item in grp:
-            temp_dict['price'] += item['price']
-            temp_dict['number'] += item['number']
-        the_ticket_sale_foreign.append(temp_dict)
-
-    return render_template('/index/dashboard_manager.html', **locals())
+        for dep in departure_current:
+            interval = datetime.datetime.combine(datetime.date.today(), heure) - datetime.datetime.combine(dep.departure_date, function.add_time(dep.schedule, dep.time_delay))
+            time_travel = function.time_convert(dep.destination.get().time)
+            time_travel = datetime.timedelta(hours=time_travel.hour, minutes=time_travel.minute)
+            if interval <= time_travel:
+                current_departure_in_progress = dep
+                break
 
 
+        ticket_agency = TicketModel.query(
+            TicketModel.agency == user_agency.key,
+            TicketModel.selling == True,
+            TicketModel.is_count == True
+        )
 
+        ticket_sale_local = {}
+        ticket_sale_local['price'] = 0
+        ticket_sale_local['number'] = 0
+        for ticket in ticket_agency:
+            if function.datetime_convert(ticket.date_reservation).month == month_current and ticket.travel_ticket.get().destination_start == user_agency.destination:
+                ticket_sale_local['price'] += ticket.sellprice
+                ticket_sale_local['number'] += 1
+                ticket_sale_local['currency'] = ticket.sellpriceCurrency.get().code
 
+        ticket_sale_foreign_tab = []
+        for ticket in ticket_agency:
+            if function.datetime_convert(ticket.date_reservation).month == month_current and ticket.travel_ticket.get().destination_start != user_agency.destination:
+                ticket_sale_foreign = {}
+                ticket_sale_foreign['travel'] = ticket.travel_ticket
+                ticket_sale_foreign['price'] = ticket.sellprice
+                ticket_sale_foreign['number'] = 1
+                ticket_sale_foreign['currency'] = ticket.sellpriceCurrency.get().code
+                ticket_sale_foreign_tab.append(ticket_sale_foreign)
 
+        groupers = itemgetter("travel", "currency")
+
+        the_ticket_sale_foreign = []
+        for key, grp in groupby(sorted(ticket_sale_foreign_tab, key=groupers), groupers):
+            temp_dict = dict(zip(["travel", "currency"], key))
+            temp_dict['price'] = 0
+            temp_dict['number'] = 0
+            for item in grp:
+                temp_dict['price'] += item['price']
+                temp_dict['number'] += item['number']
+            the_ticket_sale_foreign.append(temp_dict)
+
+        return render_template('/index/dashboard_manager.html', **locals())
+
+    # Redirection d'un utilisateur employe boarding
+    if not current_user.has_roles(('admin', 'manager_agency', 'super_admin', 'employee_POS')) and current_user.has_roles('employee_Boarding'):
+        return redirect(url_for('Boarding'))
+
+    from ..config.model_config import ConfigModel, SynchroModel
+
+    list_conf = ConfigModel.query()
+    list_sync = SynchroModel.query().order(-SynchroModel.date).get()
+
+    return render_template('/index/dashboard.html', **locals())
 
 @app.route('/settings')
 @login_required

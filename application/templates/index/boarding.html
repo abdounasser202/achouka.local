@@ -12,15 +12,16 @@
                     </div>
                     <br/>
                     <div class="col-lg-10 col-lg-offset-1">
+                        {% include 'includes/flash_message.html' %}
                         <div class="panel panel-primary">
                           <div class="panel-body">
                               <form action="#" class="form-horizontal clearfix" id="SearchTicket">
                                   <fieldset>
-                                      <legend class="text-center">SEARCH TICKET TO GENERATE BOARDING PASS</legend>
+                                      <legend class="text-center">Search Ticket To Generate Boarding Pass</legend>
                                       <div class="form-group">
-                                        <label class="col-sm-2 control-label">TICKET CODE :</label>
+                                        <label class="col-sm-2 control-label">Ticket Code :</label>
                                         <div class="col-sm-8">
-                                            <input type="text" class="form-control" placeholder="Enter ticket number" name="number_ticket" id="number_ticket" autofocus autocomplete="false" >
+                                            <input type="text" class="form-control" placeholder="Enter ticket number" name="number_ticket" id="number_ticket" {% if number %} value="{{ number }}" {% endif %} autofocus autocomplete="false" >
                                             <input type="hidden" name="departure_id" id="departure_id" value="{% if current_departure %} {{ current_departure.key.id() }} {% endif %}" />
                                         </div>
                                           <div class="col-sm-2">
@@ -68,13 +69,15 @@
 
                                         {% else %}
                                               <div class="panel-body text-center">
-                                                <h3>No up coming journey</h3>
+                                                <h3>No next journey</h3>
                                               </div>
                                         {% endif %}
                                     </div>
 
                                     <div class="panel-footer">
-
+                                        {% if current_departure %}
+                                            <button class="btn btn-info btn-block btn-sm" id="customer_aboard">View passengers onboard</button>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -104,7 +107,7 @@
         $('#number_ticket').inputmask("9999999999999999", { placeholder:"****************"});
 
         // Traitement de la recherche de ticket
-        $('#SubmitTicketNumber').click(function(e){
+        $('#SubmitTicketNumber').on('click', function(e){
             e.preventDefault();
             if($('#departure_id').val() != ""){
                 url = $(this).attr('href');
@@ -127,5 +130,34 @@
              $('#FindTicketBoarding').html('');
         });
 
+        $('body').on('click', "#customer_aboard", function(){
+            $.ajax({
+                url: "{% if current_departure %} {{ url_for('customer_aboard', departure_id=current_departure.key.id()) }} {% endif %}" ,
+                type: 'GET',
+                success: function(data) {
+                    $('#NoFoundTicketBoarding').addClass('hidden');
+                    $('#FindTicketBoarding').removeClass('hidden').html(data);
+                    $('#print_customer_aboard').removeClass('hidden')
+                }
+            });
+        });
+
+        if($('#number_ticket').val().length == 16){
+            $('#SubmitTicketNumber').trigger('click');
+        }
+
+
+
+{#        function printDiv(divName) {#}
+{##}
+{#             var printContents = document.getElementById(divName).innerHTML;#}
+{#             var originalContents = document.body.innerHTML;#}
+{##}
+{#             document.body.innerHTML = printContents;#}
+{##}
+{#             window.print();#}
+{##}
+{#             document.body.innerHTML = originalContents;#}
+{#        }#}
     </script>
 {% endblock %}

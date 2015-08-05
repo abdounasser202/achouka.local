@@ -5,11 +5,13 @@
         <div class="panel panel-primary">
           <div class="panel-body">
               <div class="page-header clearfix" style="margin: 0 !important;">
-                  <div class="col-lg-7 text-left"><h3 style="margin: 0;">TICKET ID : <b>{{ ticket.key.id() }}</b> </h3></div>
-                  <div class="col-lg-5 text-right">
+                  <div class="col-lg-6 text-left"><span style="font-size:20px">TICKET ID : <b>{{ ticket.key.id() }}</b> </span></div>
+                  <div class="col-lg-6 text-right">
                   <div class="btn-group">
-                      {% if ticket.is_return and ticket.statusValid and ticket.departure.get().destination.get().destination_check == agency_current_user.destination and ticket.is_boarding %}
-                            <a href="{{ url_for('create_customer_and_ticket_return', ticket_id=ticket.key.id()) }}" class="btn btn-info" id="CreateReturnTicket" disabled="disabled">Print return ticket</a>
+                      {% if current_user.have_agency() and ticket.is_return and ticket.statusValid and ticket.departure.get().destination.get().destination_check == current_user.agency.get().destination and ticket.is_boarding %}
+                            <a href="" class="btn btn-danger" id="CreateUpgradeTicket" disabled="disabled" data-toggle="modal" data-target="#myModal" data-backdrop="static">Upgrade Ticket</a>
+
+                            <a href="" class="btn btn-info" id="CreateReturnTicket" disabled="disabled">Return Ticket</a>
                       {% endif %}
                       <a class="btn" id="CloseSearchTicket">close</a>
                   </div>
@@ -74,7 +76,7 @@
                                   <tr>
                                       <td><strong>Price</strong></td>
                                       <td>
-                                          {{ ticket.sellprice }} {{ ticket.sellpriceCurrency.get().code }}
+                                          {{ ticket.sellprice|format_price() }} {{ ticket.sellpriceCurrency.get().code }}
                                       </td>
                                   </tr>
                               </table>
@@ -141,6 +143,15 @@
         </div>
     </div>
 </div>
+ <!-- Modal -->
+    <div class="modal fade" id="myModal" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+
+
+        </div>
+      </div>
+    </div>
 <script>
     $('#CloseSearchTicket').on('click', function(e){
         e.preventDefault();
@@ -148,16 +159,17 @@
         $('#info_ticket').addClass('hidden').html('');
     });
 
-    console.log($('#permanent_current_departure').text());
-
     if($('#current_departure_start').text() != '' && $('#current_departure_start').text() != ''){
         if ($('#current_departure_start').text() == {{ ticket.departure.get().destination.get().destination_check.get().key.id() }}  && $('#current_departure_check').text() == {{ ticket.departure.get().destination.get().destination_start.get().key.id() }}){
            $('#CreateReturnTicket').removeAttr('disabled')
+           $('#CreateUpgradeTicket').removeAttr('disabled')
         }
     }
 
     var val_id = $('#CurrentDeparture').val();
     $('#CreateReturnTicket').attr({'href': "{{url_for('create_customer_and_ticket_return', ticket_id=ticket.key.id())}}"+"/"+val_id});
+    $('#CreateUpgradeTicket').attr({'href': "{{url_for('create_customer_and_ticket_upgrade', ticket_id=ticket.key.id())}}"+"/"+val_id});
+
 
     $('#CreateReturnTicket').on('click', function(e){
         e.preventDefault();
@@ -172,5 +184,10 @@
                 }
         });
 
-    })
+    });
+
+    $('#myModal').on('hide.bs.modal', function(e) {
+        $('.modal-content').html('');
+        $(this).removeData('bs.modal');
+    });
 </script>

@@ -8,7 +8,7 @@
             <div class="col-lg-12">
                 <section>
                     <div class="page-header clearfix text-center" style="margin: 0 !important;">
-                                <h3 style='margin: 0;'>Welcome to COMATRANS POS <small>sell ticket</small> </h3>
+                                <h3 style='margin: 0;'>Welcome to COMATRANS POS</h3>
                     </div>
                     <div id="ScreenCreateTicket" class="hidden"></div>
                     <div id="ScreenIndexPos" style="margin-top: 20px;">
@@ -58,7 +58,7 @@
 
                                         {% else %}
                                               <div class="panel-body text-center">
-                                                <h3>No up coming journey</h3>
+                                                <h3>No next journey</h3>
                                               </div>
                                         {% endif %}
                                     </div>
@@ -180,7 +180,7 @@
                     $('#current_departure').removeClass('update');
                     $('#current_departure').html('');
                     $('#current_departure').html(rq1[0]);
-                    $('#current_departure').parent().children('.panel-heading').text('CALENDAR DEPARTURE');
+                    $('#current_departure').parent().children('.panel-heading').text('CALENDAR');
                     $('#change_current_departure.btn-info').removeClass('btn-info');
                     $('#change_current_departure').addClass('btn-danger');
                     $('#change_current_departure.btn-danger').text('Click here to reset');

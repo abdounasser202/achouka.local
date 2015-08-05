@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-settings.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Settings') }}">Settings</a></li>
+                          <li><a href="{{ url_for('Agency_Index') }}">Agency</a></li>
+                            {% if agency_id %}
+                                <li class="active">Edit</li>
+                            {% else %}
+                                <li class="active">New</li>
+                            {% endif %}
+                        </ol>
+                        <div class="row">
+                            <div class="col-lg-8">
+                                {% include 'includes/flash_message.html' %}
+                                <form method="post" class="form-horizontal">
+                                    <fieldset><legend>Edit Agency</legend>
+                                        {{ form.hidden_tag() }}
+                                    {% if agency_id and current_user.has_roles(('admin', 'super_admin'))%}
+                                      <div class="form-group">
+                                        <label class="col-sm-3 control-label">Local Token :</label>
+                                        <div class="col-sm-9">
+                                            <input type="text" value="{{ agencymod.Key() }}" disabled="disabled" class='form-control input-lg'/>
+                                        </div>
+                                      </div>
+                                    {% endif %}
+                                      <div class="form-group {% if form.name.errors %} has-error {% endif %} has-feedback">
+                                        <label class="col-sm-3 control-label">{{ form.name.label }} :</label>
+                                        <div class="col-sm-9">
+                                          {{ form.name(class_='form-control input-lg')|safe }}
+                                          {% for message in form.name.errors %}
+                                            <span class="help-block text-danger">{{ message }}</span>
+                                          {% endfor %}
+
+                                        </div>
+                                      </div>
+                                      <div class="form-group {% if form.phone.errors %} has-error {% endif %} has-feedback">
+                                        <label class="col-sm-3 control-label">{{ form.phone.label }} :</label>
+                                        <div class="col-sm-9">
+                                          {{ form.phone(class_='form-control input-lg')|safe }}
+                                          {% for message in form.phone.errors %}
+                                            <span class="help-block text-danger">{{ message }}</span>
+                                          {% endfor %}
+
+                                        </div>
+                                      </div>
+
+                                      <div class="form-group {% if form.fax.errors %} has-error {% endif %} has-feedback">
+                                        <label class="col-sm-3 control-label">{{ form.fax.label }} :</label>
+                                        <div class="col-sm-9">
+                                          {{ form.fax(class_='form-control input-lg')|safe }}
+                                          {% for message in form.fax.errors %}
+                                            <span class="help-block text-danger">{{ message }}</span>
+                                          {% endfor %}
+
+                                        </div>
+                                      </div>
+
+                                      <div class="form-group {% if form.country.errors %} has-error {% endif %} has-feedback">
+                                        <label class="col-sm-3 control-label">{{ form.country.label }} :</label>
+                                        <div class="col-sm-9">
+                                          <select name="country" id="" class="form-control g-select" {% if form.country.data %} disabled="disabled" {% endif %}>
+                                                <option value="">Select country</option>
+                                                {% for key, val in country_agency.items() %}
+                                                    <option value="{{ key }}" {% if form.country.data == key %} selected {% endif %}>{{ val }}</option>
+                                                {% endfor %}
+                                          </select>
+                                          {% for message in form.country.errors %}
+                                            <span class="help-block text-danger">{{ message }}</span>
+                                          {% endfor %}
+
+                                        </div>
+                                      </div>
+
+                                      <div class="form-group {% if form.destination.errors %} has-error {% endif %} has-feedback">
+                                        <label class="col-sm-3 control-label">{{ form.destination.label }} :</label>
+                                        <div class="col-sm-9">
+                                            <select name="destination" id="" class="form-control g-select input-lg" {% if form.destination.data %} disabled="disabled" {% endif %}>
+                                                <option value="">{{ form.destination.label }}</option>
+                                                {% for dest in destagency %}
+                                                    <option value="{{ dest.key.id() }}" {% if form.destination.data == dest.key or form.destination.data|int == dest.key.id() %} selected {% endif %}> {{ dest.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                          {% for message in form.destination.errors %}
+                                            <span class="help-block text-danger">{{ message }}</span>
+                                          {% endfor %}
+
+                                        </div>
+                                      </div>
+
+                                      <div class="form-group {% if form.address.errors %} has-error {% endif %} has-feedback">
+                                        <label class="col-sm-3 control-label">{{ form.address.label }} :</label>
+                                        <div class="col-sm-9">
+                                          {{ form.address(class_='form-control input-lg')|safe }}
+                                          {% for message in form.address.errors %}
+                                            <span class="help-block text-danger">{{ message }}</span>
+                                          {% endfor %}
+
+                                        </div>
+                                      </div>
+
+                                      <div class="form-group {% if form.reduction.errors %} has-error {% endif %} has-feedback">
+                                        <label class="col-sm-3 control-label">{{ form.reduction.label }} :</label>
+                                        <div class="col-sm-9">
+                                          {{ form.reduction(class_='form-control input-lg')|safe }}
+                                          {% for message in form.reduction.errors %}
+                                            <span class="help-block text-danger">{{ message }}</span>
+                                          {% endfor %}
+
+                                        </div>
+                                      </div>
+
+                                      <div class="form-group">
+                                        <div class="col-sm-offset-3 col-sm-10">
+                                          <button type="submit" class="btn btn-primary">Save</button>
+                                            <a href="{{ url_for('Agency_Index') }}" class="btn btn-default">Return</a>
+                                        </div>
+                                      </div>
+
+                                    </fieldset>
+                                </form>
+
+                            </div>
+                            <div class="col-lg-4">
+                                <h4>Last Activity</h4>
+                                    <hr/>
+                                    {% for feed in feed_tab %}
+                                        <blockquote style="padding: 10px 6px;">
+                                            {% if feed['nature'] == 1 %}
+                                                  <p style="font-size: 13px;"><strong>New Record</strong> : {{ feed['data'] }} by {{ feed['user'].get().first_name }} {{ feed['user'].get().last_name }}</p>
+                                            {% endif %}
+                                            {% if feed['nature'] == 4 or feed['nature'] == 0 %}
+                                                  <p style="font-size: 13px;"><strong>Record Updated</strong> : {{ feed['data'] }} by {{ feed['user'].get().first_name }} {{ feed['user'].get().last_name }}</p>
+                                                <br/>{% if feed['last_value'] %} Modification ({{ feed['last_value'] }}) {% endif %}
+
+                                            {% endif %}
+                                            {% if feed['nature'] == 5 %}
+                                                  <p style="font-size: 13px;"><strong>Record activated</strong> : {{ feed['data'] }} </p>
+                                            {% endif %}
+                                            {% if feed['nature'] == 2 %}
+                                                  <p style="font-size: 13px;"><strong>Record disabled</strong> : {{ feed['data'] }} </p>
+                                            {% endif %}
+                                            <footer style="font-size: 65%;">{{ feed['time']|format_date("%d-%m-%Y %H:%M") }} </footer>
+                                        </blockquote>
+                                    {% else %}
+                                        <blockquote style="padding: 10px 6px;">
+                                            <p style="font-size: 13px;"><strong>No recent activity</strong> </p>
+                                        </blockquote>
+                                    {% endfor %}
+                            </div>
+                        </div>
+
+                </section>
+            </div>
+        </div>
+    </div>
+{% endblock %}

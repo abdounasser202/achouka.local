@@ -37,6 +37,12 @@ indexes:
   - name: schedule
   - name: time_delay
 
+- kind: SynchroModel
+  properties:
+  - name: agency_synchro
+  - name: date
+    direction: desc
+
 - kind: TicketModel
   properties:
   - name: agency

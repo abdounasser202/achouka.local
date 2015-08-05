@@ -45,37 +45,20 @@ class TicketPoly(polymodel.PolyModel):
 
 class TicketModel(TicketPoly):
 
-    def get_price_sell(self, current_user):
-        #Traitement des prix en fonction de la devise.
-        db_currency = CurrencyModel.get_by_id(self.sellpriceCurrency.id())
-        us_currency = current_user.get_currency_info()
-
-        custom_equi = EquivalenceModel.query(
-            EquivalenceModel.currencyRate == db_currency.key,
-            EquivalenceModel.currencyEqui == us_currency.key
-        ).get()
-
-        if not custom_equi:
-            price = self.sellprice
-            currency = db_currency.code
-        else:
-            price = self.sellprice*custom_equi.value
-            currency = us_currency.code
-
-        new_price = str(price)+" "+currency
-
-        return new_price
+    upgrade_parent = ndb.KeyProperty(kind=TicketPoly)
+    is_upgrade = ndb.BooleanProperty(default=False)
+    is_count = ndb.BooleanProperty(default=True)
+    parent_return = ndb.KeyProperty(kind=TicketPoly)
 
     def answer_question(self):
         answer = TicketQuestion.query(
             TicketQuestion.ticket_id == self.key
         )
-
         return answer
 
 
-class TicketParent(TicketPoly): #TICKET VIRTUEL GENERE PAR UN TICKET ALLE ET RETOUR. IL N'EST PAS COMPTABILISE
-    parent = ndb.KeyProperty(kind=TicketModel)
+# class TicketParent(TicketPoly): #TICKET VIRTUEL GENERE PAR UN TICKET ALLE ET RETOUR. IL N'EST PAS COMPTABILISE
+#     parent = ndb.KeyProperty(kind=TicketModel)
 
 
 class TicketQuestion(ndb.Model):

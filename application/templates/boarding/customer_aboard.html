@@ -1,0 +1,77 @@
+<div class="panel panel-info">
+  <div class="panel-heading text-center">
+    <h3>Passengers Onboard</h3>
+  </div>
+  <div class="panel-body" id="printer">
+    {% if printer %}
+        <div class="text-center">
+            <h3 style="margin: 0; margin-bottom:20px;">Journey Information</h3>
+        </div>
+
+        <table class="table">
+            <tbody>
+            <tr>
+                <td><strong>Journey</strong>: {{ departure_get.destination.get().destination_start.get().name }} - {{ departure_get.destination.get().destination_check.get().name }} </td>
+                <td><strong>Date</strong>: {{ departure_get.departure_date }}</td>
+                <td><strong>Time</strong>: {{ departure_get.schedule|add_time(departure_get.time_delay) }}</td>
+            </tr>
+            </tbody>
+        </table>
+        <hr/>
+        <div class="text-center">
+            <h3 style="margin: 0; margin-bottom: 20px;">Passengers Onboard</h3>
+        </div>
+
+   {% endif %}
+    <table class="table table-hover" {% if not printer %} id="dataTables" {% endif %}>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Last Name</th>
+            <th>First Name</th>
+        </tr>
+        </thead>
+        <tbody>
+            {% for customer in ticket_user_query %}
+                <tr>
+                    <td>{{ customer.customer.get().key.id() }}</td>
+                    <td>{{ customer.customer.get().last_name }}</td>
+                    <td>{{ customer.customer.get().first_name }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+  </div>
+  <div class="panel-footer">
+         <button class="btn btn-danger hidden" id="print_customer_aboard">Print Passengers Onboard</button>
+  </div>
+</div>
+<script>
+    $('#dataTables').dataTable({
+    'aoColumnDefs': [
+        {'bSortable': false, 'aTargets': ['nosort']},
+        {'bSearchable': false, "aTargets": ['nosort']}
+    ]
+    });
+
+    $('body').on('click', '#print_customer_aboard', function(){
+        $.ajax({
+            url: "{{ url_for('customer_aboard', departure_id=departure_id) }}?printer=1",
+            type: 'GET',
+            success: function(data) {
+
+                var $response = $(data);
+                var test = $response.find('#printer').html();
+                var printContents = test;
+
+                var originalContents = document.body.innerHTML;
+
+                document.body.innerHTML = printContents;
+
+                window.print();
+
+                document.body.innerHTML = originalContents;
+            }
+        });
+    });
+</script>

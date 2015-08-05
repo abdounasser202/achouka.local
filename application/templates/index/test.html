@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+
+{% block layout_content %}
+
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-12">
+                <section>
+                    <div class="page-header clearfix text-center" style="margin: 0 !important;">
+                      <h1  style='margin: 0;'>{{ current_user.first_name }} {{ current_user.last_name }}, welcome to your <small>DASHBOARD</small> </h1>
+                    </div>
+                    <br/>
+
+
+                </section>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

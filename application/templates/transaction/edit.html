@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-recording.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Recording') }}">Recording</a></li>
+                          <li><a href="{{ url_for('Transaction_Index') }}">Transaction  Management</a></li>
+                            {% if transaction_id %}
+                                <li class="active">Edit</li>
+                            {% else %}
+                                <li class="active">New</li>
+                            {% endif %}
+                        </ol>
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <form method="post" class="form-horizontal">
+                                    <fieldset><legend>Edit Transaction</legend>
+                                        {{ form.hidden_tag() }}
+                                    <div class="alert alert-warning clearfix hidden" id="confirm">
+                                        <strong>Do you want save this transaction ?</strong>
+                                        <div class="pull-right">
+                                            <button type="submit" class="btn btn-success btn-sm">Confirm</button>
+                                            <button type="button" class="btn btn-danger btn-sm" id="unconfirm">Cancel</button>
+                                        </div>
+                                    </div>
+                                    <div id="body-cache">
+                                         <div class="form-group {% if form.agency.errors %} has-error {% endif %} has-feedback">
+                                            <label class="col-sm-3 control-label">{{ form.agency.label }} :</label>
+                                            <div class="col-sm-9">
+                                                <select name="agency" id="" class="form-control g-select">
+                                                    <option value="">{{ form.agency.label }}</option>
+                                                    {% for transagency in transagency %}
+                                                        <option value="{{ transagency.key.id() }}" {% if form.agency.data == transagency.key or form.agency.data|int == transagency.key.id() %} selected {% endif %}>{{ transagency.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                              {% for message in form.agency.errors %}
+                                                <span class="help-block text-danger">{{ message }}</span>
+                                              {% endfor %}
+
+                                            </div>
+                                          </div>
+                                          <div class="form-group {% if form.amount.errors or form.currency.errors %} has-error {% endif %} has-feedback">
+                                            <label class="col-sm-3 control-label">{{ form.amount.label }} :</label>
+                                            <div class="col-sm-9">
+                                                <div class="row">
+                                                    <div class="col-lg-8">
+                                                      {{ form.amount(class_='form-control')|safe }}
+                                                      {% for message in form.amount.errors %}
+                                                        <span class="help-block text-danger">{{ message }}</span>
+                                                      {% endfor %}
+                                                    </div>
+                                                    <div class="col-lg-4">
+                                                       <select name="currency" id="" class="form-control g-select">
+                                                            <option value="">{{ form.currency.label }}</option>
+                                                            {% for transcurrency in transcurrency %}
+                                                                <option value="{{ transcurrency.key.id() }}" {% if form.currency.data == transcurrency.key or form.currency.data|int == transcurrency.key.id() %} selected {% endif %}>{{ transcurrency.code }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                      {% for message in form.currency.errors %}
+                                                        <span class="help-block text-danger">{{ message }}</span>
+                                                      {% endfor %}
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                          </div>
+                                          <div id="cache"></div>
+                                    </div>
+                                          <div class="form-group">
+                                            <div class="col-sm-offset-3 col-sm-10">
+
+                                              <button type="button" class="btn btn-primary" id="presave">Save</button>
+                                                <a href="{{ url_for('Transaction_Index') }}" class="btn btn-default">Return</a>
+                                            </div>
+                                          </div>
+
+                                    </fieldset>
+                                </form>
+                            </div>
+                            <div class="col-lg-4">
+
+                            </div>
+                        </div>
+
+                </section>
+            </div>
+        </div>
+    </div>
+{% endblock %}

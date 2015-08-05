@@ -1,19 +1,22 @@
 <div class="modal-header bg-primary">
         <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
         <div class="pull-right text-right bg-info text-danger" style="margin-right:40px; margin-top: -6px; padding: 10px;">
-            <strong>AMOUNT : </strong> {{ agency_get_id.escrow_amount(true)|format_price() }} {{ agency_get_id.destination.get().currency.get().code }}
+            <strong>AMOUNT : </strong>
+            {% set price = agency_get_id.escrow_amount(true)*-1 %}
+            {{ price|format_price() }}
+            {{ agency_get_id.destination.get().currency.get().code }}
 
         </div>
 
         <h4 class="modal-title">Transaction </h4>
 </div>
-<div class="modal-body scrollable-shadow" style="height: 600px; overflow-y: auto">
-     <h3 class="text-primary">Agency : {{ agency_get_id.name }} from {{ agency_get_id.destination.get().name }}</h3>
+<div class="modal-body scrollable-shadow" style="height: 500px; overflow-y: auto">
+     <h3 class="text-primary">POS : {{ agency_get_id.name }} at {{ agency_get_id.destination.get().name }}</h3>
      <hr/>
      <table class="table table-hover" id="dataTable1">
         <thead>
         <tr>
-            <th>Date transaction</th>
+            <th>Transaction Date </th>
             <th>Amount</th>
             <th>User</th>
         </tr>
@@ -34,9 +37,9 @@
 <div class="modal-footer bg-info">
     <form class="form-horizontal" id="formulaires">
             <div class="col-lg-7">
-                {% if agency_get_id.escrow_amount(true) < 0 and agency_get_id.escrow_amount() < agency_get_id.escrow_amount(true) %}
+                {% if agency_get_id.escrow_amount(true) < 0 and agency_get_id.escrow_amount() > agency_get_id.escrow_amount(true) %}
                     <div class="form-group text-left" id="form-input">
-                        <label for="amount_received" class="col-sm-6 control-label">Amount received ( {{ agency_get_id.destination.get().currency.get().code }} ) :</label>
+                        <label for="amount_received" class="col-sm-6 control-label">Amount received ({{ agency_get_id.destination.get().currency.get().code }}) :</label>
                         <div class="col-sm-6">
                           <input type="text" class="form-control" id="amount_received" name="amount">
                             <span class="help-block hidden text-danger" id="help-error">Amount required or the data is not numeric and greater than zero</span>
@@ -47,19 +50,19 @@
     </form>
     <div class="col-lg-5">
         <button type="button" class="btn" data-dismiss="modal">Close</button>
-        {% if agency_get_id.escrow_amount(true) < 0 and agency_get_id.escrow_amount() < agency_get_id.escrow_amount(true) %}
+        {% if agency_get_id.escrow_amount(true) < 0 and agency_get_id.escrow_amount() > agency_get_id.escrow_amount(true) %}
             <button type="button" class="btn btn-primary" id="submit">Valid payment</button>
         {% endif %}
     </div>
 </div>
-{% if agency_get_id.escrow_amount(true) < 0 and agency_get_id.escrow_amount() < agency_get_id.escrow_amount(true) %}
+{% if agency_get_id.escrow_amount(true) < 0 and agency_get_id.escrow_amount() > agency_get_id.escrow_amount(true) %}
 <!-- Modal -->
     <div class="modal fade modal2" id="modal2" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-footer">
                 <div class="col-lg-8 text-danger text-left" style="padding: 7px;">
-                    <strong>Do you confirm this received amount  : <span id="amr"></span> {{ agency_get_id.destination.get().currency.get().code }}</strong>
+                    <strong>Do you confirm receiving: <span id="amr"></span> {{ agency_get_id.destination.get().currency.get().code }}</strong>
                 </div>
                 <div class="col-lg-4">
                     <button type="button" class="btn btn-success" id="confirm" data-loading-text="Waiting...">Confirm</button>
@@ -82,7 +85,7 @@
             {'bSearchable': false, "aTargets": ['nosort']}
         ]
     });
-    {% if agency_get_id.escrow_amount(true) < 0 and agency_get_id.escrow_amount() < agency_get_id.escrow_amount(true)%}
+    {% if agency_get_id.escrow_amount(true) < 0 and agency_get_id.escrow_amount() > agency_get_id.escrow_amount(true)%}
         $('#submit').on('click', function(e){
                 e.preventDefault();
                 if($('#amount_received').val() != "" && $.isNumeric($('#amount_received').val()) && $('#amount_received').val() > 0){

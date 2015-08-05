@@ -4,7 +4,7 @@
             <strong>ESCROW : </strong> {{ user_get_id.escrow_amount() }}
         </div>
 
-        <h4 class="modal-title">USER : {{ user_get_id.last_name }} {{ user_get_id.first_name }}</h4>
+        <h4 class="modal-title">SELLER : {{ user_get_id.last_name }} {{ user_get_id.first_name }}</h4>
 </div>
 <div class="modal-body scrollable-shadow" style="height: 550px; overflow-y: auto">
         <h3 class="text-primary">Expected Payment <small>( {{ user_get_id.ticket_number_selling() }} Tickets)</small></h3>
@@ -12,7 +12,7 @@
     <table class="table table-hover" id="dataTable1">
         <thead>
         <tr>
-            <th>Travel</th>
+            <th>Travel line</th>
             <th>Ticket Type</th>
             <th>Number</th>
             <th>Amount</th>
@@ -31,12 +31,12 @@
     </table>
     <br/>
 
-    <h3 class="text-primary">No payment balance</h3>
+    <h3 class="text-primary">Outstanding Payment</h3>
     <hr/>
     <table class="table table-hover" id="dataTable2">
         <thead>
         <tr>
-            <th>Travel</th>
+            <th>Travel line</th>
             <th>Ticket Type</th>
             <th>Amount</th>
             <th>Balance</th>
@@ -60,7 +60,7 @@
     {% if not current_user.has_roles(('admin','super_admin')) and current_user.has_roles('manager_agency') %}
 
                 <div class="form-group text-left" id="form-input">
-                    <label for="amount_received" class="col-sm-6 control-label">Amount received ( {{ user_get_id.agency.get().destination.get().currency.get().code }} ) :</label>
+                    <label for="amount_received" class="col-sm-6 control-label">Amount received ({{ user_get_id.agency.get().destination.get().currency.get().code }}) :</label>
                     <div class="col-sm-6">
                       <input type="text" class="form-control" id="amount_received" name="amount">
                         <span class="help-block hidden text-danger" id="help-error">Amount required or the data is not numeric and greater than zero</span>
@@ -87,7 +87,7 @@
         <div class="modal-content">
             <div class="modal-footer">
                 <div class="col-lg-8 text-danger text-left" style="padding: 7px;">
-                    <strong>Do you confirm this received amount  : <span id="amr"></span> {{ user_get_id.agency.get().destination.get().currency.get().code }}</strong>
+                    <strong>Do you confirm receiving: <span id="amr"></span> {{ user_get_id.agency.get().destination.get().currency.get().code }}</strong>
                 </div>
                 <div class="col-lg-4">
                     <button type="button" class="btn btn-success" id="confirm" data-loading-text="Waiting...">Confirm</button>

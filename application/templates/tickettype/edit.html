@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-settings.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Settings') }}">Settings</a></li>
+                          <li><a href="{{ url_for('TicketType_Index') }}">Tickets</a></li>
+                            {% if tickettype_id %}
+                                <li class="active">Edit</li>
+                            {% else %}
+                                <li class="active">New</li>
+                            {% endif %}
+                        </ol>
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <form method="post" class="form-horizontal" id="FormSubmit">
+                                    <fieldset><legend>Edit Ticket</legend>
+                                    {% if returnjourney < 1 %}
+                                        <div class="alert alert-danger">
+                                            <h4>Please Define a return journey.</h4>
+                                        </div>
+                                    {% endif %}
+                                    {{ form.hidden_tag() }}
+
+                                    <div id="body-cache">
+                                         <div class="form-group {% if form.name.errors %} has-error {% endif %} has-feedback">
+                                            <label class="col-sm-3 control-label">{{ form.name.label }} :</label>
+                                            <div class="col-sm-9">
+                                              {{ form.name(class_='form-control')|safe }}
+                                              {% for message in form.name.errors %}
+                                                <span class="help-block text-danger">{{ message }}</span>
+                                              {% endfor %}
+
+                                            </div>
+                                          </div>
+                                        <div class="form-group {% if form.travel.errors or form.currency.errors %} has-error {% endif %} has-feedback">
+                                            <label class="col-sm-3 control-label">{{ form.travel.label }} :</label>
+                                            <div class="col-sm-9">
+                                                        {% if tickettype_id %}
+                                                            <input type="hidden" name="travel" value="{{ form_travel }}"/>
+                                                        {% endif %}
+                                                        <select name="travel" id="travelselect" class="form-control g-select" {% if tickettype_id %} disabled="disabled" {% endif %}>
+                                                            <option value="">Choices travel</option>
+                                                            {% for tra in listTravel %}
+                                                                <option value="{{ tra.key.id() }}" {% if form.travel.data|int == tra.key.id() or form.travel.data == tra.key %} selected {% endif %}>
+                                                                    {{ tra.destination_start.get().name }} -
+                                                                    {{ tra.destination_check.get().name }}
+                                                                </option>
+                                                            {% endfor %}
+                                                        </select>
+                                                      {% for message in form.travel.errors %}
+                                                        <span class="help-block text-danger">{{ message }}</span>
+                                                      {% endfor %}
+
+                                            </div>
+                                          </div>
+                                          <div class="form-group {% if form.class_name.errors %} has-error {% endif %} has-feedback">
+                                            <label class="col-sm-3 control-label">{{ form.class_name.label }} :</label>
+                                            <div class="col-sm-9">
+                                                <select name="class_name" id="" class="form-control g-select input-lg">
+                                                    <option value="">{{ form.class_name.label }}</option>
+                                                    {% for class in listClassTicket %}
+                                                        <option value="{{ class.key.id() }}" {% if form.class_name.data == class.key or form.class_name.data|int == class.key.id() %} selected {% endif %}>{{ class.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                              {% for message in form.class_name.errors %}
+                                                <span class="help-block text-danger">{{ message }}</span>
+                                              {% endfor %}
+
+                                            </div>
+                                          </div>
+                                          <div class="form-group {% if form.type_name.errors %} has-error {% endif %} has-feedback">
+                                            <label class="col-sm-3 control-label">{{ form.type_name.label }} :</label>
+                                            <div class="col-sm-9">
+                                                <select name="type_name" id="" class="form-control g-select input-lg">
+                                                    <option value="">{{ form.type_name.label }}</option>
+                                                    {% for type in listTicketType %}
+                                                        <option value="{{ type.key.id() }}" {% if form.type_name.data == type.key or form.type_name.data|int == type.key.id() %} selected {% endif %}>{{ type.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                              {% for message in form.type_name.errors %}
+                                                <span class="help-block text-danger">{{ message }}</span>
+                                              {% endfor %}
+
+                                            </div>
+                                          </div>
+                                          <div class="form-group {% if form.journey_name.errors %} has-error {% endif %} has-feedback">
+                                            <label class="col-sm-3 control-label">{{ form.journey_name.label }} :</label>
+                                            <div class="col-sm-9">
+                                                <select name="journey_name" id="" class="form-control g-select input-lg">
+                                                    <option value="">{{ form.journey_name.label }}</option>
+                                                    {% for journey in listJourneyTicket %}
+                                                        <option value="{{ journey.key.id() }}" {% if form.journey_name.data == journey.key or form.journey_name.data|int == journey.key.id() %} selected {% endif %}>{{ journey.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                              {% for message in form.journey_name.errors %}
+                                                <span class="help-block text-danger">{{ message }}</span>
+                                              {% endfor %}
+
+                                            </div>
+                                          </div>
+
+                                     <div class="form-group {% if form.price.errors or form.currency.errors %} has-error {% endif %} has-feedback">
+                                        <label class="col-sm-3 control-label">{{ form.price.label }} :</label>
+                                        <div class="col-sm-9">
+                                            <div class="row">
+                                                <div class="col-lg-8">
+                                                  {{ form.price(class_='form-control')|safe }}
+                                                  {% for message in form.price.errors %}
+                                                    <span class="help-block text-danger">{{ message }}</span>
+                                                  {% endfor %}
+                                                </div>
+                                                <div class="col-lg-4">
+                                                    <input type="text" value="{% if form.currency.data %} {{ form_currency }} {% else %} Choice travel {% endif %}" class="form-control" id="value_currency" disabled="disabled"/>
+                                                    <input type="hidden" value="{% if tickettype_id %} {{ tickettype.currency.get().key.id() }} {% else %} {{ form.currency.data }} {% endif %}" name="currency" id="hidden_currency"/>
+                                                      {% for message in form.currency.errors %}
+                                                        <span class="help-block text-danger">{{ message }}</span>
+                                                      {% endfor %}
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                      </div>
+                                        <div id="cache"></div>
+                                    </div>
+                                    <div class="alert alert-warning clearfix hidden" id="confirm-alert">
+                                        <input type="checkbox" name="check">
+                                        <strong>Do you confirm this infomration ?</strong>
+                                    </div>
+                                      <div class="form-group">
+                                        <div class="col-sm-offset-3 col-sm-10">
+                                            <button type="button" class="btn btn-primary {% if returnjourney < 1 %} disabled {% endif %}" id="save">Save</button>
+                                            <button type="button" class="btn btn-success hidden" id="confirm">Confirm</button>
+                                            <button type="button" class="btn btn-default hidden" id="clean_confirm">Return</button>
+                                            <a href="{{ url_for('TicketType_Index') }}" class="btn btn-default" id="clean">Return</a>
+                                        </div>
+                                      </div>
+
+
+
+                                    </fieldset>
+                                </form>
+                            </div>
+                            <div class="col-lg-4">
+                                <h4>Last Activity</h4>
+                                    <hr/>
+                                    {% for feed in feed_tab %}
+                                        <blockquote style="padding: 10px 6px;">
+                                            {% if feed['nature'] == 1 %}
+                                                  <p style="font-size: 13px;"><strong>New Record</strong> : {{ feed['data'] }} by {{ feed['user'].get().first_name }} {{ feed['user'].get().last_name }}</p>
+                                            {% endif %}
+                                            {% if feed['nature'] == 4 %}
+                                                  <p style="font-size: 13px;"><strong>Record Updated</strong> : {{ feed['data'] }} by {{ feed['user'].get().first_name }} {{ feed['user'].get().last_name }}</p>
+                                            {% endif %}
+                                            {% if feed['nature'] == 5 %}
+                                                  <p style="font-size: 13px;"><strong>Record activated</strong> : {{ feed['data'] }} by {{ feed['user'].get().first_name }} {{ feed['user'].get().last_name }} </p>
+                                            {% endif %}
+                                            {% if feed['nature'] == 2 %}
+                                                  <p style="font-size: 13px;"><strong>Record disabled</strong> : {{ feed['data'] }}  by {{ feed['user'].get().first_name }} {{ feed['user'].get().last_name }}</p>
+                                            {% endif %}
+                                            <footer style="font-size: 65%;">{{ feed['time']|format_date("%d-%m-%Y %H:%M") }} </footer>
+                                        </blockquote>
+                                    {% else %}
+                                        <blockquote style="padding: 10px 6px;">
+                                            <p style="font-size: 13px;"><strong>No recent activity</strong> </p>
+                                        </blockquote>
+                                    {% endfor %}
+                            </div>
+                        </div>
+
+                </section>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block footer_script %}
+    <script>
+         $(document).ready(function(){
+             $('#travelselect').on('change', function(e){
+                 e.preventDefault();
+                 var id = $(this).val();
+                 var url = "{{ url_for('Currency_Travel') }}";
+
+                 if(id){
+                     url = "{{ url_for('Currency_Travel') }}/"+id
+                 }
+
+                 $.ajax({
+
+                        url: url,
+                        type: 'GET',
+                        contentType: 'application/json;charset=UTF-8',
+                        dataType: "json",
+                        success: function(data) {
+                            if(data['statut'] == 'OK'){
+                                $('#value_currency').val(data['currency']);
+                                $('#hidden_currency').val(data['id']);
+                            }else{
+                                $('#value_currency').val(data['value']);
+                                $('#hidden_currency').val(data['id']);
+                            }
+                        }
+                    });
+             });
+
+             $('#confirm').on('click', function(e){
+                 e.preventDefault();
+                 $('#FormSubmit').submit();
+
+             });
+
+             $('#save').on('click', function(e){
+                 e.preventDefault();
+                 $(this).addClass('hidden');
+                 $('#body-cache').addClass('cache');
+                 $('#confirm').removeClass('hidden').addClass('disabled');
+                 $('#confirm-alert').removeClass('hidden');
+                 $('#clean_confirm').removeClass('hidden');
+                 $('#clean').addClass('hidden');
+             });
+
+             $('input[name="check"]').on('click', function(){
+                 $('#confirm').toggleClass('disabled');
+             })
+
+             $('#clean_confirm').on('click', function(e){
+                 e.preventDefault();
+                 $('#body-cache').removeClass('cache');
+                 $('#confirm').addClass('hidden');
+                 $('#confirm-alert').addClass('hidden');
+                 $(this).addClass('hidden');
+                 $('#clean').removeClass('hidden');
+                 $('#save').removeClass('hidden');
+             })
+         })
+    </script>
+{% endblock %}

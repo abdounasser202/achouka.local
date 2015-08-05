@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-12">
+                <section>
+                    <div class="page-header clearfix text-center" style="margin: 0 !important;">
+                      <h1  style='margin: 0;'>{{ current_user.first_name }} {{ current_user.last_name }}, welcome to your <small>DASHBOARD</small> </h1>
+                    </div>
+                    <br/>
+
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="panel panel-info">
+                              <div class="panel-heading">
+                                <span class="lead text-center">Local Ticket Sale</span>
+                              </div>
+                              <div class="panel-body">
+                                 <table class="table table-hover" id="dataTableDash">
+                                    <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th class="nosort text-center">Number</th>
+                                        <th class="nosort text-center">Amount</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for type in the_ticket_sale %}
+                                           {% if type['travel'].get().destination_start == agency_user.destination %}
+                                                <tr>
+                                                    <td>
+                                                        <strong>{{ type['travel'].get().destination_start.get().name }} - {{ type['travel'].get().destination_check.get().name }} </strong> <br/>
+                                                        <small>{{ type['class'].get().name }} - {{ type['type'].get().name }} - {{ type['journey'].get().name }}</small>
+
+                                                    </td>
+                                                    <td class="text-center">{{ type['number'] }}</td>
+                                                    <td class="text-center">{{ type['price']|format_price() }} {{ type['currency'] }}</td>
+                                                </tr>
+                                           {% endif %}
+                                       {% endfor %}
+                                    </tbody>
+                                </table>
+                              </div>
+                            </div>
+                            <hr/>
+                            <div class="panel panel-info">
+                              <div class="panel-heading">
+                                <span class="lead text-center">Foreign Ticket Sale</span>
+                              </div>
+                              <div class="panel-body">
+                                 <table class="table table-hover" id="dataTableDash2">
+                                    <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th class="nosort text-center">Number</th>
+                                        <th class="nosort text-center">Amount</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for type in the_ticket_sale %}
+                                           {% if type['travel'].get().destination_start != agency_user.destination %}
+                                                <tr>
+                                                    <td>
+                                                        <strong>{{ type['travel'].get().destination_start.get().name }} - {{ type['travel'].get().destination_check.get().name }} </strong> <br/>
+                                                        <small>{{ type['class'].get().name }} - {{ type['type'].get().name }} - {{ type['journey'].get().name }}</small>
+
+                                                    </td>
+                                                    <td class="text-center">{{ type['number'] }}</td>
+                                                    <td class="text-center">{{ type['price']|format_price() }} {{ type['currency'] }}</td>
+                                                </tr>
+                                           {% endif %}
+                                       {% endfor %}
+                                    </tbody>
+                                </table>
+                              </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="well text-center">
+                                <strong>Balance</strong>
+                                <br/><br/>
+                                <table class="table table-condensed">
+                                    <tr>
+                                        <td>LOCAL</td>
+                                        <td>{{ local_tocal|format_price() }} {{ agency_user.destination.get().currency.get().code }}</td>
+                                    </tr>
+                                    {% for foreign_amount in the_amount_foreign_sale  %}
+                                        <tr>
+                                            <td>{{ foreign_amount['travel'].get().destination_start.get().name }}</td>
+                                            <td>{{ foreign_amount['price']|format_price() }} {{ foreign_amount['currency'] }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </table>
+
+                            </div>
+                        </div>
+                    </div>
+
+                </section>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+{% block footer_script %}
+    <script>
+        $('#dataTableDash').dataTable({
+            "paging": true,
+            "sPaginationType":"full_numbers",
+            "iDisplayLength": 25,
+            "bFilter": false,
+            'aoColumnDefs': [
+                {'bSortable': false, 'aTargets': ['nosort']},
+                {'bSearchable': false, "aTargets": ['nosort']}
+            ],
+             "order": [[ 0, "desc" ]]
+        });
+
+        $('#dataTableDash2').dataTable({
+            "paging": true,
+            "sPaginationType":"full_numbers",
+            "iDisplayLength": 25,
+            "bFilter": false,
+            'aoColumnDefs': [
+                {'bSortable': false, 'aTargets': ['nosort']},
+                {'bSearchable': false, "aTargets": ['nosort']}
+            ],
+             "order": [[ 0, "desc" ]]
+        });
+
+        $('#myTab a').click(function (e) {
+          e.preventDefault();
+          $(this).tab('show')
+        });
+    </script>
+{% endblock %}

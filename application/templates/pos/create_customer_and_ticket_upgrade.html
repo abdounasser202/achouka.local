@@ -1,0 +1,62 @@
+<div class="modal-header bg-danger">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+    <h4 class="modal-title">Type of ticket corresponding to the ticket</h4>
+</div>
+<div class="modal-body">
+    <table class="table table-hover" id="dataTables">
+        <thead>
+        <tr>
+            <th>Class</th>
+            <th>Type</th>
+            <th>Journey</th>
+            <th>Price</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for type in ticket_type_query %}
+            <tr class="line" id="{{ type.key.id() }}">
+                <td>{{ type.class_name.get().name }}</td>
+                <td>{{ type.type_name.get().name }}</td>
+                <td>{{ type.journey_name.get().name }}</td>
+                <td>{{ type.price|format_price() }} {{ type.currency.get().code }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+    <button type="button" class="btn btn-info disabled" id="submit">Continued</button>
+</div>
+
+<script>
+    $('.line').on('click', function(){
+        var id = "/"+$(this).attr('id');
+        var url = "{{ url_for('create_customer_and_ticket_upgrade_2', departure_id=departure_id, ticket_id=ticket_id) }}"+id;
+
+        $('.pred').removeClass('info');
+        var pred = $('.pred').attr('id');
+        $(pred).removeClass('pred');
+
+        $(this).addClass('info');
+        $(this).addClass('pred');
+        $('#submit').removeClass('disabled');
+        $('#submit').attr({'data-href': url});
+    });
+
+    $('#submit').on('click', function(){
+        $.ajax({
+                url: $(this).attr('data-href'),
+                type: 'GET',
+                success: function(data) {
+                    $('.modal-content').html(data);
+                }
+            });
+    });
+    $('#dataTables').dataTable({
+        'aoColumnDefs': [
+            {'bSortable': false, 'aTargets': ['nosort']},
+            {'bSearchable': false, "aTargets": ['nosort']}
+        ]
+    });
+</script>

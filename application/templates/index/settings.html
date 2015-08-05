@@ -37,10 +37,20 @@
                                     </div>
                                 </div>
                       </div>
+                      {% if current_user.has_roles(('super_admin','admin')) %}
+                                <div class="col-lg-4">
+                                  <div class="well-custom well-small">
+                                            <div class="caption">
+                                                <h3 class="text-center">Travel Lines</h3>
+                                                <p><a href="{{ url_for('Travel_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
+                                            </div>
+                                        </div>
+                              </div>
+                      {% endif %}
                       <div class="col-lg-4">
                           <div class="well-custom well-small">
                                     <div class="caption">
-                                        <h3 class="text-center">Ticket Type</h3>
+                                        <h3 class="text-center">Tickets</h3>
                                         <p><a href="{{ url_for('TicketType_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
                                     </div>
                                 </div>
@@ -68,7 +78,7 @@
                         <div class="col-lg-4">
                           <div class="well-custom well-small">
                                     <div class="caption">
-                                        <h3 class="text-center">Profil</h3>
+                                        <h3 class="text-center">Profile</h3>
                                         <p><a href="{{ url_for('Profil_Index') }}" class="btn btn-primary btn-lg btn-block" role="button">Enter</a></p>
                                     </div>
                                 </div>

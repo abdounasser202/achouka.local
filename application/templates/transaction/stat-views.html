@@ -11,7 +11,7 @@
                 <section>
                         <ol class="breadcrumb">
                           <li><a href="{{ url_for('Recording') }}">Recording</a></li>
-                          <li><a href="{{ url_for('Transaction_Index') }}">Transaction</a></li>
+                          <li><a href="{{ url_for('Transaction_Index') }}">Transactions</a></li>
                           <li class="active">Statistics</li>
                         </ol>
                         <div class="row">
@@ -19,8 +19,8 @@
                                 <h3>{{ current_agency.name }}</h3>
                                 <hr/>
                                 <ul id="myTab" class="nav nav-tabs nav-tabs-google">
-                                  <li class="active"><a href="#employee" data-toggle="tab">Employee transaction</a></li>
-                                  <li ><a href="#transaction" data-toggle="tab">Transaction information</a></li>
+                                  <li class="active"><a href="#employee" data-toggle="tab">Per Seller</a></li>
+                                  <li ><a href="#transaction" data-toggle="tab">Agency Overall</a></li>
                                 </ul>
                                 <br/>
                                 <div id="myTabContent" class="tab-content">
@@ -51,13 +51,13 @@
                                 </div>
                                 <div class="tab-pane fade active in" id="employee">
                                     <div class="panel panel-info">
-                                        <div class="panel-heading"><span class="lead">Employee local ticket transaction</span></div>
+                                        <div class="panel-heading"><span class="lead">Seller local ticket transaction</span></div>
                                         <div class="panel-body">
                                             <table class="table table-hover" id="dataTableStat2">
                                                 <thead>
                                                 <tr>
-                                                    <th>Employee</th>
-                                                    <th>Selling Ticket </th>
+                                                    <th>Seller</th>
+                                                    <th>Sold Tickets</th>
                                                     <th>Escrow Amount</th>
                                                 </tr>
                                                 </thead>
@@ -77,14 +77,14 @@
                                     </div>
                                     <hr/>
                                     <div class="panel panel-info">
-                                        <div class="panel-heading"><span class="lead">Employee foreign ticket transaction</span></div>
+                                        <div class="panel-heading"><span class="lead">Seller foreign ticket transaction</span></div>
                                         <div class="panel-body">
                                             <table class="table table-hover" id="dataTableStat3">
                                                 <thead>
                                                 <tr>
-                                                    <th>Employee</th>
+                                                    <th>Seller</th>
                                                     <th>Travel</th>
-                                                    <th>Selling Ticket</th>
+                                                    <th>Sold Tickets</th>
                                                     <th>Escrow Amount</th>
                                                 </tr>
                                                 </thead>
@@ -121,14 +121,18 @@
                                         <tbody>
                                             <tr>
                                                 <td>LOCAL</td>
-                                                <td>{{ current_agency.escrow_amount()|format_price() }} {{ current_agency.destination.get().currency.get().code }}</td>
+                                                <td>
+                                                    {% set price = current_agency.escrow_amount()*-1  %}
+                                                    {{ price|format_price() }} {{ current_agency.destination.get().currency.get().code }}
+                                                </td>
                                             </tr>
                                             {% for destination in current_agency.escrow_amount_foreign() %}
                                                 {% if destination['amount'] != 0  %}
                                                     <tr>
                                                         <td>{{ destination['destination'].get().name }}</td>
                                                         <td>
-                                                            {{ destination['amount']|format_price() }}
+                                                            {% set price = destination['amount']*-1 %}
+                                                            {{ price|format_price() }}
 
                                                             {{ destination['destination'].get().currency.get().code }}
                                                         </td>
@@ -141,9 +145,9 @@
                                 <hr/>
                                 {% if current_user.has_roles(('admin','super_admin'))  %}
                                         {% include 'includes/flash_message.html' %}
-                                        <a href="{{ url_for('Payment_admin_local', agency_id=current_agency.key.id()) }}" class="btn btn-danger btn-block"  data-toggle="modal" data-target="#myModal" data-backdrop="static">Payment for local ticket</a>
+                                        <a href="{{ url_for('Payment_admin_local', agency_id=current_agency.key.id()) }}" class="btn btn-danger btn-block"  data-toggle="modal" data-target="#myModal" data-backdrop="static">Local Ticket Payment</a>
                                         <br/>
-                                        <a href="{{ url_for('Payment_admin_foreign', agency_id=current_agency.key.id()) }}" class="btn btn-danger btn-block"  data-toggle="modal" data-target="#myModal" data-backdrop="static">Payment for foreign ticket</a>
+                                        <a href="{{ url_for('Payment_admin_foreign', agency_id=current_agency.key.id()) }}" class="btn btn-danger btn-block"  data-toggle="modal" data-target="#myModal" data-backdrop="static">Foreign Ticket Payment</a>
                                         <br/>
                                 {% endif %}
                                 <div class="well text-center">
@@ -153,14 +157,18 @@
                                         <tbody>
                                             <tr>
                                                 <td>LOCAL</td>
-                                                <td>{{ current_agency.escrow_amount(True)|format_price() }} {{ current_agency.destination.get().currency.get().code }}</td>
+                                                <td>
+                                                    {% set price = current_agency.escrow_amount(True)*-1 %}
+                                                    {{ price|format_price() }}
+                                                    {{ current_agency.destination.get().currency.get().code }}</td>
                                             </tr>
                                             {% for destination in current_agency.escrow_amount_foreign(true) %}
                                                 {% if destination['amount'] != 0  %}
                                                     <tr>
                                                         <td>{{ destination['destination'].get().name }}</td>
                                                         <td>
-                                                            {{ destination['amount']|format_price() }}
+                                                            {% set price = destination['amount']*-1 %}
+                                                            {{ price|format_price() }}
 
                                                             {{ destination['destination'].get().currency.get().code }}
                                                         </td>

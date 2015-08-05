@@ -8,12 +8,24 @@
 
 </div>
 <div class="modal-footer">
-<input type="button" class="btn btn-primary" onclick="Print()"value="Print" />
+    {% if current_user.has_roles(('super_admin','employee_Boarding')) %}
+<a href="{{ url_for('Boarding', ticket_id=ticket_id) }}" class="btn btn-info">Go to boarding</a>
+    {% endif %}
+<input type="button" class="btn btn-primary" onclick="Print()" value="Print" />
 <button type="button" class="btn btn-default" data-dismiss="modal" id="Close">Close</button>
 </div>
 
 <!-- Code JavaScript -->
 <script>
+{#    function printTrigger(elementId) {#}
+{#        var getMyFrame = document.getElementById(elementId);#}
+{#        getMyFrame.focus();#}
+{#        getMyFrame.contentWindow.print();#}
+{#    }#}
+{#    $(document).ready(function() {#}
+{#        printTrigger('frame'); // Chrome#}
+{#        //embedPDF('pdfobj'); // Non Chrome#}
+{#    });#}
     function Print(){
         document.getElementById("frame").contentWindow.print();
     }

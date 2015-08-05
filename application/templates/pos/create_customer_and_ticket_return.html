@@ -54,7 +54,7 @@
                 <div class="form-group {% if form.dial_code.errors %} has-error {% endif %} has-feedback">
                     <label>{{ form.dial_code.label }} :</label>
                      <select name="dial_code" id="" class="form-control g-select input-lg">
-                        <option value="">{{ form.dial_code.label }}</option>
+                        <option value="">Select {{ form.dial_code.label }}</option>
                         {% for key, val in number_list.items() %}
                             <option value="{{ val }}" {% if form.dial_code.data == val %} selected {% endif %}>{{ key }} ({{ val }})</option>
                         {% endfor %}
@@ -77,7 +77,7 @@
                   <div class="form-group">
                     <label>{{ form.nationality.label }} :</label>
                     <select name="nationality" id="" class="form-control g-select input-lg">
-                        <option value="">{{ form.nationality.label }}</option>
+                        <option value="">Select {{ form.nationality.label }}</option>
                         {% for key, val in nationalList.items() %}
                             <option value="{{ key }}" {% if form.nationality.data == key %} selected {% endif %}>{{ val }}</option>
                         {% endfor %}
@@ -119,7 +119,7 @@
                     <div class="text-center well">
                         <h6>Parent ticket price</h6>
                       <h1 style="margin:0;">
-                              <span class="text-muted">{{ Ticket_Return.sellprice }}
+                              <span class="text-muted">{{ Ticket_Return.sellprice|format_price() }}
                               </span>
                               <span class="text-primary">{{ Ticket_Return.sellpriceCurrency.get().code }}
                               </span>
@@ -138,7 +138,7 @@
                             </div>
                         {% else %}
                             <div class="panel-body text-center">
-                                <h3>No request Question</h3>
+                                <h3>No Required Question</h3>
                             </div>
                         {% endfor %}
 
@@ -200,7 +200,7 @@
                 </div>
             <div class="col-lg-12">
                 <br/>
-                <a href="{{ url_for('create_customer_and_ticket_return', ticket_id=ticket_id, departure_id=departure_id) }}" class="btn btn-success pull-right" data-loading-text="Confirmation..." id="submit" data-backdrop="static">Confirm Sell Ticket</a>
+                <a href="{{ url_for('create_customer_and_ticket_return', ticket_id=ticket_id, departure_id=departure_id) }}" class="btn btn-success pull-right" data-loading-text="Confirmation..." id="submit" data-backdrop="static">Sell Ticket</a>
             </div>
             </div>
         </div>
@@ -238,7 +238,10 @@
         {% if ticket_update %}
             var url_modal = '{{ url_for('modal_generate_pdf_ticket', ticket_id=ticket_update.id()) }}';
         {% endif %}
-        $('#myModal').modal('show');
+        $('#myModal').modal({
+             show: true,
+             backdrop:"static"
+        });
         $.get(url_modal, function(data) {
           $('.modal-content').empty().html(data);
         });

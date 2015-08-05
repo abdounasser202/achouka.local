@@ -1,0 +1,125 @@
+<div class="modal-header bg-warning">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+    <h4 class="modal-title" id="myModalLabel">Create Ticket</h4>
+</div>
+
+<form class="form-horizontal" id="formulaire">
+<div class="modal-body">
+      {% include 'includes/flash_message.html' %}
+      {{ form.hidden_tag() }}
+      <div class="well well-sm">
+          <div class="form-group">
+            <label class="col-sm-4 control-label">Catetory :</label>
+            <div class="col-sm-8">
+              <p class="form-control-static">{{ TicketType.type_name.get().name }}
+              </p>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-4 control-label">Class :</label>
+            <div class="col-sm-8">
+              <p class="form-control-static">{{ TicketType.class_name.get().name }}
+              </p>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-4 control-label">Journey :</label>
+            <div class="col-sm-8">
+              <p class="form-control-static">{{ TicketType.journey_name.get().name }}
+              </p>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-4 control-label">Price :</label>
+            <div class="col-sm-8">
+              <p class="form-control-static">{{ TicketType.price|format_price() }} {{ TicketType.currency.get().code }}
+              </p>
+            </div>
+          </div>
+      </div>
+      <div class="form-group {% if form.number.errors %} has-error {% endif %} has-feedback">
+        <label class="col-sm-5 control-label">{{ form.number.label }} :</label>
+        <div class="col-sm-7">
+          {{ form.number(class_='form-control', id="number")|safe }}
+          {% for message in form.number.errors %}
+            <span class="help-block text-danger">{{ message }}</span>
+          {% endfor %}
+        </div>
+      </div>
+
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-default" data-dismiss="modal" id="close">Close</button>
+    <a href="{{ url_for('Select_TicketType', travel_id=TicketType.travel.get().key.id(), agency_id=agency_id) }}" class="btn btn-danger" id="return">Return</a>
+    <button class="btn btn-info" type="button" id="submit" data-loading-text="Loading...">Validate</button>
+</div>
+</form>
+
+<script>
+
+    var val = {{ refresh }} ;
+    var btn = $('button#submit');
+
+    if(val === true){
+        btn.button('loading');
+        btn.removeClass('btn-info');
+        btn.addClass('btn-success');
+        btn.text('Success response');
+        $('#number').attr('disabled', 'disabled');
+        $('#payment').attr('disabled', 'disabled');
+        $('#return').attr('disabled', 'disabled');
+
+          /* setTimeout(function () {
+             $("#close").trigger("click");
+          }, 2000); */
+        window.location.replace(window.location.origin+"{{ url_for('Ticket_Index') }}").delay(2000);
+    }
+
+    btn.click(function(e) {
+        e.preventDefault();
+        var btn = $(this);
+        btn.button('loading');
+        $(".close").addClass('hidden');
+        $("#return").addClass('disabled');
+        $("#close").addClass('disabled');
+        $.ajax({
+            url: "{{ url_for('Ticket_Edit', tickettype=tickettype, agency_id=agency_id) }}",
+            data: $('#formulaire').serialize(),
+            type: 'POST',
+            success: function(data) {
+                $('.modal-content').html(data);
+            }
+        });
+    });
+
+    $('#number').keypress(function(e) {
+        if (e.which == 13){
+            e.preventDefault();
+            var btns = btn;
+            btns.button('loading');
+            $('.close').addClass('hidden');
+            $('#return').addClass('disabled');
+            $("#close").addClass('disabled');
+            $.ajax({
+                url: "{{ url_for('Ticket_Edit', tickettype=tickettype, agency_id=agency_id) }}",
+                data: $('#formulaire').serialize(),
+                type: 'POST',
+                success: function(data) {
+                    $('.modal-content').html(data);
+                }
+            });
+        }
+    });
+
+    $('a#return').click(function(e) {
+      e.preventDefault();
+      var url = $(this).attr('href');
+      $.get(url, function(data) {
+          $('.modal-content').html(data);
+      });
+    });
+
+
+    // Google styled selects
+    $("select.g-select").select2();
+</script>

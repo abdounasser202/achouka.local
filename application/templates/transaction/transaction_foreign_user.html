@@ -1,12 +1,12 @@
 <div class="modal-header bg-primary">
         <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
         <div class="pull-right text-right bg-info text-danger" style="margin-right:40px; margin-top: -6px; padding: 10px;">
-            <strong>ESCROW : </strong> {{ user_get_id.foreign_escrow_and_number_ticket(travel_id)[0]['escrow'] }} {{ user_get_id.foreign_escrow_and_number_ticket(travel_id)[0]['travel'].get().destination_start.get().currency.get().code }}
+            <strong>ESCROW : </strong> {{ user_get_id.foreign_escrow_and_number_ticket(travel_id)[0]['escrow']|format_price() }} {{ user_get_id.foreign_escrow_and_number_ticket(travel_id)[0]['travel'].get().destination_start.get().currency.get().code }}
         </div>
 
         <h4 class="modal-title">USER : {{ user_get_id.last_name }} {{ user_get_id.first_name }}</h4>
 </div>
-<div class="modal-body scrollable-shadow" style="height: 600px; overflow-y: auto">
+<div class="modal-body scrollable-shadow" style="height: 500px; overflow-y: auto">
         <h3 class="text-primary">Expected Payment from {{ travel_get_id.destination_start.get().name }} to {{ travel_get_id.destination_check.get().name }}</h3>
         <hr/>
         <table class="table table-hover" id="dataTable1">
@@ -29,7 +29,7 @@
         </table>
         <br/>
 
-        <h3 class="text-primary">No payment balance from {{ travel_get_id.destination_start.get().name }} to {{ travel_get_id.destination_check.get().name }}</h3>
+        <h3 class="text-primary">Outstanding Payment from {{ travel_get_id.destination_start.get().name }} to {{ travel_get_id.destination_check.get().name }}</h3>
         <hr/>
         <table class="table table-hover" id="dataTable2">
             <thead>

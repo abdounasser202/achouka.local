@@ -4,7 +4,7 @@ __author__ = 'wilrona'
 from ...modules import *
 
 from ..customer.models_customer import CustomerModel
-from ..ticket.models_ticket import (TicketPoly, TicketModel, TicketParent, TicketTypeNameModel,
+from ..ticket.models_ticket import (TicketPoly, TicketModel, TicketTypeNameModel,
                                     JourneyTypeModel, ClassTypeModel, AgencyModel, QuestionModel, TicketQuestion)
 
 from ..customer.forms_customer import FormCustomerPOS

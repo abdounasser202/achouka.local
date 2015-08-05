@@ -19,12 +19,6 @@
                         <td><input type="checkbox" name="roles" value="{{ role.key.id() }}"/></td>
                         <td>{{ role.name }}</td>
                     </tr>
-                {% else %}
-                    <tr>
-                        <td colspan="2">
-                            <h3 class="text-center">Data not found</h3>
-                        </td>
-                    </tr>
                 {% endif %}
 
             {% else %}

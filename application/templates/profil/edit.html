@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-settings.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Settings') }}">Settings</a></li>
+                          <li><a href="{{ url_for('Profil_Index') }}">Profil</a></li>
+                            {% if profil_id %}
+                                <li class="active">Edit</li>
+                            {% else %}
+                                <li class="active">New</li>
+                            {% endif %}
+                        </ol>
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <form method="post" class="form-horizontal">
+                                    <fieldset><legend>Edit Profil</legend>
+                                      {{ form.hidden_tag() }}
+                                     <div class="form-group {% if form.name.errors %} has-error {% endif %} has-feedback">
+                                        <label class="col-sm-3 control-label">{{ form.name.label }} :</label>
+                                        <div class="col-sm-9">
+                                            {% if view %}
+                                                {{ form.name(class_='form-control', disabled='disabled')|safe }}
+                                            {% else %}
+                                                {{ form.name(class_='form-control')|safe }}
+                                            {% endif %}
+
+                                          {% for message in form.name.errors %}
+                                            <span class="help-block text-danger">{{ message }}</span>
+                                          {% endfor %}
+
+                                        </div>
+                                      </div>
+                                      {% if current_user.has_roles('super_admin') %}
+                                          <div class="form-group {% if form.standard.errors %} has-error {% endif %} has-feedback">
+                                            <label class="col-sm-3 control-label">{{ form.standard.label }} :</label>
+                                            <div class="col-sm-9">
+                                                <select name="standard" id="" class="form-control g-select input-lg" {% if view %} disabled {% endif %}>
+                                                    <option value="1" {% if form.standard.data == True %} selected {% endif %}>standard profil</option>
+                                                    <option value="2" {% if form.standard.data == False %} selected {% endif %}>not standard profil</option>
+                                                </select>
+                                              {% for message in form.standard.errors %}
+                                                <span class="help-block text-danger">{{ message }}</span>
+                                              {% endfor %}
+
+                                            </div>
+                                          </div>
+                                      {% endif %}
+
+                                      <div class="form-group">
+                                        <div class="col-sm-offset-3 col-sm-10">
+                                            {% if not view %}
+                                                <button type="submit" class="btn btn-primary">Save</button>
+                                            {% endif %}
+                                            <a href="{{ url_for('Profil_Index') }}" class="btn btn-default">Return</a>
+                                        </div>
+                                      </div>
+
+                                    </fieldset>
+                                </form>
+                            {% if profil_id %}
+                                <hr/>
+                                {% if not view or current_user.has_roles(('super_admin')) %}
+                                    <div class="clearfix">
+                                        <a class="btn btn-danger btn-sm pull-right" href="{{ url_for('Add_Role_Profil', profil_id=profil_id) }}" data-toggle="modal" data-target="#myModal">Add Role</a>
+                                    </div>
+                                    {% include 'includes/flash_message.html' %}
+                                {% endif %}
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Role</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% for role in profilRole %}
+                                        <tr>
+                                            <td>{{ role.role_id.get().name }}</td>
+                                            <td>
+                                                {% if not view or current_user.has_roles(('super_admin')) %}
+                                                <a class="btn btn-link btn-xs" href="{{ url_for('Delete_Role_Profil', profilrole_id=role.key.id(), profil_id=profil_id) }}">
+                                                    <span class="fa fa-times"></span>
+                                                </a>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                                <!-- Modal -->
+                                <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+                                  <div class="modal-dialog">
+                                    <div class="modal-content">
+
+                                    </div>
+                                  </div>
+                                </div>
+                            {% endif %}
+                            </div>
+                            <div class="col-lg-4">
+                                <h4>Last Activity</h4>
+                                    <hr/>
+                                    {% for feed in feed_tab %}
+                                        <blockquote style="padding: 10px 6px;">
+                                            {% if feed['nature'] == 1 %}
+                                                  <p style="font-size: 13px;"><strong>New Record</strong> : {{ feed['data'] }} by {{ feed['user'].get().first_name }} {{ feed['user'].get().last_name }}</p>
+                                            {% endif %}
+                                            {% if feed['nature'] == 4 %}
+                                                  <p style="font-size: 13px;"><strong>Record Updated</strong> : {{ feed['data'] }} by {{ feed['user'].get().first_name }} {{ feed['user'].get().last_name }}</p>
+                                            {% endif %}
+                                            {% if feed['nature'] == 13 %}
+                                                  <p style="font-size: 13px;"><strong>Record Updated</strong> : Role {{ feed['data'] }} removed  by {{ feed['user'].get().first_name }} {{ feed['user'].get().last_name }}</p>
+                                            {% endif %}
+                                            {% if feed['nature'] == 10 %}
+                                                  <p style="font-size: 13px;"><strong>Record Updated</strong> : Role {{ feed['data'] }} added  by {{ feed['user'].get().first_name }} {{ feed['user'].get().last_name }}</p>
+                                            {% endif %}
+                                            <footer style="font-size: 65%;">{{ feed['time']|format_date("%d-%m-%Y %H:%M") }} </footer>
+                                        </blockquote>
+                                    {% else %}
+                                        <blockquote style="padding: 10px 6px;">
+                                            <p style="font-size: 13px;"><strong>No recent activity</strong> </p>
+                                        </blockquote>
+                                    {% endfor %}
+                            </div>
+                        </div>
+
+                </section>
+            </div>
+        </div>
+    </div>
+{% endblock %}

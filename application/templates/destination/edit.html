@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block layout_content %}
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-2">
+                    {% include 'includes/menu-settings.html' %}
+            </div>
+            <div class="col-lg-10">
+                <section>
+                        <ol class="breadcrumb">
+                          <li><a href="{{ url_for('Settings') }}">Settings</a></li>
+                          <li><a href="{{ url_for('Destination_Index') }}">Destination</a></li>
+                            {% if destination_id %}
+                                <li class="active">Edit</li>
+                            {% else %}
+                                <li class="active">New</li>
+                            {% endif %}
+                        </ol>
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <form method="post" class="form-horizontal">
+                                    <fieldset><legend>Edit Destination</legend>
+                                        {{ form.hidden_tag() }}
+                                      <div class="form-group {% if form.code.errors %} has-error {% endif %} has-feedback">
+                                        <label class="col-sm-3 control-label">{{ form.code.label }}</label>
+                                        <div class="col-sm-9">
+                                          {{ form.code(class_='form-control input-lg')|safe }}
+                                          {% for message in form.code.errors %}
+                                            <span class="help-block text-danger">{{ message }}</span>
+                                          {% endfor %}
+
+                                        </div>
+                                      </div>
+
+                                      <div class="form-group {% if form.name.errors %} has-error {% endif %} has-feedback">
+                                        <label class="col-sm-3 control-label">{{ form.name.label }}</label>
+                                        <div class="col-sm-9">
+                                          {{ form.name(class_='form-control input-lg')|safe }}
+                                          {% for message in form.name.errors %}
+                                            <span class="help-block text-danger">{{ message }}</span>
+                                          {% endfor %}
+
+                                        </div>
+                                      </div>
+                                      <div class="form-group {% if form.currency.errors %} has-error {% endif %} has-feedback">
+                                            <label class="col-sm-3 control-label">{{ form.currency.label }}</label>
+                                            <div class="col-sm-9">
+                                                {% if agency_destination_exist >= 1 or travel_destination_start_exist >= 1 or travel_destination_check_exist >= 1 or transaction_destination_exist >= 1 %}
+                                                    {% set currency_disabled = True %}
+                                                    <input type="hidden" name="currency" value="{{ currency_destination_id }}"/>
+                                                {% endif %}
+                                                <select name="currency" id="" class="form-control g-select" {% if currency_disabled %} disabled="disabled" {% endif %}>
+                                                    <option value="">Choices currency</option>
+                                                    {% for cur in listcurency %}
+                                                        <option value="{{ cur.key.id() }}" {% if form.currency.data == cur.key %} selected {% endif %}>{{ cur.code }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                              {% for message in form.currency.errors %}
+                                                <span class="help-block text-danger">{{ message }}</span>
+                                              {% endfor %}
+
+                                            </div>
+
+                                      </div>
+
+                                      <div class="form-group">
+                                        <div class="col-sm-offset-3 col-sm-10">
+                                          <button type="submit" class="btn btn-primary">Save</button>
+                                            <a href="{{ url_for('Destination_Index') }}" class="btn btn-default">Return</a>
+                                        </div>
+                                      </div>
+
+                                    </fieldset>
+                                </form>
+
+                            </div>
+                            <div class="col-lg-4">
+                                <h4>Last Activity</h4>
+                                    <hr/>
+                                    {% for feed in feed_tab %}
+                                        <blockquote style="padding: 10px 6px;">
+                                            {% if feed['nature'] == 1 %}
+                                                  <p style="font-size: 13px;"><strong>New Record</strong> : {{ feed['data'] }} by {{ feed['user'].get().first_name }} {{ feed['user'].get().last_name }}</p>
+                                            {% endif %}
+                                            {% if feed['nature'] == 4 %}
+                                                  <p style="font-size: 13px;"><strong>Record Updated</strong> : {{ feed['data'] }} by {{ feed['user'].get().first_name }} {{ feed['user'].get().last_name }}</p>
+                                            {% endif %}
+                                            <footer style="font-size: 65%;">{{ feed['time']|format_date("%d-%m-%Y %H:%M") }} </footer>
+                                        </blockquote>
+                                    {% else %}
+                                        <blockquote style="padding: 10px 6px;">
+                                            <p style="font-size: 13px;"><strong>No recent activity</strong> </p>
+                                        </blockquote>
+                                    {% endfor %}
+                            </div>
+                        </div>
+
+                </section>
+            </div>
+        </div>
+    </div>
+{% endblock %}

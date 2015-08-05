@@ -16,48 +16,106 @@
                           <div class="container-fluid">
                             <div class="btn-toolbar" role="toolbar">
                                <div class="btn-group pull-left">
-                                   <a href="{{ url_for('Question_Edit') }}" class="btn btn-danger btn-lg">Create</a>
+                                   <a href="{{ url_for('Question_Edit') }}" class="btn btn-danger btn-lg">New</a>
                                </div>
                             </div>
                           </div>
                         </nav>
                         {% include 'includes/flash_message.html' %}
 
-                        <table class="table table-hover"  id="dataTable">
-                            <thead>
+                    <div class="row">
+                        <div class="col-lg-9">
+                            <table class="table table-hover" id="dataTable">
+                                <thead>
                                 <tr>
                                     <th>Question</th>
-                                    <th>This question is for POS</th>
-                                    <th>This question is mandatory ?</th>
+                                    <th>Attribute</th>
+                                    <th>Is this question required?</th>
                                     <th class="nosort"></th>
                                 </tr>
-                            </thead>
+                                </thead>
 
-                            <tbody>
-                            {% for item in items %}
-                            <tr>
-                                <td>{{ item.question }}</td>
-                                <td>{{ item.is_pos }}</td>
-                                <td>{{ item.is_obligate }}</td>
-                                <td class="nosearch">
-                                    <a href="{{ url_for('Question_Edit', question_id = item.key.id()) }}" class="btn btn-link btn-xs">Edit</a>
-                                    <a href="{{ url_for('Question_Active', question_id = item.key.id()) }}" class="btn btn-xs
-                                    {% if item.active %}
-                                        btn-danger">Disabled
+                                <tbody>
+                                {% for item in items %}
+                                    <tr>
+                                        <td>{{ item.question }}</td>
+                                        <td>
+                                            {% if item.is_pos %}
+                                                POS
+                                            {% else %}
+                                                Boarding
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.is_obligate %}
+                                                Yes
+                                            {% else %}
+                                                No
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('Question_Edit', question_id = item.key.id()) }}"
+                                               class="btn btn-link btn-xs">Edit</a>
+                                            <a href="{{ url_for('Question_Active', question_id = item.key.id()) }}"
+                                               class="btn btn-xs
+                                            {% if item.active %}
+                                                btn-danger">Disabled
+                                            {% else %}
+                                               btn-success">Activate
+                                            {% endif %}
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-lg-3">
+                            <h4>Last Activity</h4>
+                                    <hr/>
+                                    {% for feed in feed_tab %}
+                                        <blockquote style="padding: 10px 6px;">
+                                            {% if feed['nature'] == 1 %}
+                                                  <p style="font-size: 13px;"><strong>New Record</strong> : <a href="{{ url_for('Question_Edit', question_id=feed['id']) }}">{{ feed['data'] }}</a></p>
+                                            {% endif %}
+                                            {% if feed['nature'] == 4 or feed['nature'] == 0 %}
+                                                  <p style="font-size: 13px;"><strong>Record Updated</strong> : <a href="{{ url_for('Question_Edit', question_id=feed['id']) }}">{{ feed['data'] }}</a>
+                                                      <br/>
+                                                  {% if feed['last_value'] %} Preview Modification ({{ feed['last_value'] }}) {% endif %} </p>
+                                            {% endif %}
+                                            {% if feed['nature'] == 3 %}
+                                                  <p style="font-size: 13px;"><strong>Record deleted</strong> : {{ feed['data'] }}</p>
+                                            {% endif %}
+                                            {% if feed['nature'] == 5 %}
+                                                  <p style="font-size: 13px;"><strong>Record activated</strong> : <a href="{{ url_for('Question_Edit', question_id=feed['id']) }}">{{ feed['data'] }}</a></p>
+                                            {% endif %}
+                                            {% if feed['nature'] == 2 %}
+                                                  <p style="font-size: 13px;"><strong>Record disabled</strong> : <a href="{{ url_for('Question_Edit', question_id=feed['id']) }}">{{ feed['data'] }}</a></p>
+                                            {% endif %}
+                                            <footer style="font-size: 65%;">{{ feed['time']|format_date("%d-%m-%Y %H:%M:%S") }} by {{ feed['user'].get().first_name }} {{ feed['user'].get().last_name }}</footer>
+                                        </blockquote>
                                     {% else %}
-                                        btn-success">Activate
+                                        <blockquote style="padding: 10px 6px;">
+                                            <p style="font-size: 13px;"><strong>No recent activity</strong> </p>
+                                        </blockquote>
+                                    {% endfor %}
+                                    {% if count > 5 %}
+                                        <a href="{{ url_for('Question_Index', modal="1") }}" class="btn btn-link pull-right" data-toggle="modal" data-target="#myModal" data-backdrop="static">view more</a>
                                     {% endif %}
-                                    </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-
-                            </tbody>
-                        </table>
+                        </div>
+                    </div>
 
                 </section>
             </div>
         </div>
     </div>
+      <!-- Modal -->
+    <div class="modal fade" id="myModal" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
 
+        </div>
+      </div>
+    </div>
 {% endblock %}
