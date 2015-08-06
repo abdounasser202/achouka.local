@@ -72,74 +72,11 @@
       </a>
     </div>
   </li>
-
-   <li class="list-group-item {% if submenu == 'agency' %} active {% endif %}">
-    <div class="list-group-item-wrapper">
-      <div class="dropdown pull-right">
-        <a href="#" class="dropdown-toggle" data-toggle="dropdown"><span class="caret"></span></a>
-        <ul role="menu" class="dropdown-menu">
-          <li><a href="{{ url_for('Agency_Index') }}">List</a></li>
-          <li><a href="{{ url_for('Agency_Edit') }}">New</a></li>
-        </ul>
-      </div>
-
-      <a href="{{ url_for('Agency_Index') }}">
-        Agency
-      </a>
-    </div>
-  </li>
-    {% if current_user.has_roles('super_admin') %}
-        <li class="list-group-item {% if submenu == 'role' %} active {% endif %}">
-            <div class="list-group-item-wrapper">
-              <a href="{{ url_for('Role_Index') }}">
-                User Role
-              </a>
-            </div>
-        </li>
-    {% endif %}
-    <li class="list-group-item {% if submenu == 'profil' %} active {% endif %}">
-        <div class="list-group-item-wrapper">
-          <div class="dropdown pull-right">
-            <a href="#" class="dropdown-toggle" data-toggle="dropdown"><span class="caret"></span></a>
-            <ul role="menu" class="dropdown-menu">
-              <li><a href="{{ url_for('Profil_Index') }}">List</a></li>
-              <li><a href="{{ url_for('Profil_Edit') }}">New</a></li>
-            </ul>
-          </div>
-
-          <a href="{{ url_for('Profil_Index') }}">
-           User Profile
-          </a>
-        </div>
-    </li>
     <li class="list-group-item {% if submenu == 'question' %} active {% endif %}">
         <div class="list-group-item-wrapper">
-          <div class="dropdown pull-right">
-            <a href="#" class="dropdown-toggle" data-toggle="dropdown"><span class="caret"></span></a>
-            <ul role="menu" class="dropdown-menu">
-              <li><a href="{{ url_for('Question_Index') }}">List</a></li>
-              <li><a href="{{ url_for('Question_Index') }}">New</a></li>
-            </ul>
-          </div>
-
           <a href="{{ url_for('Question_Index') }}">
             Question
           </a>
         </div>
     </li>
-  <li class="list-group-item {% if submenu == 'user_admin' %} active {% endif %}">
-    <div class="list-group-item-wrapper">
-      <div class="dropdown pull-right">
-        <a href="#" class="dropdown-toggle" data-toggle="dropdown"><span class="caret"></span></a>
-        <ul role="menu" class="dropdown-menu">
-          <li><a href="{{ url_for('User_Admin_Index') }}">List</a></li>
-          <li><a href="{{ url_for('User_Admin_Edit') }}">New</a></li>
-        </ul>
-      </div>
-
-      <a href="{{ url_for('User_Admin_Index') }}">
-        Administrator
-      </a>
-    </div>
-  </li>
 </ul>

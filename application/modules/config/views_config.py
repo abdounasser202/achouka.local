@@ -39,7 +39,7 @@ def synchronization():
     tickettype_api(url_config.url_server, token, "/tickets/get/", date)
 
     # Netoyage de la base de donnee
-    clean_vessel()
+    # clean_vessel()
     clean_currency()
     clean_destination()
     clean_class()
@@ -158,7 +158,7 @@ def active_local_agency(agency_id):
     tickettype_api(url_config.url_server, url_config.token_agency, "/tickets/get/", date)
 
     # Netoyage de la base de donnee
-    clean_vessel()
+    # clean_vessel()
     clean_currency()
     clean_destination()
     clean_class()

@@ -15,7 +15,7 @@ def login_required(func):
     """Requires standard login credentials"""
     @wraps(func)
     def decorated_view(*args, **kwargs):
-        if not current_user.is_authenticated() or not session.get('user_id'):
+        if not current_user.is_authenticated() or not session.get('user_id_local'):
             return redirect(url_for('Home'))
 
         return func(*args, **kwargs)
@@ -27,7 +27,7 @@ def roles_required(*required_roles):
     def wrapper(func):
         @wraps(func)
         def decorated_view(*args, **kwargs):
-            if not current_user.is_authenticated() or not session.get('user_id'):
+            if not current_user.is_authenticated() or not session.get('user_id_local'):
                 return redirect(url_for('Home'))
 
             # User must have the required roles
