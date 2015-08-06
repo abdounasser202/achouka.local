@@ -3,35 +3,19 @@
 {% block layout_content %}
 <div class="container-fluid">
         <div class="row">
-            <div class="col-lg-2">
-                    {% include 'includes/menu-settings.html' %}
-            </div>
-            <div class="col-lg-10">
+            <div class="col-lg-12">
                 <section>
                         <ol class="breadcrumb">
                           <li><a href="{{ url_for('Settings') }}">Settings</a></li>
                           <li class="active">Currency</li>
                         </ol>
-                        <nav class="navbar navbar-toolbar navbar-default" role="navigation">
-                          <div class="container-fluid">
-                            <div class="btn-toolbar" role="toolbar">
-                               <div class="btn-group pull-left">
-                                   <a href="{{ url_for('Currency_Edit') }}" class="btn btn-danger btn-lg">New</a>
-                               </div>
-{#                                <div class="btn-group pull-left">#}
-{#                                   <a href="{{ url_for('Currency_Equiv') }}" class="btn btn-info btn-lg">Convert</a>#}
-{#                               </div>#}
-                            </div>
-                          </div>
-                        </nav>
                         {% include 'includes/flash_message.html' %}
-                    <div class="col-lg-9">
+                    <div class="col-lg-12">
                         <table class="table table-hover"  id="dataTable">
                             <thead>
                                 <tr>
                                     <th>Code </th>
                                     <th>Name </th>
-                                    <th class="nosort"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -39,10 +23,6 @@
                                 <tr>
                                     <td>{{ currency.code }}</td>
                                     <td>{{ currency.name }}</td>
-                                    <td>
-                                        <a href="{{ url_for('Currency_Edit', currency_id = currency.key.id()) }}" class="btn btn-link btn-xs">Edit</a>
-                                        <a href="{{ url_for('Currency_Delete', currency_id = currency.key.id()) }}" class="btn btn-link  btn-xs">Delete</a>
-                                    </td>
                                 </tr>
 
                             {% endfor %}
@@ -50,43 +30,8 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="col-lg-3">
-                        <h4>Last Activity</h4>
-                                    <hr/>
-                                    {% for feed in feed_tab %}
-                                        <blockquote style="padding: 10px 6px;">
-                                            {% if feed['nature'] == 1 %}
-                                                  <p style="font-size: 13px;"><strong>New Record</strong> : <a href="{{ url_for('Currency_Edit', currency_id=feed['id']) }}">{{ feed['data'] }}</a></p>
-                                            {% endif %}
-                                            {% if feed['nature'] == 4 %}
-                                                  <p style="font-size: 13px;"><strong>Record Updated</strong> : <a href="{{ url_for('Currency_Edit', currency_id=feed['id']) }}">{{ feed['data'] }}</a></p>
-                                            {% endif %}
-                                            {% if feed['nature'] == 3 %}
-                                                  <p style="font-size: 13px;"><strong>Record deleted</strong> : {{ feed['data'] }}</p>
-                                            {% endif %}
-                                            <footer style="font-size: 65%;">{{ feed['time']|format_date("%d-%m-%Y %H:%M") }} by {{ feed['user'].get().first_name }} {{ feed['user'].get().last_name }}</footer>
-                                        </blockquote>
-                                    {% else %}
-                                        <blockquote style="padding: 10px 6px;">
-                                            <p style="font-size: 13px;"><strong>No recent activity</strong> </p>
-                                        </blockquote>
-                                    {% endfor %}
-                                    {% if count > 5 %}
-                                        <a href="{{ url_for('Currency_Index', modal="1") }}" class="btn btn-link pull-right" data-toggle="modal" data-target="#myModal" data-backdrop="static">view more</a>
-                                    {% endif %}
-                    </div>
-
-
                 </section>
             </div>
         </div>
-    </div>
-    <!-- Modal -->
-    <div class="modal fade" id="myModal" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-
-        </div>
-      </div>
     </div>
 {% endblock %}
