@@ -12,13 +12,15 @@ La nature d'une modification peut etre:
     8: is_special
     9: is_not_special
     0: modification avec stockage de l'ancienne valeur dans ActivityModel.object
+    10: utiliser uniquement dans les profils pour identifier les activites des roles du profil
+    13: Suppression des roles profils
 """
 
-from google.appengine.ext import ndb
+from ..custom_model import *
 from ..user.models_user import UserModel
 
 
-class ActivityModel(ndb.Model):
+class ActivityModel(BaseModel):
     user_modify = ndb.KeyProperty(kind=UserModel) # utilisateur
     nature = ndb.IntegerProperty() # nature de la modification
     object = ndb.StringProperty() # type objet qui a ete modifie par exemple vessel

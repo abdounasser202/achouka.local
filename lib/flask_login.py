@@ -318,7 +318,7 @@ class LoginManager(object):
         ctx = _request_ctx_stack.top
 
         if user is None:
-            user_id = session.get('user_id')
+            user_id = session.get('user_id_local')
             if user_id is None:
                 ctx.user = self.anonymous_user()
             else:
@@ -347,7 +347,7 @@ class LoginManager(object):
         # However, the session may have been set if the user has been
         # logged out on this request, 'remember' would be set to clear,
         # so we should check for that and not restore the session.
-        is_missing_user_id = 'user_id' not in session
+        is_missing_user_id = 'user_id_local' not in session
         if is_missing_user_id:
             cookie_name = config.get('REMEMBER_COOKIE_NAME', COOKIE_NAME)
             header_name = config.get('AUTH_HEADER_NAME', AUTH_HEADER_NAME)
@@ -395,7 +395,7 @@ class LoginManager(object):
         if self.token_callback:
             user = self.token_callback(cookie)
             if user is not None:
-                session['user_id'] = getattr(user, self.id_attribute)()
+                session['user_id_local'] = getattr(user, self.id_attribute)()
                 session['_fresh'] = False
                 _request_ctx_stack.top.user = user
             else:
@@ -403,7 +403,7 @@ class LoginManager(object):
         else:
             user_id = decode_cookie(cookie)
             if user_id is not None:
-                session['user_id'] = user_id
+                session['user_id_local'] = user_id
                 session['_fresh'] = False
 
             self.reload_user()
@@ -439,7 +439,7 @@ class LoginManager(object):
         if 'remember' in session:
             operation = session.pop('remember', None)
 
-            if operation == 'set' and 'user_id' in session:
+            if operation == 'set' and 'user_id_local' in session:
                 self._set_cookie(response)
             elif operation == 'clear':
                 self._clear_cookie(response)
@@ -460,7 +460,7 @@ class LoginManager(object):
         if self.token_callback:
             data = current_user.get_auth_token()
         else:
-            data = encode_cookie(str(session['user_id']))
+            data = encode_cookie(str(session['user_id_local']))
         expires = datetime.utcnow() + duration
 
         # actually set it
@@ -675,7 +675,7 @@ def login_user(user, remember=False, force=False):
         return False
 
     user_id = getattr(user, current_app.login_manager.id_attribute)()
-    session['user_id'] = user_id
+    session['user_id_local'] = user_id
     session['_fresh'] = True
     session['_id'] = _create_identifier()
 
@@ -692,8 +692,8 @@ def logout_user():
     Logs a user out. (You do not need to pass the actual user.) This will
     also clean up the remember me cookie if it exists.
     '''
-    if 'user_id' in session:
-        session.pop('user_id')
+    if 'user_id_local' in session:
+        session.pop('user_id_local')
 
     if '_fresh' in session:
         session.pop('_fresh')
