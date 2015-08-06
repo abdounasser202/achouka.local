@@ -28,7 +28,7 @@ def Home():
     time_zones = pytz.timezone('Africa/Douala')
     date_auto_nows = datetime.datetime.now(time_zones).strftime("%Y-%m-%d %H:%M:%S")
 
-    if 'user_id' in session:
+    if 'user_id_local' in session:
         return redirect(url_for('Dashboard'))
 
     from ..user.models_user import RoleModel, UserRoleModel, UserModel, AgencyModel, ProfilModel, ProfilRoleModel, CurrencyModel
@@ -233,8 +233,8 @@ def Home():
             time_zones = pytz.timezone('Africa/Douala')
             date_auto_nows = datetime.datetime.now(time_zones).strftime("%Y-%m-%d %H:%M:%S")
 
-            session['user_id'] = user_login.key.id()
-            session['agence_id'] = agency
+            session['user_id_local'] = user_login.key.id()
+            session['agence_id_local'] = agency
             user_login.logged = True
             user_login.date_last_logged = function.datetime_convert(date_auto_nows)
             this_login = user_login.put()
@@ -277,14 +277,14 @@ def Home():
 
 @app.route('/logout_user')
 def logout_user():
-    if 'user_id' in session:
-        user_id = session.get('user_id')
+    if 'user_id_local' in session:
+        user_id = session.get('user_id_local')
         UserLogout = UserModel.get_by_id(int(user_id))
         UserLogout.logged = False
         change = UserLogout.put()
         if change:
-            session.pop('user_id')
-            session.pop('agence_id')
+            session.pop('user_id_local')
+            session.pop('agence_id_local')
     return redirect(url_for('Home'))
 
 
@@ -318,7 +318,7 @@ def Dashboard():
             TicketModel.is_count == True
         ).order(-TicketModel.date_reservation)
 
-        agency_user = AgencyModel.get_by_id(int(session.get('agence_id')))
+        agency_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
 
         user_ticket_tab = []
         for ticket in user_ticket:
@@ -404,7 +404,7 @@ def Dashboard():
     # TRAITEMENT DU DASHBOARD DU MANAGER
     if not current_user.has_roles(('admin','super_admin')) and current_user.has_roles('manager_agency'):
 
-        user_agency = AgencyModel.get_by_id(int(session.get('agence_id')))
+        user_agency = AgencyModel.get_by_id(int(session.get('agence_id_local')))
 
         ticket_agency = TicketModel.query(
             TicketModel.agency == user_agency.key,

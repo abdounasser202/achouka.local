@@ -629,7 +629,7 @@ def tickettype_api(url, tocken, segment, date=None):
                 currency_ticket = CurrencyModel.get_by_id(data_get['ticket_currency'])
                 old_data.currency = currency_ticket.key
 
-                travel_ticket = TravelModel.get_by_id(data_get['ticket_currency'])
+                travel_ticket = TravelModel.get_by_id(data_get['ticket_travel'])
                 old_data.travel = travel_ticket
 
                 old_data.put()
@@ -653,6 +653,6 @@ def tickettype_api(url, tocken, segment, date=None):
                 currency_ticket = CurrencyModel.get_by_id(data_get['ticket_currency'])
                 data_save.currency = currency_ticket.key
 
-                travel_ticket = TravelModel.get_by_id(data_get['ticket_currency'])
-                data_save.travel = travel_ticket
+                travel_ticket = TravelModel.get_by_id(data_get['ticket_travel'])
+                data_save.travel = travel_ticket.key
                 data_save.put()

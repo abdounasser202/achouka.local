@@ -41,7 +41,7 @@ def Pos(departure_id=None):
     if not departure_id:
 
         if current_user.have_agency():
-            agence_id = session.get('agence_id')
+            agence_id = session.get('agence_id_local')
             user_agence = AgencyModel.get_by_id(int(agence_id))
 
             for dep in departure:
@@ -59,8 +59,8 @@ def Pos(departure_id=None):
 @app.route('/reset_remaining_ticket')
 def reset_remaining_ticket():
 
-    if session.get('agence_id'):
-        agency_user = AgencyModel.get_by_id(int(session.get('agence_id')))
+    if session.get('agence_id_local'):
+        agency_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
         number = agency_user.TicketUnsold()
     else:
         number = 'No Ticket'
@@ -91,7 +91,7 @@ def reset_current_departure(departure_id=None):
 
     if not departure_id:
         if current_user.have_agency():
-            agence_id = session.get('agence_id')
+            agence_id = session.get('agence_id_local')
             user_agence = AgencyModel.get_by_id(int(agence_id))
 
             for dep in departure:
@@ -204,7 +204,7 @@ def Ticket_found(ticket_id):
     ticket = TicketModel.get_by_id(ticket_id)
 
     #information de l'agence de l'utilisateur
-    agency_current_user = AgencyModel.get_by_id(int(session.get('agence_id')))
+    agency_current_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
 
     return render_template('/pos/ticket_found.html', **locals())
 
@@ -223,7 +223,7 @@ def create_customer_and_ticket_return(ticket_id, departure_id=None):
     Ticket_Return = TicketModel.get_by_id(ticket_id)
 
     #information de l'agence de l'utilisateur
-    agency_current_user = AgencyModel.get_by_id(int(session.get('agence_id')))
+    agency_current_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
 
     #implementation de l'heure local
     time_zones = pytz.timezone('Africa/Douala')
@@ -320,7 +320,7 @@ def create_customer_and_ticket_return(ticket_id, departure_id=None):
         customer_ticket = CustomerModel.get_by_id(customer_save.id())
         new_ticket.customer = customer_ticket.key
 
-        user = UserModel.get_by_id(int(session.get('user_id')))
+        user = UserModel.get_by_id(int(session.get('user_id_local')))
         new_ticket.ticket_seller = user.key
 
         new_ticket.parent = Ticket_Return.key
@@ -475,7 +475,7 @@ def create_customer_and_ticket_pos(customer_id=None, departure_id=None):
             TicketTypeModel.travel == print_depature.destination,
             TicketTypeModel.active == True
         ).get()
-        agency_current_user = AgencyModel.get_by_id(int(session.get('agence_id')))
+        agency_current_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
 
         Ticket_To_Sell = TicketModel.query(
             TicketModel.type_name == ticket_type_name_car.key,
@@ -511,7 +511,7 @@ def create_customer_and_ticket_pos(customer_id=None, departure_id=None):
         departure_ticket = DepartureModel.get_by_id(int(form.current_departure.data))
         Ticket_To_Sell.departure = departure_ticket.key
 
-        user_ticket = UserModel.get_by_id(int(session.get('user_id')))
+        user_ticket = UserModel.get_by_id(int(session.get('user_id_local')))
         Ticket_To_Sell.ticket_seller = user_ticket.key
 
         from ..transaction.models_transaction import TransactionModel, ExpensePaymentTransactionModel
@@ -696,8 +696,8 @@ def Search_Ticket_Type():
     ).get()
 
     Agency_ticket = 0
-    if session.get('agence_id'):
-        agency_user = AgencyModel.get_by_id(int(session.get('agence_id')))
+    if session.get('agence_id_local'):
+        agency_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
         Agency_ticket = TicketModel.query(
             TicketModel.class_name == classticket.key,
             TicketModel.type_name == typeticket.key,
@@ -813,7 +813,7 @@ def Ticket_POS():
     from ..ticket_type.models_ticket_type import TicketTypeModel
 
     #information de l'agence de l'utilisateur
-    current_agency = AgencyModel.get_by_id(int(session.get('agence_id')))
+    current_agency = AgencyModel.get_by_id(int(session.get('agence_id_local')))
 
     # TYPE DE TICKET EN POSSESSION PAR L'AGENCE (etranger ou local)
     ticket_type_query = TicketTypeModel.query(

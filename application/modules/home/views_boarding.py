@@ -28,7 +28,7 @@ def Boarding():
     )
 
     if current_user.have_agency():
-        agence_id = session.get('agence_id')
+        agence_id = session.get('agence_id_local')
         user_agence = AgencyModel.get_by_id(int(agence_id))
 
         for dep in departure:

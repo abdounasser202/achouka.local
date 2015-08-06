@@ -10,6 +10,12 @@ indexes:
 # automatically uploaded to the admin console when you next deploy
 # your application using appcfg.py.
 
+- kind: ActivityModel
+  properties:
+  - name: object
+  - name: time
+    direction: desc
+
 - kind: DepartureModel
   properties:
   - name: departure_date
