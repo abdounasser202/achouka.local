@@ -41,6 +41,9 @@ def synchronization():
     if date:
         customer_api_put(url_config.url_server, token, "/customer/put/", date)
 
+    ticket_allocated_api(url_config.url_server, token, "/tickets_allocated/get/", date)
+    get_doublons_ticket_return_api(url_config.url_server, token, "/tickets_doublons_ticket_return_sale/get/", date)
+
     # Netoyage de la base de donnee
     clean_vessel()
     clean_currency()
@@ -160,6 +163,9 @@ def active_local_agency(agency_id):
     category_api(url_config.url_server, url_config.token_agency, "/category/get/", date)
     tickettype_api(url_config.url_server, url_config.token_agency, "/tickets/get/", date)
     customer_api(url_config.url_server, url_config.token_agency, "/customer/get/", date)
+
+    ticket_allocated_api(url_config.url_server, url_config.token_agency, "/tickets_allocated/get/", date)
+    get_doublons_ticket_return_api(url_config.url_server, url_config.token_agency, "/tickets_doublons_ticket_return_sale/get/", date)
 
     # Netoyage de la base de donnee
     # clean_vessel()
@@ -730,3 +736,117 @@ def customer_api_put(url, tocken, segment, date):
         flash(result['message'], "warning")
     else:
         flash(result['message'], "success")
+
+
+def ticket_allocated_api(url, tocken, segment, date):
+    from ..ticket.models_ticket import TicketModel, CustomerModel, TicketTypeNameModel, JourneyTypeModel, ClassTypeModel, TravelModel, AgencyModel
+
+    url = ""+url+segment+tocken+"?last_update="+str(date)
+    result = urlfetch.fetch(url)
+    result = result.content
+    result = json.loads(result)
+
+    if result['status'] and result['status'] == 404:
+        flash(result['message'], "danger")
+        return redirect(url_for('Home'))
+    else:
+        for data_get in result['tickets_allocated']:
+            old_data = TicketModel.get_by_id(data_get['ticket_allocated_id'])
+            if not old_data:
+                data_save = TicketModel(id=data_get['ticket_allocated_id'])
+
+                currency_ticket = CustomerModel.get_by_id(data_get['sellpriceAgCurrency'])
+                if currency_ticket:
+                    data_save.sellpriceAg = data_get['sellpriceAg']
+                    data_save.sellpriceAgCurrency = currency_ticket.key
+
+                category_ticket = TicketTypeNameModel.get_by_id(data_get['type_name'])
+                data_save.type_name = category_ticket.key
+
+                journey_ticket = JourneyTypeModel.get_by_id(data_get['journey_name'])
+                data_save.journey_name = journey_ticket.key
+
+                classes_ticket = ClassTypeModel.get_by_id(data_get['class_name'])
+                data_save.class_name = classes_ticket.key
+
+                travel_ticket = TravelModel.get_by_id(data_get['travel_ticket'])
+                data_save.travel_ticket = travel_ticket.key
+
+                agency_ticket = AgencyModel.get_by_id(data_get['agency'])
+                data_save.agency = agency_ticket.key
+
+                data_save.is_prepayment = data_get['is_prepayment']
+                data_save.statusValid = data_get['statusValid']
+                data_save.is_return = data_get['is_return']
+                data_save.selling = data_get['selling']
+                data_save.is_ticket = data_get['is_ticket']
+
+                data_save.put()
+
+
+def get_doublons_ticket_return_api(url, tocken, segment, date=None):
+
+    from ..ticket.models_ticket import TicketModel, CurrencyModel, CustomerModel,\
+        TicketTypeNameModel, JourneyTypeModel, ClassTypeModel, TravelModel, AgencyModel, DepartureModel
+
+    url = ""+url+segment+tocken+"?last_update="+str(date)
+    result = urlfetch.fetch(url)
+    result = result.content
+    result = json.loads(result)
+
+    if result['status'] and result['status'] == 404:
+        flash(result['message'], "danger")
+        return redirect(url_for('Home'))
+    else:
+        for data_get in result['tickets_return_sale']:
+            old_data = TicketModel.get_by_id(data_get['ticket_allocated_id'])
+            if not old_data:
+                data_save = TicketModel(id=data_get['ticket_allocated_id'])
+
+                currency_ticket = CurrencyModel.get_by_id(data_get['sellpriceAgCurrency'])
+                if currency_ticket:
+                    data_save.sellpriceAg = data_get['sellpriceAg']
+                    data_save.sellpriceAgCurrency = currency_ticket.key
+
+                currency_ticket = CurrencyModel.get_by_id(data_get['sellpriceCurrency'])
+                if currency_ticket:
+                    data_save.sellprice = data_get['sellprice']
+                    data_save.sellpriceCurrency = currency_ticket.key
+
+                category_ticket = TicketTypeNameModel.get_by_id(data_get['type_name'])
+                data_save.type_name = category_ticket.key
+
+                journey_ticket = JourneyTypeModel.get_by_id(data_get['journey_name'])
+                data_save.journey_name = journey_ticket.key
+
+                classes_ticket = ClassTypeModel.get_by_id(data_get['class_name'])
+                data_save.class_name = classes_ticket.key
+
+                travel_ticket = TravelModel.get_by_id(data_get['travel_ticket'])
+                data_save.travel_ticket = travel_ticket.key
+
+                data_save.is_prepayment = data_get['is_prepayment']
+                data_save.statusValid = data_get['statusValid']
+                data_save.is_return = data_get['is_return']
+                data_save.selling = data_get['selling']
+                data_save.is_ticket = data_get['is_ticket']
+
+                customer_ticket = CustomerModel.get_by_id(data_get['customer'])
+                data_save.customer = customer_ticket.key
+
+                departure_ticket = DepartureModel.get_by_id(data_get['departure'])
+                data_save.departure = departure_ticket.key
+
+                save = data_save.put()
+                for child in data_get['child_return']:
+                    duplicate_ticket = TicketModel(id=child['ticket_allocated_id'])
+                    duplicate_ticket.type_name = category_ticket.key
+                    duplicate_ticket.class_name = classes_ticket.key
+                    duplicate_ticket.is_ticket = True
+                    duplicate_ticket.is_count = False
+
+                    duplicate_ticket.customer = customer_ticket.key
+
+                    duplicate_ticket.parent_return = save
+
+                    duplicate_ticket.put()

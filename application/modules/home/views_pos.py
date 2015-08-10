@@ -1012,7 +1012,7 @@ def create_upgrade_ticket(departure_id, ticket_id, ticket_type_same_id, ticket_t
         child_ticket.journey_name = ticket_type_choice_get.journey_name
 
         child_ticket.selling = True
-        child_ticket.is_ticket = True
+        child_ticket.is_count = True
         child_ticket.date_reservation = function.datetime_convert(date_auto_nows)
         child_ticket.sellprice = Amount
         child_ticket.sellpriceAg = Amount
@@ -1029,6 +1029,8 @@ def create_upgrade_ticket(departure_id, ticket_id, ticket_type_same_id, ticket_t
         child_ticket.upgrade_parent = Ticket_Return.key
         child_ticket.is_upgrade = True
         child_ticket.departure = departure_current.key
+
+        child_ticket.parent_return = None
 
         # Modification du ticket enfant
         ticket_update = child_ticket.put()

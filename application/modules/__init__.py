@@ -44,9 +44,6 @@ from lib.pytz.gae import pytz
 from itertools import groupby
 from operator import itemgetter
 
-
-import crython
-
 global_current_country = {
     "CM": "Cameroon",
     "NGN": "Nigeria",
