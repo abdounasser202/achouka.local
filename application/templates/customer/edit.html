@@ -36,7 +36,7 @@
                                         <div class="form-group {% if form.first_name.errors %} has-error {% endif %} has-feedback">
                                             <label class="col-sm-3 control-label">{{ form.first_name.label }} :</label>
                                             <div class="col-sm-9">
-                                              {{ form.first_name(class_='form-control')|safe }}
+                                              {{ form.first_name(class_='form-control disabled')|safe }}
                                               {% for message in form.first_name.errors %}
                                                 <span class="help-block text-danger">{{ message }}</span>
                                               {% endfor %}
@@ -46,7 +46,7 @@
                                         <div class="form-group {% if form.last_name.errors %} has-error {% endif %} has-feedback">
                                             <label class="col-sm-3 control-label">{{ form.last_name.label }} :</label>
                                             <div class="col-sm-9">
-                                              {{ form.last_name(class_='form-control')|safe }}
+                                              {{ form.last_name(class_='form-control disabled')|safe }}
                                               {% for message in form.last_name.errors %}
                                                 <span class="help-block text-danger">{{ message }}</span>
                                               {% endfor %}
@@ -56,7 +56,7 @@
                                         <div class="form-group {% if form.birthday.errors %} has-error {% endif %} has-feedback">
                                             <label class="col-sm-3 control-label">{{ form.birthday.label }} :</label>
                                             <div class="col-sm-9">
-                                              {{ form.birthday(class_='form-control', id="datepickerbirth")|safe }}
+                                              {{ form.birthday(class_='form-control disabled', id="datepickerbirth")|safe }}
                                               {% for message in form.birthday.errors %}
                                                 <span class="help-block text-danger">{{ message }}</span>
                                               {% endfor %}
@@ -66,7 +66,7 @@
                                         <div class="form-group {% if form.passport_number.errors %} has-error {% endif %} has-feedback">
                                             <label class="col-sm-3 control-label">{{ form.passport_number.label }} :</label>
                                             <div class="col-sm-9">
-                                              {{ form.passport_number(class_='form-control', id="passport")|safe }}
+                                              {{ form.passport_number(class_='form-control disabled', id="passport")|safe }}
                                               {% for message in form.passport_number.errors %}
                                                 <span class="help-block text-danger">{{ message }}</span>
                                               {% endfor %}
@@ -76,7 +76,7 @@
                                         <div class="form-group {% if form.nic_number.errors %} has-error {% endif %} has-feedback">
                                             <label class="col-sm-3 control-label">{{ form.nic_number.label }} :</label>
                                             <div class="col-sm-9">
-                                              {{ form.nic_number(class_='form-control', id="nic")|safe }}
+                                              {{ form.nic_number(class_='form-control disabled', id="nic")|safe }}
                                               {% for message in form.nic_number.errors %}
                                                 <span class="help-block text-danger">{{ message }}</span>
                                               {% endfor %}
@@ -86,7 +86,7 @@
                                         <div class="form-group {% if form.profession.errors %} has-error {% endif %} has-feedback">
                                             <label class="col-sm-3 control-label">{{ form.profession.label }} :</label>
                                             <div class="col-sm-9">
-                                              {{ form.profession(class_='form-control')|safe }}
+                                              {{ form.profession(class_='form-control disabled')|safe }}
                                               {% for message in form.profession.errors %}
                                                 <span class="help-block text-danger">{{ message }}</span>
                                               {% endfor %}
@@ -96,7 +96,7 @@
                                        <div class="form-group {% if form.email.errors %} has-error {% endif %} has-feedback">
                                             <label class="col-sm-3 control-label">{{ form.email.label }} :</label>
                                             <div class="col-sm-9">
-                                              {{ form.email(class_='form-control')|safe }}
+                                              {{ form.email(class_='form-control disabled')|safe }}
                                               {% for message in form.email.errors %}
                                                 <span class="help-block text-danger">{{ message }}</span>
                                               {% endfor %}
@@ -109,7 +109,7 @@
                                             <div class="col-sm-9">
                                             <div class="row">
                                                 <div class="col-lg-6">
-                                                    <select name="dial_code" id="" class="form-control g-select input-lg">
+                                                    <select name="dial_code" id="" class="form-control g-select input-lg disabled">
                                                         <option value="">{{ form.dial_code.label }}</option>
                                                         {% for key, val in number_list.items() %}
                                                             <option value="{{ val }}" {% if form.dial_code.data == val %} selected {% endif %}>{{ key }} ({{ val }})</option>
@@ -120,7 +120,7 @@
                                                   {% endfor %}
                                                 </div>
                                                 <div class="col-lg-6">
-                                                    {{ form.phone(class_='form-control')|safe }}
+                                                    {{ form.phone(class_='form-control disabled')|safe }}
                                                   {% for message in form.phone.errors %}
                                                     <span class="help-block text-danger">{{ message }}</span>
                                                   {% endfor %}
@@ -134,7 +134,7 @@
                                         <div class="form-group {% if form.nationality.errors %} has-error {% endif %} has-feedback">
                                             <label class="col-sm-3 control-label">Nationality :</label>
                                             <div class="col-sm-9">
-                                                <select name="nationality" id="" class="form-control g-select input-lg">
+                                                <select name="nationality" id="" class="form-control g-select input-lg disabled">
                                                     <option value="">{{ form.nationality.label }}</option>
                                                     {% for key, val in nationalList.items() %}
                                                         <option value="{{ key }}" {% if form.nationality.data == key %} selected {% endif %}>{{ val }}</option>
@@ -149,8 +149,6 @@
 
                                           <div class="form-group">
                                             <div class="col-sm-offset-3 col-sm-10">
-
-                                              <button type="submit" class="btn btn-primary">Save</button>
                                                 <a href="{{ url_for('Customer_Index') }}" class="btn btn-default">Return</a>
                                             </div>
                                           </div>

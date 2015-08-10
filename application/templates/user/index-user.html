@@ -36,19 +36,12 @@
                                                 <td>{{ user.user_id.get().agency.get().name }} </td>
                                                 <td>{{ user.user_id.get().date_last_logged }} </td>
                                                 <td class="text-right">
-                                                    <a href="{{ url_for('User_Edit',  user_id=user.user_id.get().key.id()) }}"
-                                                       class="btn btn-link btn-xs">Edit </a><br/>
-
-                                                    <a href="" class="btn btn-link btn-xs">Change email </a><br/>
-                                                    <a href="" class="btn btn-link btn-xs">Reset password </a><br/>
-                                                    {% if current_user.key != user.user_id %}
-                                                        {% if user.user_id.get().is_enabled %}
-                                                            <a href="{{ url_for('Activate_User', user_id=user.user_id.get().key.id()) }}"
-                                                               class="btn btn-danger btn-xs">Disable</a><br/>
-                                                        {% else %}
-                                                            <a href="{{ url_for('Activate_User', user_id=user.user_id.get().key.id()) }}"
-                                                               class="btn btn-success btn-xs">Activate</a>
-                                                        {% endif %}
+                                                    {% if not user.user_id.get().is_enabled %}
+                                                      <span class="label label-danger"> Disabled
+                                                    </span>
+                                                    {% else %}
+                                                       <span class="label label-success"> Activated
+                                                    </span>
                                                     {% endif %}
                                                 </td>
                                             </tr>
@@ -65,21 +58,14 @@
                                                 <td>{{ user.user_id.get().agency.get().name }} </td>
                                                 <td>{{ user.user_id.get().date_last_logged }} </td>
                                                 <td class="text-right">
-                                                    <a href="{{ url_for('User_Edit',  user_id=user.user_id.get().key.id()) }}"
-                                                       class="btn btn-link btn-xs">Edit </a><br/>
 
-                                                    <a href="" class="btn btn-link btn-xs">Change email </a><br/>
-                                                    <a href="" class="btn btn-link btn-xs">Reset password </a><br/>
-
-                                                    {% if current_user.key != user.user_id %}
-                                                        {% if user.user_id.get().is_enabled %}
-                                                            <a href="{{ url_for('Activate_User', user_id=user.user_id.get().key.id()) }}"
-                                                               class="btn btn-danger btn-xs">Disable</a>
+                                                        {% if not user.user_id.get().is_enabled %}
+                                                          <span class="label label-danger"> Disabled
+                                                        </span>
                                                         {% else %}
-                                                            <a href="{{ url_for('Activate_User', user_id=user.user_id.get().key.id()) }}"
-                                                               class="btn btn-success btn-xs">Activate</a>
+                                                           <span class="label label-success"> Activated
+                                                        </span>
                                                         {% endif %}
-                                                    {% endif %}
                                                 </td>
                                             </tr>
                                         {% endif %}

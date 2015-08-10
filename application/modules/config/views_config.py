@@ -2,7 +2,7 @@ __author__ = 'Wilrona'
 
 
 from ...modules import *
-from model_config import ConfigModel, SynchroModel
+from model_config import ConfigModel, SynchroModel, testModel
 from clean_bd import *
 
 # Flask-Cache (configured to use App Engine Memcache API)
@@ -37,9 +37,12 @@ def synchronization():
     journey_api(url_config.url_server, token, "/journey/get/", date)
     category_api(url_config.url_server, token, "/category/get/", date)
     tickettype_api(url_config.url_server, token, "/tickets/get/", date)
+    customer_api(url_config.url_server, token, "/customer/get/", date)
+    if date:
+        customer_api_put(url_config.url_server, token, "/customer/put/", date)
 
     # Netoyage de la base de donnee
-    # clean_vessel()
+    clean_vessel()
     clean_currency()
     clean_destination()
     clean_class()
@@ -156,6 +159,7 @@ def active_local_agency(agency_id):
     journey_api(url_config.url_server, url_config.token_agency, "/journey/get/", date)
     category_api(url_config.url_server, url_config.token_agency, "/category/get/", date)
     tickettype_api(url_config.url_server, url_config.token_agency, "/tickets/get/", date)
+    customer_api(url_config.url_server, url_config.token_agency, "/customer/get/", date)
 
     # Netoyage de la base de donnee
     # clean_vessel()
@@ -630,7 +634,7 @@ def tickettype_api(url, tocken, segment, date=None):
                 old_data.currency = currency_ticket.key
 
                 travel_ticket = TravelModel.get_by_id(data_get['ticket_travel'])
-                old_data.travel = travel_ticket
+                old_data.travel = travel_ticket.key
 
                 old_data.put()
             else:
@@ -656,3 +660,73 @@ def tickettype_api(url, tocken, segment, date=None):
                 travel_ticket = TravelModel.get_by_id(data_get['ticket_travel'])
                 data_save.travel = travel_ticket.key
                 data_save.put()
+
+
+def customer_api(url, tocken, segment, date=None):
+    from ..customer.models_customer import CustomerModel
+
+    url = ""+url+segment+tocken+"?last_update="+str(date)
+    result = urlfetch.fetch(url)
+    result = result.content
+    result = json.loads(result)
+
+    if result['status'] and result['status'] == 404:
+        flash(result['message'], "danger")
+        return redirect(url_for('Home'))
+    else:
+        for data_get in result['customer']:
+            old_data = CustomerModel.get_by_id(data_get['customer_id'])
+            if old_data:
+                old_data.first_name = data_get['customer_first_name']
+                old_data.last_name = data_get['customer_last_name']
+                old_data.birthday = data_get['customer_birthday']
+                old_data.passport_number = data_get['customer_passport_number']
+                old_data.nic_number = data_get['customer_nic_number']
+                old_data.profession = data_get['customer_profession']
+                old_data.nationality = data_get['customer_nationality']
+                old_data.phone = data_get['customer_phone']
+                old_data.dial_code = data_get['customer_dial_code']
+                old_data.email = data_get['customer_email']
+                old_data.is_new = data_get['customer_is_new']
+                old_data.status = data_get['customer_status']
+                old_data.put()
+            else:
+                data_save = CustomerModel(id=data_get['customer_id'])
+                data_save.first_name = data_get['customer_first_name']
+                data_save.last_name = data_get['customer_last_name']
+                data_save.birthday = data_get['customer_birthday']
+                data_save.passport_number = data_get['customer_passport_number']
+                data_save.nic_number = data_get['customer_nic_number']
+                data_save.profession = data_get['customer_profession']
+                data_save.nationality = data_get['customer_nationality']
+                data_save.phone = data_get['customer_phone']
+                data_save.dial_code = data_get['customer_dial_code']
+                data_save.email = data_get['customer_email']
+                data_save.is_new = data_get['customer_is_new']
+                data_save.status = data_get['customer_status']
+                data_save.put()
+
+
+def customer_api_put(url, tocken, segment, date):
+    from ..customer.models_customer import CustomerModel
+    import urllib
+
+    customer_new = CustomerModel.query(
+        CustomerModel.date_update >= date
+    )
+
+    data = {}
+    data['customer'] = []
+    for customer in customer_new:
+        data['customer'].append(customer.make_to_dict())
+
+    data_format = urllib.urlencode(data)
+    url = url+segment+tocken
+    result = urlfetch.fetch(url=url, payload=data_format, method=urlfetch.POST, headers={'Content-Type': 'application/x-www-form-urlencoded'})
+    result = result.content
+    result = json.loads(result)
+
+    if result['status'] and result['status'] == 404:
+        flash(result['message'], "warning")
+    else:
+        flash(result['message'], "success")

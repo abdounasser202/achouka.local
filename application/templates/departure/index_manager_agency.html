@@ -32,7 +32,7 @@
                                             <th class="text-center">Expected time (delay)</th>
                                             <th>Travel Line</th>
                                             <th>Vessel</th>
-                                            <th class="nosort"></th>
+
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -44,11 +44,6 @@
                                             <td>{{ local_travel.destination.get().destination_start.get().name }}
                                                 - {{ local_travel.destination.get().destination_check.get().name }}</td>
                                             <td>{{ local_travel.vessel.get().name }} {{ local_travel.vessel.get().capacity }}</td>
-                                            <td>
-                                                {% if local_travel.departure_date >= date_day  and local_travel.schedule|add_time(local_travel.time_delay) >= time_now %}
-                                                    <a class="btn btn-link btn-xs" href="{{ url_for('Time_Delay_Edit',departure_id = local_travel.key.id()) }}"  data-toggle="modal" data-target="#myModal">Edit delay</a>
-                                                {% endif %}
-                                            </td>
                                         </tr>
 
                                     {% endfor %}

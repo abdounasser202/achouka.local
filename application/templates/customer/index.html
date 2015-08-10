@@ -12,16 +12,6 @@
                           <li><a href="{{ url_for('Recording') }}">Recording</a></li>
                           <li class="active">Customer</li>
                         </ol>
-                        <nav class="navbar navbar-toolbar navbar-default" role="navigation">
-                          <div class="container-fluid">
-                            <div class="btn-toolbar" role="toolbar">
-                               <div class="btn-group pull-left">
-                                   <a href="{{ url_for('Customer_Edit') }}" class="btn btn-danger btn-lg">New</a>
-                               </div>
-                            </div>
-                          </div>
-                        </nav>
-                        {% include 'includes/flash_message.html' %}
 
                         <table class="table table-hover" id="dataTable">
                             <thead>
@@ -39,7 +29,7 @@
                                     <td>{{ customer.last_name }}</td>
                                     <td>{{ customer.birthday|format_date("%d-%m-%Y") }} </td>
                                     <td>
-                                        <a href="{{ url_for('Customer_Edit', customer_id=customer.key.id()) }}" class="btn btn-link btn-xs">Edit</a>
+                                        <a href="{{ url_for('Customer_Edit', customer_id=customer.key.id()) }}" class="btn btn-link btn-xs">Views</a>
                                     </td>
                                 </tr>
                             {% endfor %}

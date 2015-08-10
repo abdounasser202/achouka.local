@@ -13,7 +13,6 @@ from ..customer.forms_customer import FormCustomerPOS
 cache = Cache(app)
 
 
-
 @app.route('/point-of-sale/<int:departure_id>', methods=['GET', 'POST'])
 @app.route('/point-of-sale', methods=['GET', 'POST'])
 @login_required
@@ -27,11 +26,10 @@ def Pos(departure_id=None):
     time_zones = pytz.timezone('Africa/Douala')
     date_auto_nows = datetime.datetime.now(time_zones).strftime("%Y-%m-%d %H:%M:%S")
 
-    heure = function.datetime_convert(date_auto_nows).time()
+    today = function.datetime_convert(date_auto_nows)
 
     departure = DepartureModel.query(
-        DepartureModel.departure_date == datetime.date.today(),
-        DepartureModel.schedule >= heure
+        DepartureModel.departure_date >= datetime.date.today()
     ).order(
         -DepartureModel.departure_date,
         DepartureModel.schedule,
@@ -39,17 +37,23 @@ def Pos(departure_id=None):
     )
 
     if not departure_id:
-
         if current_user.have_agency():
-            agence_id = session.get('agence_id_local')
+            agence_id = session.get('agence_id')
             user_agence = AgencyModel.get_by_id(int(agence_id))
 
             for dep in departure:
-                if dep.destination.get().destination_start == user_agence.destination:
+                departure_time = function.add_time(dep.schedule, dep.time_delay)
+                departure_datetime = datetime.datetime(departure.departure_date.year, departure.departure_date.month, departure.departure_date.day, departure.departure_date.year, departure_time.hour, departure_time.minute, departure_time.second)
+                if dep.destination.get().destination_start == user_agence.destination and departure_datetime > today:
                     current_departure = dep
                     break
         else:
-            current_departure = departure.get()
+            for dep in departure:
+                departure_time = function.add_time(dep.schedule, dep.time_delay)
+                departure_datetime = datetime.datetime(departure.departure_date.year, departure.departure_date.month, departure.departure_date.day, departure.departure_date.year, departure_time.hour, departure_time.minute, departure_time.second)
+                if departure_datetime > today:
+                    current_departure = dep
+                    break
     else:
         current_departure = DepartureModel.get_by_id(departure_id)
 
@@ -59,13 +63,14 @@ def Pos(departure_id=None):
 @app.route('/reset_remaining_ticket')
 def reset_remaining_ticket():
 
-    if session.get('agence_id_local'):
-        agency_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
+    if session.get('agence_id'):
+        agency_user = AgencyModel.get_by_id(int(session.get('agence_id')))
         number = agency_user.TicketUnsold()
     else:
         number = 'No Ticket'
 
     return number+' Available'
+
 
 @app.route('/reset_current_departure/<int:departure_id>')
 @app.route('/reset_current_departure')
@@ -80,8 +85,6 @@ def reset_current_departure(departure_id=None):
     heure = function.datetime_convert(date_auto_nows).time()
 
     departure = DepartureModel.query(
-        DepartureModel.departure_date == datetime.date.today(),
-        DepartureModel.schedule >= heure
     ).order(
         -DepartureModel.departure_date,
         DepartureModel.schedule,
@@ -91,15 +94,18 @@ def reset_current_departure(departure_id=None):
 
     if not departure_id:
         if current_user.have_agency():
-            agence_id = session.get('agence_id_local')
+            agence_id = session.get('agence_id')
             user_agence = AgencyModel.get_by_id(int(agence_id))
 
             for dep in departure:
-                if dep.destination.get().destination_start == user_agence.destination:
+                if dep.destination.get().destination_start == user_agence.destination and function.add_time(dep.schedule, dep.time_delay) >= heure:
                     current_departure = dep
                     break
         else:
-            current_departure = departure.get()
+             for dep in departure:
+                if function.add_time(dep.schedule, dep.time_delay) >= heure:
+                    current_departure = dep
+                    break
     else:
         current_departure = DepartureModel.get_by_id(departure_id)
 
@@ -132,10 +138,11 @@ def reset_current_departure(departure_id=None):
     else:
         element = """<br/><br/>
           <div class="panel-body text-center">
-            <h3>No up coming journey</h3>
+            <h3>No next journey</h3>
           </div>"""
 
     return element
+
 
 @app.route('/search_customer_pos', methods=['GET', 'POST'])
 @login_required
@@ -173,7 +180,6 @@ def search_customer_pos():
     return render_template('/pos/search_customer.html', **locals())
 
 
-
 @app.route('/search_ticket_pos', methods=['GET', 'POST'])
 @login_required
 @roles_required(('employee_POS', 'super_admin'))
@@ -202,12 +208,7 @@ def search_ticket_pos():
 @roles_required(('employee_POS', 'super_admin'))
 def Ticket_found(ticket_id):
     ticket = TicketModel.get_by_id(ticket_id)
-
-    #information de l'agence de l'utilisateur
-    agency_current_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
-
     return render_template('/pos/ticket_found.html', **locals())
-
 
 
 @app.route('/create_customer_and_ticket_return/<int:ticket_id>/<int:departure_id>', methods=['GET', 'POST'])
@@ -223,7 +224,7 @@ def create_customer_and_ticket_return(ticket_id, departure_id=None):
     Ticket_Return = TicketModel.get_by_id(ticket_id)
 
     #information de l'agence de l'utilisateur
-    agency_current_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
+    agency_current_user = AgencyModel.get_by_id(int(session.get('agence_id')))
 
     #implementation de l'heure local
     time_zones = pytz.timezone('Africa/Douala')
@@ -281,6 +282,7 @@ def create_customer_and_ticket_return(ticket_id, departure_id=None):
     customer = CustomerModel.get_by_id(Ticket_Return.customer.get().key.id())
     form = FormCustomerPOS(obj=customer)
 
+    # Envoie des informations par default sur la vue
     form.type_name.data = Ticket_Return.type_name.get().key.id()
     form.class_name.data = Ticket_Return.class_name.get().key.id()
     form.journey_name.data = Ticket_Return.journey_name.get().key.id()
@@ -297,61 +299,53 @@ def create_customer_and_ticket_return(ticket_id, departure_id=None):
     ticket_update = None
 
     if form.validate_on_submit() and not obligated:
-        customer.first_name = form.first_name.data
-        customer.last_name = form.last_name.data
-        customer.birthday = function.date_convert(form.birthday.data)
-        customer.email = form.email.data
-        customer.nationality = form.nationality.data
-        customer.dial_code = form.dial_code.data
-        customer.phone = form.phone.data
-        customer.profession = form.profession.data
-        customer_save = customer.put()
 
-        new_ticket = TicketParent()
+        if customer.first_name != form.first_name.data or\
+            customer.last_name != form.last_name.data and customer.birthday != function.date_convert(form.birthday.data)\
+            or customer.email != form.email.data or customer.nationality != form.nationality.data or\
+            customer.dial_code != form.dial_code.data or customer.phone != form.phone.data or\
+                        customer.profession != form.profession.data or customer.nic_number != form.nic_number.data or\
+                customer.passport_number != form.passport_number.data:
 
-        new_ticket.type_name = Ticket_Return.type_name
-        new_ticket.class_name = Ticket_Return.class_name
+            customer.first_name = form.first_name.data
+            customer.last_name = form.last_name.data
+            customer.birthday = function.date_convert(form.birthday.data)
+            customer.email = form.email.data
+            customer.nationality = form.nationality.data
+            customer.dial_code = form.dial_code.data
+            customer.phone = form.phone.data
+            customer.profession = form.profession.data
+            customer.nic_number = form.nic_number.data
+            customer.passport_number = form.passport_number.data
+            customer.is_new = False
+            customer_save = customer.put()
+        else:
+            customer_save = customer.key
 
-        new_ticket.selling = True
-        new_ticket.is_ticket = True
-        new_ticket.date_reservation = function.datetime_convert(date_auto_nows)
-        new_ticket.datecreate = function.datetime_convert(date_auto_nows)
+        child_ticket = TicketModel.query(
+            TicketModel.parent_return == Ticket_Return.key.id()
+        ).get()
 
-        customer_ticket = CustomerModel.get_by_id(customer_save.id())
-        new_ticket.customer = customer_ticket.key
+        child_ticket.selling = True
+        child_ticket.date_reservation = function.datetime_convert(date_auto_nows)
+        child_ticket.travel_ticket = departure_current.destination
 
-        user = UserModel.get_by_id(int(session.get('user_id_local')))
-        new_ticket.ticket_seller = user.key
-
-        new_ticket.parent = Ticket_Return.key
+        user = UserModel.get_by_id(int(session.get('user_id')))
+        child_ticket.ticket_seller = user.key
 
         #sauvegarde de l'agence de l'utilisateur courant
-        new_ticket.agency = agency_current_user.key
+        child_ticket.agency = agency_current_user.key
 
-        new_ticket.departure = departure_current.key
+        child_ticket.departure = departure_current.key
 
-        ticket_update = new_ticket.put()
+        ticket_update = child_ticket.put()
 
         Ticket_Return.statusValid = False
         this_ticket = Ticket_Return.put()
 
-        from ..activity.models_activity import ActivityModel
-
-        time_zones = pytz.timezone('Africa/Douala')
-        date_auto_nows = datetime.datetime.now(time_zones).strftime("%Y-%m-%d %H:%M:%S")
-
-        activity = ActivityModel()
-        activity.user_modify = current_user.key
-        activity.object = "DepartureModel"
-        activity.time = function.datetime_convert(date_auto_nows)
-        activity.identity = this_ticket.id()
-        activity.nature = 1
-        activity.put()
-
         modal = 'true'
 
     return render_template('/pos/create_customer_and_ticket_return.html', **locals())
-
 
 
 @app.route('/create_customer_and_ticket_pos', methods=['GET', 'POST'])
@@ -425,7 +419,6 @@ def create_customer_and_ticket_pos(customer_id=None, departure_id=None):
             if count < number_obligated_question:
                 obligated = True
 
-
     if customer_id:
         customer = CustomerModel.get_by_id(customer_id)
         form = FormCustomerPOS(obj=customer)
@@ -451,17 +444,27 @@ def create_customer_and_ticket_pos(customer_id=None, departure_id=None):
 
     if form.validate_on_submit() and not obligated:
 
-        customer.first_name = form.first_name.data
-        customer.last_name = form.last_name.data
-        customer.birthday = function.date_convert(form.birthday.data)
-        customer.email = form.email.data
-        customer.nationality = form.nationality.data
-        customer.dial_code = form.dial_code.data
-        customer.phone = form.phone.data
-        customer.profession = form.profession.data
-        if customer_id:
+        if customer.first_name != form.first_name.data or\
+            customer.last_name != form.last_name.data and customer.birthday != function.date_convert(form.birthday.data)\
+            or customer.email != form.email.data or customer.nationality != form.nationality.data or\
+            customer.dial_code != form.dial_code.data or customer.phone != form.phone.data or\
+                        customer.profession != form.profession.data or customer.nic_number != form.nic_number.data or\
+                customer.passport_number != form.passport_number.data:
+
+            customer.first_name = form.first_name.data
+            customer.last_name = form.last_name.data
+            customer.birthday = function.date_convert(form.birthday.data)
+            customer.email = form.email.data
+            customer.nationality = form.nationality.data
+            customer.dial_code = form.dial_code.data
+            customer.phone = form.phone.data
+            customer.profession = form.profession.data
+            customer.nic_number = form.nic_number.data
+            customer.passport_number = form.passport_number.data
             customer.is_new = False
-        customer_save = customer.put()
+            customer_save = customer.put()
+        else:
+            customer_save = customer.key
 
         # caracteristique des tickets
         journey_ticket_car = JourneyTypeModel.get_by_id(int(form.journey_name.data))
@@ -475,7 +478,7 @@ def create_customer_and_ticket_pos(customer_id=None, departure_id=None):
             TicketTypeModel.travel == print_depature.destination,
             TicketTypeModel.active == True
         ).get()
-        agency_current_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
+        agency_current_user = AgencyModel.get_by_id(int(session.get('agence_id')))
 
         Ticket_To_Sell = TicketModel.query(
             TicketModel.type_name == ticket_type_name_car.key,
@@ -511,11 +514,12 @@ def create_customer_and_ticket_pos(customer_id=None, departure_id=None):
         departure_ticket = DepartureModel.get_by_id(int(form.current_departure.data))
         Ticket_To_Sell.departure = departure_ticket.key
 
-        user_ticket = UserModel.get_by_id(int(session.get('user_id_local')))
+        user_ticket = UserModel.get_by_id(int(session.get('user_id')))
         Ticket_To_Sell.ticket_seller = user_ticket.key
 
         from ..transaction.models_transaction import TransactionModel, ExpensePaymentTransactionModel
 
+        # Prise en compte des variations de prix des tickets avec les types de tickets
         last_transaction = None
         amount_different = 0
         if priceticket.price > Ticket_To_Sell.sellpriceAg:
@@ -560,7 +564,6 @@ def create_customer_and_ticket_pos(customer_id=None, departure_id=None):
     return render_template('/pos/create_customer_and_ticket.html', **locals())
 
 
-
 @app.route('/modal_generate_pdf_ticket')
 @app.route('/modal_generate_pdf_ticket/<int:ticket_id>')
 @login_required
@@ -587,13 +590,6 @@ def generate_pdf_ticket(ticket_id):
     barcode = code39.Standard39(code, barHeight=20, stop=1)
     barcode.humanReadable = 1
 
-    # from application import APP_STATIC
-
-    # f = open(os.path.join(APP_STATIC, 'fonts/Lato-Bold.ttf'))
-    # font = f.read()
-
-    #font = r"Lato-Bold.ttf"
-    #pdfmetrics.registerFont("Lato-Bold.ttf")
     string = '<font name="Times-Roman" size="14">%s</font>'
 
     journey = string % 'Return Ticket'
@@ -609,7 +605,7 @@ def generate_pdf_ticket(ticket_id):
     lieu = string % Ticket_print.agency.get().name
     agent = string % str(Ticket_print.ticket_seller.get().key.id())
 
-    p.drawImage(url_for('static', filename='TICKET-ONLY.jpg', _external=True), 0, 0, width=21*cm, height=9.9*cm, preserveAspectRatio=True)
+    p.drawImage(url_for('static', filename='TICKET-ONLY-2.jpg', _external=True), 0, 0, width=21*cm, height=9.9*cm, preserveAspectRatio=True)
 
     c = Paragraph(econo, style=style['Normal'])
     c.wrapOn(p, width, height)
@@ -696,8 +692,8 @@ def Search_Ticket_Type():
     ).get()
 
     Agency_ticket = 0
-    if session.get('agence_id_local'):
-        agency_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
+    if session.get('agence_id'):
+        agency_user = AgencyModel.get_by_id(int(session.get('agence_id')))
         Agency_ticket = TicketModel.query(
             TicketModel.class_name == classticket.key,
             TicketModel.type_name == typeticket.key,
@@ -715,7 +711,7 @@ def Search_Ticket_Type():
     if priceticket:
         data = json.dumps({
             'statut': 'OK',
-            'price': priceticket.price,
+            'price': function.format_price(priceticket.price),
             'currency': priceticket.currency.get().code,
             'type_name' : typeticket.name,
             'class_name': classticket.name,
@@ -747,7 +743,6 @@ def remaining_ticket():
     return data
 
 
-
 @app.route('/Calendrier')
 @login_required
 @roles_required(('employee_POS', 'super_admin'))
@@ -766,7 +761,6 @@ def Calendrier(current_month_active=None, current_day_active=None):
     cal_list = [cal.monthdatescalendar(year, i+1) for i in xrange(12)]
 
     return render_template('/pos/calendrier.html', **locals())
-
 
 
 @app.route('/List_All_Departure/<int:current_month_active>/<int:current_day_active>')
@@ -813,7 +807,7 @@ def Ticket_POS():
     from ..ticket_type.models_ticket_type import TicketTypeModel
 
     #information de l'agence de l'utilisateur
-    current_agency = AgencyModel.get_by_id(int(session.get('agence_id_local')))
+    current_agency = AgencyModel.get_by_id(int(session.get('agence_id')))
 
     # TYPE DE TICKET EN POSSESSION PAR L'AGENCE (etranger ou local)
     ticket_type_query = TicketTypeModel.query(
@@ -849,3 +843,219 @@ def Ticket_POS():
         ticket_type_purchase.append(temp_dict)
 
     return render_template('/pos/ticket-available.html', **locals())
+
+
+@app.route('/create_customer_and_ticket_upgrade/<int:ticket_id>/<int:departure_id>')
+@app.route('/create_customer_and_ticket_upgrade/<int:ticket_id>')
+def create_customer_and_ticket_upgrade(ticket_id, departure_id=None):
+    from ..ticket_type.models_ticket_type import TicketTypeModel
+    from ..departure.models_departure import DepartureModel
+
+    ticket_get = TicketModel.get_by_id(ticket_id)
+
+    departure_get = DepartureModel.get_by_id(departure_id)
+
+
+    ticket_type_query = TicketTypeModel.query(
+        TicketTypeModel.journey_name != ticket_get.journey_name,
+        TicketTypeModel.class_name == ticket_get.class_name,
+        TicketTypeModel.type_name == ticket_get.type_name,
+        TicketTypeModel.active == True,
+        TicketTypeModel.travel == departure_get.destination
+    )
+
+    return render_template('/pos/create_customer_and_ticket_upgrade.html', **locals())
+
+
+@app.route('/create_customer_and_ticket_upgrade_2/<int:departure_id>/<int:ticket_id>')
+@app.route('/create_customer_and_ticket_upgrade_2/<int:departure_id>/<int:ticket_id>/<int:ticket_type_id>')
+def create_customer_and_ticket_upgrade_2(departure_id, ticket_id, ticket_type_id=None):
+    from ..ticket_type.models_ticket_type import TicketTypeModel
+    from ..departure.models_departure import DepartureModel
+
+    departure_get = DepartureModel.get_by_id(departure_id)
+
+
+    ticket_type_get = TicketTypeModel.get_by_id(ticket_type_id)
+
+    ticket_to_upgrade = TicketTypeModel.query(
+        TicketTypeModel.class_name != ticket_type_get.class_name,
+        TicketTypeModel.type_name == ticket_type_get.type_name,
+        TicketTypeModel.journey_name == ticket_type_get.journey_name,
+        TicketTypeModel.active == True,
+        TicketTypeModel.travel == departure_get.destination
+    )
+
+    return render_template('/pos/create_customer_and_ticket_upgrade_2.html', **locals())
+
+
+@app.route('/create_upgrade_ticket/<int:departure_id>/<int:ticket_id>/<int:ticket_type_same_id>/<int:ticket_type_id>', methods=['GET','POST'])
+@app.route('/create_upgrade_ticket/<int:departure_id>/<int:ticket_id>/<int:ticket_type_same_id>', methods=['GET','POST'])
+def create_upgrade_ticket(departure_id, ticket_id, ticket_type_same_id, ticket_type_id=None):
+
+    from ..ticket_type.models_ticket_type import TicketTypeModel
+    from ..departure.models_departure import DepartureModel
+    from ..user.models_user import UserModel
+    from ..transaction.models_transaction import TransactionModel, ExpensePaymentTransactionModel
+
+    Ticket_Return = TicketModel.get_by_id(ticket_id)
+
+    #information de l'agence de l'utilisateur
+    agency_current_user = AgencyModel.get_by_id(int(session.get('agence_id')))
+
+    #implementation de l'heure local
+    time_zones = pytz.timezone('Africa/Douala')
+    date_auto_nows = datetime.datetime.now(time_zones).strftime("%Y-%m-%d %H:%M:%S")
+
+    number_list = global_dial_code_custom
+    nationalList = global_nationality_contry
+
+    #Verifier que les questions obligatoires ont ete selectionne
+    question_request = None
+    if request.method == 'POST':
+        question_request = request.form.getlist('questions')
+
+    #liste des questions
+    questions = QuestionModel.query(
+        QuestionModel.is_pos == True,
+        QuestionModel.active == True
+    )
+
+    #Traitement des questions obligatoires
+    quest_obligated = []
+    obligated = False
+    number_obligated_question = QuestionModel.query(
+        QuestionModel.is_pos == True,
+        QuestionModel.active == True,
+        QuestionModel.is_obligate == True
+    ).count()
+
+    obligated_question = QuestionModel.query(
+        QuestionModel.is_pos == True,
+        QuestionModel.active == True,
+        QuestionModel.is_obligate == True
+    )
+
+    # s'il n'y a pas de question envoye et qu'il y'a des questions obligatoires definies
+    if number_obligated_question >= 1 and question_request is None and request.method == 'POST':
+        obligated = True
+        quest_obligated = [question.key.id() for question in obligated_question]
+    else:
+        if question_request:
+            count = 0
+
+            #boucle la liste des questions envoyees et verifie si c'est dans la liste des questions obligatoires
+            for quest in question_request:
+                ks = QuestionModel.get_by_id(int(quest))
+                if ks.is_obligate:
+                    count += 1
+                    quest_obligated.append(int(quest))
+
+            # verifie que le quota de question obligatoire est atteint dans le questionnaire
+            if count < number_obligated_question:
+                obligated = True
+
+    #information du client
+    customer = CustomerModel.get_by_id(Ticket_Return.customer.get().key.id())
+    form = FormCustomerPOS(obj=customer)
+
+    ticket_type_choice_get = TicketTypeModel.get_by_id(ticket_type_id)
+    ticket_type_same_get = TicketTypeModel.get_by_id(ticket_type_same_id)
+
+    Amount = ticket_type_choice_get.price - ticket_type_same_get.price
+
+    form.type_name.data = ticket_type_choice_get.type_name.get().key.id()
+    form.class_name.data = ticket_type_choice_get.class_name.get().key.id()
+    form.journey_name.data = ticket_type_choice_get.journey_name.get().key.id()
+
+    departure_current = DepartureModel.get_by_id(departure_id)
+    form.current_departure.data = str(departure_current.key.id())
+
+    journey_ticket = JourneyTypeModel.query()
+    class_ticket = ClassTypeModel.query()
+    ticket_type_name = TicketTypeNameModel.query()
+
+
+    modal = 'false'
+    ticket_update = None
+
+    if form.validate_on_submit() and not obligated:
+
+        if customer.first_name != form.first_name.data or\
+            customer.last_name != form.last_name.data and customer.birthday != function.date_convert(form.birthday.data)\
+            or customer.email != form.email.data or customer.nationality != form.nationality.data or\
+            customer.dial_code != form.dial_code.data or customer.phone != form.phone.data or\
+                        customer.profession != form.profession.data or customer.nic_number != form.nic_number.data or\
+                customer.passport_number != form.passport_number.data:
+
+            customer.first_name = form.first_name.data
+            customer.last_name = form.last_name.data
+            customer.birthday = function.date_convert(form.birthday.data)
+            customer.email = form.email.data
+            customer.nationality = form.nationality.data
+            customer.dial_code = form.dial_code.data
+            customer.phone = form.phone.data
+            customer.profession = form.profession.data
+            customer.nic_number = form.nic_number.data
+            customer.passport_number = form.passport_number.data
+            customer.is_new = False
+            customer_save = customer.put()
+        else:
+            customer_save = customer.key
+
+        child_ticket = TicketModel.query(
+            TicketModel.parent_return == Ticket_Return.key.id()
+        ).get()
+
+        child_ticket.type_name = ticket_type_choice_get.type_name
+        child_ticket.class_name = ticket_type_choice_get.class_name
+        child_ticket.journey_name = ticket_type_choice_get.journey_name
+
+        child_ticket.selling = True
+        child_ticket.is_ticket = True
+        child_ticket.date_reservation = function.datetime_convert(date_auto_nows)
+        child_ticket.sellprice = Amount
+        child_ticket.sellpriceAg = Amount
+
+        child_ticket.sellpriceCurrency = ticket_type_choice_get.currency
+        child_ticket.sellpriceAgCurrency = ticket_type_choice_get.currency
+
+        child_ticket.travel_ticket = ticket_type_choice_get.travel
+
+        user = UserModel.get_by_id(int(session.get('user_id')))
+        child_ticket.ticket_seller = user.key
+        child_ticket.agency = user.agency
+
+        child_ticket.upgrade_parent = Ticket_Return.key
+        child_ticket.is_upgrade = True
+        child_ticket.departure = departure_current.key
+
+        # Modification du ticket enfant
+        ticket_update = child_ticket.put()
+
+        Ticket_Return.statusValid = False
+        this_ticket = Ticket_Return.put()
+
+        transaction = TransactionModel()
+        transaction.reason = "Upgrade ticket"
+        transaction.amount = Amount
+        transaction.is_payment = False
+        transaction.agency = user.agency
+        transaction.destination = ticket_type_choice_get.travel.get().destination_start
+        transaction.transaction_date = function.datetime_convert(date_auto_nows)
+        transaction.user = user.key
+
+        transaction_id = transaction.put()
+        transaction_id = TransactionModel.get_by_id(transaction_id.id())
+
+        ticket_update_id = TicketModel.get_by_id(ticket_update.id())
+
+        link_transaction = ExpensePaymentTransactionModel()
+        link_transaction.transaction = transaction_id.key
+        link_transaction.ticket = ticket_update_id.key
+        link_transaction.amount = Amount
+        link_transaction.put()
+
+        modal = 'true'
+
+    return render_template('/pos/create_upgrade_ticket.html', **locals())

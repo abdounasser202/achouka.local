@@ -12,15 +12,19 @@ cache = Cache(app)
 def Boarding():
     menu = 'boarding'
 
+    if not session.get('agence_id'):
+        flash('You can\'t use boarding. You don\'t have permissions', 'danger')
+
+    number = request.args.get('ticket_id')
+
     #implementation de l'heure local
     time_zones = pytz.timezone('Africa/Douala')
     date_auto_nows = datetime.datetime.now(time_zones).strftime("%Y-%m-%d %H:%M:%S")
 
-    heure = function.datetime_convert(date_auto_nows).time()
+    today = function.datetime_convert(date_auto_nows)
 
     departure = DepartureModel.query(
-        DepartureModel.departure_date == datetime.date.today(),
-        DepartureModel.schedule >= heure
+        DepartureModel.departure_date >= datetime.date.today()
     ).order(
         -DepartureModel.departure_date,
         DepartureModel.schedule,
@@ -28,15 +32,22 @@ def Boarding():
     )
 
     if current_user.have_agency():
-        agence_id = session.get('agence_id_local')
+        agence_id = session.get('agence_id')
         user_agence = AgencyModel.get_by_id(int(agence_id))
 
         for dep in departure:
-            if dep.destination.get().destination_start == user_agence.destination:
+            departure_time = function.add_time(dep.schedule, dep.time_delay)
+            departure_datetime = datetime.datetime(departure.departure_date.year, departure.departure_date.month, departure.departure_date.day, departure.departure_date.year, departure_time.hour, departure_time.minute, departure_time.second)
+            if dep.destination.get().destination_start == user_agence.destination and departure_datetime > today:
                 current_departure = dep
                 break
     else:
-        current_departure = departure.get()
+        for dep in departure:
+            departure_time = function.add_time(dep.schedule, dep.time_delay)
+            departure_datetime = datetime.datetime(departure.departure_date.year, departure.departure_date.month, departure.departure_date.day, departure.departure_date.year, departure_time.hour, departure_time.minute, departure_time.second)
+            if departure_datetime > today:
+                current_departure = dep
+                break
 
     return render_template('/index/boarding.html', **locals())
 
@@ -47,12 +58,18 @@ def Boarding():
 @roles_required(('employee_Boarding', 'super_admin'))
 def Search_Ticket_Boarding(ticket_id=None):
 
+    if not session.get('agence_id'):
+        flash('You can\'t find a ticket. you dont have this permission', 'danger')
+        return redirect('Boarding')
+
     if ticket_id:
         number_ticket = str(ticket_id)
+        departure_id = request.args.get('departure_id')
+        departure_id = DepartureModel.get_by_id(int(departure_id))
     else:
         number_ticket = request.form['number_ticket']
-    departure_id = request.form['departure_id']
-    departure_id = DepartureModel.get_by_id(int(departure_id))
+        departure_id = request.form['departure_id']
+        departure_id = DepartureModel.get_by_id(int(departure_id))
 
     number_ticket = ''.join(number_ticket.split('*'))
 
@@ -63,7 +80,6 @@ def Search_Ticket_Boarding(ticket_id=None):
             TicketPoly.is_boarding == False,
             TicketPoly.departure == departure_id.key
         )
-        departure_id = departure_id.key.id()
     else:
         ticket = TicketPoly.get_by_id(int(number_ticket))
 
@@ -100,8 +116,6 @@ def Update_Ticket_For_Boarding(ticket_id):
     ticket = TicketPoly.get_by_id(ticket_id)
 
     question_request = request.form.getlist('questions')
-
-    from ..activity.models_activity import ActivityModel
 
     time_zones = pytz.timezone('Africa/Douala')
     date_auto_nows = datetime.datetime.now(time_zones).strftime("%Y-%m-%d %H:%M:%S")
@@ -160,17 +174,14 @@ def Update_Ticket_For_Boarding(ticket_id):
                     Answers.response = False
             Answers.put()
         ticket.is_boarding = True
-        if not ticket.journey_name.get().returned and not ticket.is_return:
+        # cas de ticket allee et retour qui a un journey type
+        if ticket.journey_name and not ticket.journey_name.get().returned and not ticket.is_return:
             ticket.statusValid = False
-        this_ticket = ticket.put()
+        # cas de tricket return qui n'a pas de journey type
+        if not ticket.journey_name:
+            ticket.statusValid = False
 
-        activity = ActivityModel()
-        activity.user_modify = current_user.key
-        activity.object = "TicketPoly"
-        activity.time = function.datetime_convert(date_auto_nows)
-        activity.identity = this_ticket.id()
-        activity.nature = 4
-        activity.put()
+        this_ticket = ticket.put()
 
         modal = 'true'
 
@@ -204,6 +215,7 @@ def generate_pdf_boarding(ticket_id):
 
     string = '<font name="Times-Roman" size="14">%s</font>'
     string_2 = '<font name="Times-Roman" size="13">%s</font>'
+    string_3 = '<font name="Times-Roman" size="10">%s</font>'
 
     journey = string % 'Return T.'
     if Ticket_print.journey_name:
@@ -218,7 +230,11 @@ def generate_pdf_boarding(ticket_id):
     lieu = string % Ticket_print.agency.get().name
     agent = string % str(Ticket_print.ticket_seller.get().key.id())
 
-    econo_2 = string_2 % Ticket_print.class_name.get().name+" - "+string_2 % Ticket_print.type_name.get().name+" - "+journey
+    journey = string_3 % 'Return T.'
+    if Ticket_print.journey_name:
+        journey = string_3 % Ticket_print.journey_name.get().name
+
+    econo_2 = string_3 % Ticket_print.class_name.get().name+" - "+string_3 % Ticket_print.type_name.get().name+" - "+journey
     name_2 = string_2 % Ticket_print.customer.get().first_name+" "+string_2 % Ticket_print.customer.get().last_name
     froms_2 = string_2 % Ticket_print.departure.get().destination.get().destination_start.get().name
     destination_2 = string_2 % Ticket_print.departure.get().destination.get().destination_check.get().name
@@ -226,11 +242,11 @@ def generate_pdf_boarding(ticket_id):
     time_2 = string_2 % str(function.format_date(function.add_time(Ticket_print.departure.get().schedule, Ticket_print.departure.get().time_delay), "%H:%M"))
     lieu_2 = string_2 % Ticket_print.agency.get().name
 
-    p.drawImage(url_for('static', filename='BOARDING-ONLY.jpg', _external=True), 0, 0, width=21*cm, height=9.9*cm, preserveAspectRatio=True)
+    p.drawImage(url_for('static', filename='BOARDING-ONLY-2.jpg', _external=True), 0, 0, width=21*cm, height=9.9*cm, preserveAspectRatio=True)
 
     c = Paragraph(econo_2, style=style['Normal'])
     c.wrapOn(p, width, height)
-    c.drawOn(p, 15*cm, 7.9*cm)
+    c.drawOn(p, 16.3*cm, 7.9*cm)
 
     c = Paragraph(econo, style=style['Normal'])
     c.wrapOn(p, width, height)
@@ -323,4 +339,24 @@ def generate_pdf_boarding(ticket_id):
     response.headers["Content-Type"] = "application/pdf"
 
     return response
+
+@app.route('/customer_aboard')
+@app.route('/customer_aboard/<int:departure_id>')
+def customer_aboard(departure_id):
+
+    departure_get = DepartureModel.get_by_id(departure_id)
+
+    printer = False
+    if request.args.get('printer'):
+        printer = True
+
+    ticket_user_query = TicketModel.query(
+        TicketModel.selling == True,
+        TicketModel.departure == departure_get.key,
+        TicketModel.is_boarding == True
+    )
+
+    return render_template('/boarding/customer_aboard.html', **locals())
+
+
 
