@@ -28,7 +28,7 @@ class TicketPoly(polymodel.PolyModel):
     is_return = ndb.BooleanProperty(default=False)
 
     selling = ndb.BooleanProperty(default=False)
-    is_ticket = ndb.BooleanProperty()
+    is_ticket = ndb.BooleanProperty(default=True)
     date_reservation = ndb.DateTimeProperty()
     sellprice = ndb.FloatProperty()
     sellpriceCurrency = ndb.KeyProperty(kind=CurrencyModel)
@@ -56,9 +56,60 @@ class TicketModel(TicketPoly):
         )
         return answer
 
+    def make_to_dict(self):
+        to_dict = {}
 
-# class TicketParent(TicketPoly): #TICKET VIRTUEL GENERE PAR UN TICKET ALLE ET RETOUR. IL N'EST PAS COMPTABILISE
-#     parent = ndb.KeyProperty(kind=TicketModel)
+        to_dict['ticket_id'] = self.key.id()
+        to_dict['date_reservation'] = str(self.date_reservation)
+        to_dict['sellprice'] = self.sellprice
+        to_dict['sellpriceCurrency'] = self.sellpriceCurrency.id()
+
+        to_dict['customer'] = self.customer.id()
+        to_dict['departure'] = self.departure.id()
+        to_dict['ticket_seller'] = self.ticket_seller.id()
+        to_dict['agency'] = self.agency.id()
+
+        to_dict['is_prepayment'] = self.is_prepayment
+        to_dict['statusValid'] = self.statusValid
+        to_dict['is_return'] = self.is_return
+
+        to_dict['travel_ticket'] = self.travel_ticket.id()
+        to_dict['is_boarding'] = self.is_boarding
+
+        upgrade = False
+        if self.is_upgrade:
+            to_dict['is_upgrade'] = self.is_upgrade
+            to_dict['upgrade_parent'] = self.upgrade_parent.id()
+            to_dict['is_count'] = self.is_count
+            upgrade = True
+        to_dict['child_upgrade'] = upgrade
+
+        from ..transaction.models_transaction import ExpensePaymentTransactionModel
+
+        transactions = ExpensePaymentTransactionModel.query(
+            ExpensePaymentTransactionModel.ticket == self.key,
+            ExpensePaymentTransactionModel.is_difference == True
+        )
+        to_dict['transaction'] = []
+        for transaction in transactions:
+            trans = {}
+            trans['amount'] = transaction.transaction.get().amount
+            trans['is_payment'] = transaction.transaction.get().is_payment
+            trans['reason'] = transaction.transaction.get().reason
+            to_dict['transaction'].append(trans)
+
+        question_answer = TicketQuestion.query(
+            TicketQuestion.ticket_id == self.key
+        )
+
+        to_dict['ticket_question'] = []
+        for question in question_answer:
+            quest = {}
+            quest['question_id'] = question.question_id.id()
+            quest['response'] = question.respnse
+            to_dict['ticket_question'].append(quest)
+
+        return to_dict
 
 
 class TicketQuestion(ndb.Model):

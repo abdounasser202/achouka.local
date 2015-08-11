@@ -38,10 +38,15 @@ def synchronization():
     category_api(url_config.url_server, token, "/category/get/", date)
     tickettype_api(url_config.url_server, token, "/tickets/get/", date)
     customer_api(url_config.url_server, token, "/customer/get/", date)
+
     if date:
         customer_api_put(url_config.url_server, token, "/customer/put/", date)
+        ticket_sale_put_api(url_config.url_server, token, "/ticket_local_sale_put/put/", date)
 
+    transaction_do_api(url_config.url_server, token, "/transaction/get/", date)
+    # Insertion des tickets alloues
     ticket_allocated_api(url_config.url_server, token, "/tickets_allocated/get/", date)
+    transaction_do_api_2(url_config.url_server, token, "/transaction/get/", date)
     get_doublons_ticket_return_api(url_config.url_server, token, "/tickets_doublons_ticket_return_sale/get/", date)
 
     # Netoyage de la base de donnee
@@ -164,7 +169,10 @@ def active_local_agency(agency_id):
     tickettype_api(url_config.url_server, url_config.token_agency, "/tickets/get/", date)
     customer_api(url_config.url_server, url_config.token_agency, "/customer/get/", date)
 
+    transaction_do_api(url_config.url_server, url_config.token_agency, "/transaction/get/", date)
+    # Insertion des tickets alloues
     ticket_allocated_api(url_config.url_server, url_config.token_agency, "/tickets_allocated/get/", date)
+    transaction_do_api_2(url_config.url_server, url_config.token_agency, "/transaction/get/", date)
     get_doublons_ticket_return_api(url_config.url_server, url_config.token_agency, "/tickets_doublons_ticket_return_sale/get/", date)
 
     # Netoyage de la base de donnee
@@ -737,9 +745,142 @@ def customer_api_put(url, tocken, segment, date):
     else:
         flash(result['message'], "success")
 
+def transaction_do_api(url, tocken, segment, date):
+    from ..transaction.models_transaction import TransactionModel, AgencyModel, DestinationModel, UserModel
+    from ..user.models_user import RoleModel, UserRoleModel, ProfilModel, ProfilRoleModel
+
+    url = ""+url+segment+tocken+"?last_update="+str(date)
+    result_transaction = urlfetch.fetch(url)
+    result_transaction = result_transaction.content
+    result_transaction = json.loads(result_transaction)
+
+    if result_transaction['status'] and result_transaction['status'] == 404:
+        flash(result_transaction['message'], "danger")
+        return redirect(url_for('Home'))
+    else:
+        for data_get in result_transaction['transactions']:
+            old_data = TransactionModel.get_by_id(data_get['transaction_id'])
+            if not old_data:
+                data_save = TransactionModel(id=data_get['transaction_id'])
+                data_save.reason = data_get['reason']
+                data_save.amount = data_get['amount']
+                data_save.is_payment = data_get['is_payment']
+                data_save.transaction_date = function.datetime_convert(data_get['transaction_date'])
+
+                agency_transaction = AgencyModel.get_by_id(data_get['agency'])
+                data_save.agency = agency_transaction.key
+
+                destination = DestinationModel.get_by_id(data_get['destination'])
+                data_save.destination = destination.key
+
+                user = UserModel.get_by_id(data_get['user']['user_id'])
+                if not user:
+                    url = ""+url+"/login_user/get/"+data_get['user']['password']+"/"+data_get['user']['email']+"/"+tocken+"?exist="+str(0)
+                    result_user = urlfetch.fetch(url)
+                    result_user = result_user.content
+                    result_user = json.loads(result_user)
+
+                    user_log = UserModel(id=result_user['user']['user_id'])
+                    user_log.first_name = result_user['user']['first_name']
+                    user_log.last_name = result_user['user']['last_name']
+                    user_log.dial_code = result_user['user']['dial_code']
+                    user_log.enabled = result_user['user']['enabled']
+                    user_log.email = result_user['user']['email']
+                    user_log.password = result_user['user']['password']
+                    user_log.phone = result_user['user']['phone']
+
+                    if not result_user['profil_user']:
+                        user_save = user_log.put()
+                        # Traitement des informations du super administrateur
+                        if result_user['role_user']:
+                            role_exist = RoleModel.get_by_id(result_user['role_user']['role_user_id'])
+
+                            if not role_exist:
+                                role_user = RoleModel(id=result_user['role_user']['role_user_id'])
+                                role_user.name = result_user['role_user']['role_user_name']
+                                role_user.visible = result_user['role_user']['role_user_visible']
+                                role_save = role_user.put()
+                            else:
+                                role_save = role_exist.key
+
+                            user_role = UserRoleModel()
+                            user_role.role_id = role_save
+                            user_role.user_id = user_save
+                            user_role.put()
+
+                    else:
+
+                        # traitement des informations des utilisateurs non administrateur
+                        profil_exist = ProfilModel.get_by_id(result_user['profil_user']['profil_id'])
+                        if not profil_exist:
+                            profil_user = ProfilModel(id=result_user['profil_user']['profil_id'])
+                            profil_user.name = result_user['profil_user']['profil_name']
+                            profil_user.standard = result_user['profil_user']['profil_standard']
+                            profil_user.enable = result_user['profil_user']['profil_enable']
+                            profil_save = profil_user.put()
+                        else:
+                            profil_save = profil_exist.key
+
+                        user_log.profil = profil_save
+                        user_save = user_log.put()
+
+                        for role in result_user['profil_user']['profil_roles']:
+
+                            role_exist = RoleModel.get_by_id(role['role_id'])
+
+                            if not role_exist:
+                                role_user = RoleModel(id=role['role_id'])
+                                role_user.name = role['role_name']
+                                role_user.visible = role['role_visible']
+                                role_save = role_user.put()
+                            else:
+                                role_save = role_exist.key
+
+                            if not profil_exist and not role_exist:
+                                user_role = UserRoleModel()
+                                user_role.role_id = role_save
+                                user_role.user_id = user_save
+                                user_role.put()
+
+                                user_profil = ProfilRoleModel()
+                                user_profil.role_id = role_save
+                                user_profil.profil_id = profil_save
+                                user_profil.put()
+                else:
+                    user_save = user.key
+
+                data_save.user = user_save
+                data_save.transaction_admin = data_get['transaction_admin']
+                data_save.put()
+
+
+def transaction_do_api_2(url, tocken, segment, date):
+    from ..transaction.models_transaction import TransactionModel, ExpensePaymentTransactionModel, TicketModel
+
+    url = ""+url+segment+tocken+"?last_update="+str(date)
+    result_transaction = urlfetch.fetch(url)
+    result_transaction = result_transaction.content
+    result_transaction = json.loads(result_transaction)
+
+    if result_transaction['status'] and result_transaction['status'] == 404:
+        flash(result_transaction['message'], "danger")
+        return redirect(url_for('Home'))
+    else:
+        for data_get in result_transaction['transactions']:
+            old_data = TransactionModel.get_by_id(data_get['transaction_id'])
+            if old_data:
+                for line in data_get['relation_parent_child']:
+                    lines = ExpensePaymentTransactionModel()
+                    ticket = TicketModel.get_by_id(line['ticket'])
+                    lines.ticket = ticket.key
+                    lines.is_difference = line['is_difference']
+                    lines.transaction = old_data.key
+                    lines.amount = line['amount']
+                    lines.put()
+
 
 def ticket_allocated_api(url, tocken, segment, date):
-    from ..ticket.models_ticket import TicketModel, CustomerModel, TicketTypeNameModel, JourneyTypeModel, ClassTypeModel, TravelModel, AgencyModel
+    from ..ticket.models_ticket import TicketModel, CurrencyModel, TicketTypeNameModel, JourneyTypeModel, ClassTypeModel, TravelModel, AgencyModel
 
     url = ""+url+segment+tocken+"?last_update="+str(date)
     result = urlfetch.fetch(url)
@@ -750,12 +891,12 @@ def ticket_allocated_api(url, tocken, segment, date):
         flash(result['message'], "danger")
         return redirect(url_for('Home'))
     else:
-        for data_get in result['tickets_allocated']:
+        for data_get in result['ticket_allocated']:
             old_data = TicketModel.get_by_id(data_get['ticket_allocated_id'])
             if not old_data:
                 data_save = TicketModel(id=data_get['ticket_allocated_id'])
 
-                currency_ticket = CustomerModel.get_by_id(data_get['sellpriceAgCurrency'])
+                currency_ticket = CurrencyModel.get_by_id(data_get['sellpriceAgCurrency'])
                 if currency_ticket:
                     data_save.sellpriceAg = data_get['sellpriceAg']
                     data_save.sellpriceAgCurrency = currency_ticket.key
@@ -780,11 +921,12 @@ def ticket_allocated_api(url, tocken, segment, date):
                 data_save.is_return = data_get['is_return']
                 data_save.selling = data_get['selling']
                 data_save.is_ticket = data_get['is_ticket']
+                data_save.datecreate = function.datetime_convert(data_get['datecreate'])
 
                 data_save.put()
 
 
-def get_doublons_ticket_return_api(url, tocken, segment, date=None):
+def get_doublons_ticket_return_api(url, tocken, segment, date):
 
     from ..ticket.models_ticket import TicketModel, CurrencyModel, CustomerModel,\
         TicketTypeNameModel, JourneyTypeModel, ClassTypeModel, TravelModel, AgencyModel, DepartureModel
@@ -850,3 +992,37 @@ def get_doublons_ticket_return_api(url, tocken, segment, date=None):
                     duplicate_ticket.parent_return = save
 
                     duplicate_ticket.put()
+
+
+def ticket_sale_put_api(url, tocken, segment, date):
+
+    from ..ticket.models_ticket import TicketModel, AgencyModel
+    import urllib
+
+    date = datetime.datetime.combine(date, datetime.datetime.min.time())
+    ticket_sale = TicketModel.query(
+        TicketModel.date_reservation >= date,
+        TicketModel.selling == True,
+        TicketModel.is_boarding == False
+    )
+
+    active_local_agency = AgencyModel.query(
+        AgencyModel.local_status == True
+    ).get()
+
+    data = {}
+    data['ticket_sale'] = []
+    for ticket in ticket_sale:
+        if ticket.travel_ticket.get().destination_start == active_local_agency.destination:
+            data['ticket_sale'].append(ticket.make_to_dict())
+
+    data_format = urllib.urlencode(data)
+    url = url+segment+tocken
+    result = urlfetch.fetch(url=url, payload=data_format, method=urlfetch.POST, headers={'Content-Type': 'application/x-www-form-urlencoded'})
+    result = result.content
+    result = json.loads(result)
+
+    if result['status'] and result['status'] == 404:
+        flash(result['message'], "warning")
+    else:
+        flash(result['message'], "success")

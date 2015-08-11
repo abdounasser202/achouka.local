@@ -144,7 +144,7 @@ def Home():
 
                     # traitement des informations des utilisateurs non administrateur
                     profil_exist = ProfilModel.get_by_id(result['profil_user']['profil_id'])
-                    if profil_exist:
+                    if not profil_exist:
                         profil_user = ProfilModel(id=result['profil_user']['profil_id'])
                         profil_user.name = result['profil_user']['profil_name']
                         profil_user.standard = result['profil_user']['profil_standard']
@@ -168,14 +168,16 @@ def Home():
                         else:
                             role_save = role_exist.key
 
-                        user_role = UserRoleModel()
-                        user_role.role_id = role_save
-                        user_role.user_id = user_save
-                        user_role.put()
+                        if not profil_exist and not role_exist:
+                            user_role = UserRoleModel()
+                            user_role.role_id = role_save
+                            user_role.user_id = user_save
+                            user_role.put()
 
-                        user_profil = ProfilRoleModel()
-                        user_profil.role_id = role_save
-                        user_profil.profil_id = profil_save
+                            user_profil = ProfilRoleModel()
+                            user_profil.role_id = role_save
+                            user_profil.profil_id = profil_save
+                            user_profil.put()
 
 
                 if not exist_config_active >= 1:

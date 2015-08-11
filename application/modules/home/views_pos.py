@@ -1000,8 +1000,6 @@ def create_upgrade_ticket(departure_id, ticket_id, ticket_type_same_id, ticket_t
             customer.passport_number = form.passport_number.data
             customer.is_new = False
             customer_save = customer.put()
-        else:
-            customer_save = customer.key
 
         child_ticket = TicketModel.query(
             TicketModel.parent_return == Ticket_Return.key.id()
@@ -1048,13 +1046,10 @@ def create_upgrade_ticket(departure_id, ticket_id, ticket_type_same_id, ticket_t
         transaction.user = user.key
 
         transaction_id = transaction.put()
-        transaction_id = TransactionModel.get_by_id(transaction_id.id())
-
-        ticket_update_id = TicketModel.get_by_id(ticket_update.id())
 
         link_transaction = ExpensePaymentTransactionModel()
-        link_transaction.transaction = transaction_id.key
-        link_transaction.ticket = ticket_update_id.key
+        link_transaction.transaction = transaction_id
+        link_transaction.ticket = ticket_update
         link_transaction.amount = Amount
         link_transaction.put()
 
