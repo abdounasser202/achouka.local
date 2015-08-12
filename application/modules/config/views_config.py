@@ -46,6 +46,7 @@ def synchronization():
     transaction_do_api(url_config.url_server, token, "/transaction/get/", date)
     # Insertion des tickets alloues
     ticket_allocated_api(url_config.url_server, token, "/tickets_allocated/get/", date)
+    get_ticket_sale_online(url_config.url_server, token, "/get_ticket_online/get/", date)
     transaction_do_api_2(url_config.url_server, token, "/transaction/get/", date)
     get_doublons_ticket_return_api(url_config.url_server, token, "/tickets_doublons_ticket_return_sale/get/", date)
 
@@ -172,6 +173,7 @@ def active_local_agency(agency_id):
     transaction_do_api(url_config.url_server, url_config.token_agency, "/transaction/get/", date)
     # Insertion des tickets alloues
     ticket_allocated_api(url_config.url_server, url_config.token_agency, "/tickets_allocated/get/", date)
+    get_ticket_sale_online(url_config.url_server, url_config.token_agency, "/get_ticket_online/get/", date)
     transaction_do_api_2(url_config.url_server, url_config.token_agency, "/transaction/get/", date)
     get_doublons_ticket_return_api(url_config.url_server, url_config.token_agency, "/tickets_doublons_ticket_return_sale/get/", date)
 
@@ -693,7 +695,7 @@ def customer_api(url, tocken, segment, date=None):
             if old_data:
                 old_data.first_name = data_get['customer_first_name']
                 old_data.last_name = data_get['customer_last_name']
-                old_data.birthday = data_get['customer_birthday']
+                old_data.birthday = function.date_convert(data_get['customer_birthday'])
                 old_data.passport_number = data_get['customer_passport_number']
                 old_data.nic_number = data_get['customer_nic_number']
                 old_data.profession = data_get['customer_profession']
@@ -708,7 +710,7 @@ def customer_api(url, tocken, segment, date=None):
                 data_save = CustomerModel(id=data_get['customer_id'])
                 data_save.first_name = data_get['customer_first_name']
                 data_save.last_name = data_get['customer_last_name']
-                data_save.birthday = data_get['customer_birthday']
+                data_save.birthday = function.date_convert(data_get['customer_birthday'])
                 data_save.passport_number = data_get['customer_passport_number']
                 data_save.nic_number = data_get['customer_nic_number']
                 data_save.profession = data_get['customer_profession']
@@ -744,6 +746,7 @@ def customer_api_put(url, tocken, segment, date):
         flash(result['message'], "warning")
     else:
         flash(result['message'], "success")
+
 
 def transaction_do_api(url, tocken, segment, date):
     from ..transaction.models_transaction import TransactionModel, AgencyModel, DestinationModel, UserModel
@@ -870,13 +873,21 @@ def transaction_do_api_2(url, tocken, segment, date):
             old_data = TransactionModel.get_by_id(data_get['transaction_id'])
             if old_data:
                 for line in data_get['relation_parent_child']:
-                    lines = ExpensePaymentTransactionModel()
+
                     ticket = TicketModel.get_by_id(line['ticket'])
-                    lines.ticket = ticket.key
-                    lines.is_difference = line['is_difference']
-                    lines.transaction = old_data.key
-                    lines.amount = line['amount']
-                    lines.put()
+
+                    lines_exit = ExpensePaymentTransactionModel.query(
+                        ExpensePaymentTransactionModel.ticket == ticket.key,
+                        ExpensePaymentTransactionModel.transaction == old_data.key
+                    ).count()
+
+                    if not lines_exit:
+                        lines = ExpensePaymentTransactionModel()
+                        lines.is_difference = line['is_difference']
+                        lines.ticket = ticket.key
+                        lines.transaction = old_data.key
+                        lines.amount = line['amount']
+                        lines.put()
 
 
 def ticket_allocated_api(url, tocken, segment, date):
@@ -1026,3 +1037,85 @@ def ticket_sale_put_api(url, tocken, segment, date):
         flash(result['message'], "warning")
     else:
         flash(result['message'], "success")
+
+
+def get_ticket_sale_online(url, tocken, segment, date):
+
+    from ..ticket.models_ticket import TicketModel, CurrencyModel, CustomerModel, TicketTypeNameModel, JourneyTypeModel,\
+        ClassTypeModel, TravelModel, AgencyModel, DepartureModel, UserModel
+
+    url = ""+url+segment+tocken+"?last_update="+str(date)
+    result = urlfetch.fetch(url)
+    result = result.content
+    result = json.loads(result)
+
+    if result['status'] and result['status'] == 404:
+        flash(result['message'], "danger")
+        return redirect(url_for('Home'))
+    else:
+        for data_get in result['tickets_sale']:
+            old_data = TicketModel.get_by_id(data_get['ticket_allocated_id'])
+            if old_data:
+                currency_ticket = CurrencyModel.get_by_id(data_get['sellpriceCurrency'])
+                if currency_ticket:
+                    old_data.sellprice = data_get['sellprice']
+                    old_data.sellpriceCurrency = currency_ticket.key
+
+                customer_ticket = CustomerModel.get_by_id(data_get['customer'])
+                old_data.customer = customer_ticket.key
+
+                departure_ticket = DepartureModel.get_by_id(data_get['departure'])
+                old_data.departure = departure_ticket.key
+
+                user_ticket = UserModel.get_by_id(data_get['ticket_seller'])
+                old_data.ticket_seller = user_ticket.key
+
+                old_data.selling = data_get['selling']
+                old_data.date_reservation = function.datetime_convert(data_get['date_reservation'])
+                old_data.put()
+            else:
+                data_save = TicketModel(id=data_get['ticket_allocated_id'])
+
+                currency_ticket = CurrencyModel.get_by_id(data_get['sellpriceAgCurrency'])
+                if currency_ticket:
+                    data_save.sellpriceAg = data_get['sellpriceAg']
+                    data_save.sellpriceAgCurrency = currency_ticket.key
+
+                category_ticket = TicketTypeNameModel.get_by_id(data_get['type_name'])
+                data_save.type_name = category_ticket.key
+
+                journey_ticket = JourneyTypeModel.get_by_id(data_get['journey_name'])
+                data_save.journey_name = journey_ticket.key
+
+                classes_ticket = ClassTypeModel.get_by_id(data_get['class_name'])
+                data_save.class_name = classes_ticket.key
+
+                travel_ticket = TravelModel.get_by_id(data_get['travel_ticket'])
+                data_save.travel_ticket = travel_ticket.key
+
+                agency_ticket = AgencyModel.get_by_id(data_get['agency'])
+                data_save.agency = agency_ticket.key
+
+                data_save.is_prepayment = data_get['is_prepayment']
+                data_save.statusValid = data_get['statusValid']
+                data_save.is_return = data_get['is_return']
+                data_save.selling = data_get['selling']
+                data_save.is_ticket = data_get['is_ticket']
+                data_save.datecreate = function.datetime_convert(data_get['datecreate'])
+
+                currency_ticket = CurrencyModel.get_by_id(data_get['sellpriceCurrency'])
+                if currency_ticket:
+                    data_save.sellprice = data_get['sellprice']
+                    data_save.sellpriceCurrency = currency_ticket.key
+
+                customer_ticket = CustomerModel.get_by_id(data_get['customer'])
+                data_save.customer = customer_ticket.key
+
+                departure_ticket = DepartureModel.get_by_id(data_get['departure'])
+                data_save.departure = departure_ticket.key
+
+                user_ticket = UserModel.get_by_id(data_get['ticket_seller'])
+                data_save.ticket_seller = user_ticket.key
+                data_save.date_reservation = function.datetime_convert(data_get['date_reservation'])
+
+                data_save.put()

@@ -179,7 +179,6 @@ def Home():
                             user_profil.profil_id = profil_save
                             user_profil.put()
 
-
                 if not exist_config_active >= 1:
 
                     currency = CurrencyModel(id=result['current_agency']['agency_destination']['destination_currency']['currency_id'])
@@ -223,11 +222,11 @@ def Home():
             agency = 0
             if user_login.agency:
                 agency = user_login.agency.get().key.id()
-                if not agency.status:
+                if not user_login.agency.get().status:
                     flash('Your agency is disabled in online apps. Contact Administrator', 'danger')
                     return redirect(url_for('Home', url=url))
 
-                if not agency.local_status:
+                if not user_login.agency.get().local_status:
                     flash('You can not connect in local. Your agency is disabled. Contact Administrator', 'danger')
                     return redirect(url_for('Home', url=url))
 

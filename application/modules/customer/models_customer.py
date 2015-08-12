@@ -23,7 +23,7 @@ class CustomerModel(ndb.Model):
         to_dict['customer_id'] = self.key.id()
         to_dict['customer_first_name'] = self.first_name
         to_dict['customer_last_name'] = self.last_name
-        to_dict['customer_birthday'] = self.birthday
+        to_dict['customer_birthday'] = str(self.birthday)
         to_dict['customer_passport_number'] = self.passport_number
         to_dict['customer_nic_number'] = self.nic_number
         to_dict['customer_profession'] = self.profession

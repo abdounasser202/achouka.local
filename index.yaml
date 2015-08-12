@@ -133,6 +133,14 @@ indexes:
   properties:
   - name: agency
   - name: class
+  - name: is_count
+  - name: selling
+  - name: date_reservation
+
+- kind: TicketPoly
+  properties:
+  - name: agency
+  - name: class
   - name: selling
   - name: date_reservation
 
