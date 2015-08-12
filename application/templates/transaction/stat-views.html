@@ -143,13 +143,6 @@
                                     </table>
                                 </div>
                                 <hr/>
-                                {% if current_user.has_roles(('admin','super_admin'))  %}
-                                        {% include 'includes/flash_message.html' %}
-                                        <a href="{{ url_for('Payment_admin_local', agency_id=current_agency.key.id()) }}" class="btn btn-danger btn-block"  data-toggle="modal" data-target="#myModal" data-backdrop="static">Local Ticket Payment</a>
-                                        <br/>
-                                        <a href="{{ url_for('Payment_admin_foreign', agency_id=current_agency.key.id()) }}" class="btn btn-danger btn-block"  data-toggle="modal" data-target="#myModal" data-backdrop="static">Foreign Ticket Payment</a>
-                                        <br/>
-                                {% endif %}
                                 <div class="well text-center">
                                     Agency <small>Escrow Amount </small>
                                     <br/><br/>

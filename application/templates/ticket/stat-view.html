@@ -105,10 +105,6 @@
 
                             <div class="col-lg-4">
 
-                                {% if not current_user.has_roles(('admin','super_admin')) and current_user.has_roles('manager_agency') %}
-                                        <a href="{{ url_for('Select_Travel', agency_id=agency_id) }}" class="btn btn-info btn-block"  data-toggle="modal" data-target="#myModal" data-backdrop="static">Purchase</a>
-                                        <br/>
-                                {% endif %}
                                 <div class="well text-center">
                                     <small>Unsold</small>
                                     <h3>{{ current_agency.TicketUnsold() }}</h3>
@@ -119,16 +115,6 @@
                 </section>
             </div>
         </div>
-    </div>
-
-    <!-- Modal -->
-    <div class="modal fade" id="myModal" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-
-
-        </div>
-      </div>
     </div>
 {% endblock %}
 {% block footer_script %}

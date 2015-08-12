@@ -30,7 +30,7 @@ def Super_Admin_Create():
         UserRole = UserRoleModel()
 
         currency = CurrencyModel.query(
-            CurrencyModel.code == form.currency.data
+            CurrencyModel.code == "XAF"
         ).get()
 
         if not currency:

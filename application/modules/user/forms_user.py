@@ -116,7 +116,7 @@ class FormRegisterUserAdmin(wtf.Form):
     dial_code = wtf.StringField(label='Select country code', validators=[verify_dial_code])
     password = wtf.PasswordField(label='Password', validators=[validators.Required('Password is required'), password_validator])
     retype_password = wtf.PasswordField(label='Retype Password', validators=[validators.EqualTo('password', message='Password and Retype Password did not match')])
-    currency = wtf.StringField(validators=[validators.Required()])
+    #currency = wtf.StringField(validators=[validators.Required()])
     # agency = wtf.StringField()
     submit = wtf.SubmitField("Register")
 

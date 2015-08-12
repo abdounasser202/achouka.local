@@ -12,3 +12,7 @@ class ConfigModel(ndb.Model):
 class SynchroModel(ndb.Model):
     date = ndb.DateProperty(auto_now=True)
     agency_synchro = ndb.KeyProperty(kind=AgencyModel)
+
+
+class testModel(ndb.Model):
+    test = ndb.StringProperty()
