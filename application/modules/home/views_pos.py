@@ -320,7 +320,8 @@ def create_customer_and_ticket_return(ticket_id, departure_id=None):
             customer.is_new = False
             customer_save = customer.put()
         else:
-            customer_save = customer.key
+            customer.is_new = False
+            customer_save = customer.put()
 
         child_ticket = TicketModel.query(
             TicketModel.parent_return == Ticket_Return.key.id()
@@ -461,10 +462,14 @@ def create_customer_and_ticket_pos(customer_id=None, departure_id=None):
             customer.profession = form.profession.data
             customer.nic_number = form.nic_number.data
             customer.passport_number = form.passport_number.data
-            customer.is_new = False
+            if customer_id:
+                customer.is_new = False
+            else:
+                customer.is_new = True
             customer_save = customer.put()
         else:
-            customer_save = customer.key
+            customer.is_new = False
+            customer_save = customer.put()
 
         # caracteristique des tickets
         journey_ticket_car = JourneyTypeModel.get_by_id(int(form.journey_name.data))
@@ -998,6 +1003,9 @@ def create_upgrade_ticket(departure_id, ticket_id, ticket_type_same_id, ticket_t
             customer.profession = form.profession.data
             customer.nic_number = form.nic_number.data
             customer.passport_number = form.passport_number.data
+            customer.is_new = False
+            customer_save = customer.put()
+        else:
             customer.is_new = False
             customer_save = customer.put()
 

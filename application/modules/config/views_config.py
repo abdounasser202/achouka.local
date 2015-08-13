@@ -723,29 +723,35 @@ def customer_api(url, tocken, segment, date=None):
                 data_save.put()
 
 
-def customer_api_put(url, tocken, segment, date):
+def customer_api_put(url, tocken, segment, date, synchro=True):
     from ..customer.models_customer import CustomerModel
     import urllib
+
+    if synchro:
+        date = datetime.datetime.combine(date, datetime.datetime.min.time())
+    else:
+        date = datetime.datetime.combine(date, datetime.datetime.now().time())
 
     customer_new = CustomerModel.query(
         CustomerModel.date_update >= date
     )
 
-    data = {}
-    data['customer'] = []
-    for customer in customer_new:
-        data['customer'].append(customer.make_to_dict())
+    if customer_new:
+        data = {}
+        data['customer'] = []
+        for customer in customer_new:
+            data['customer'].append(customer.make_to_dict())
 
-    data_format = urllib.urlencode(data)
-    url = url+segment+tocken
-    result = urlfetch.fetch(url=url, payload=data_format, method=urlfetch.POST, headers={'Content-Type': 'application/x-www-form-urlencoded'})
-    result = result.content
-    result = json.loads(result)
+        data_format = urllib.urlencode(data)
+        url = url+segment+tocken
+        result = urlfetch.fetch(url=url, payload=data_format, method=urlfetch.POST, headers={'Content-Type': 'application/x-www-form-urlencoded'})
+        result = result.content
+        result = json.loads(result)
 
-    if result['status'] and result['status'] == 404:
-        flash(result['message'], "warning")
-    else:
-        flash(result['message'], "success")
+        if result['status'] and result['status'] == 404:
+            flash(result['message'], "warning")
+        else:
+            flash(result['message'], "success")
 
 
 def transaction_do_api(url, tocken, segment, date):
