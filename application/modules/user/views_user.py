@@ -70,6 +70,10 @@ def User_Index():
     menu='recording'
     submenu='user'
 
+    agency_user = None
+    if current_user.has_roles('manager_agency'):
+        agency_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
+
     admin_role = RoleModel.query(
         RoleModel.name == 'admin'
     ).get()

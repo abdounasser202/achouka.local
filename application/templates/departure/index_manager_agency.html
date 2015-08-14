@@ -22,7 +22,7 @@
                         <br/>
 
                     <div class="row">
-                        <div class="col-lg-9"><div id="myTabContent" class="tab-content">
+                        <div class="col-lg-12"><div id="myTabContent" class="tab-content">
                             <div class="tab-pane fade active in" id="local">
                                 <table class="table table-hover"  id="dataTableDeparture1">
                                     <thead>
@@ -103,29 +103,7 @@
                                 </table>
                             </div>
                         </div></div>
-                        <div class="col-lg-3">
-                            <h4>Last Activity</h4>
-                                    <hr/>
-                                    {% for feed in feed_tab %}
-                                        <blockquote style="padding: 10px 6px;">
-                                            {% if feed['nature'] == 1 %}
-                                                  <p style="font-size: 13px;"><strong>New Record</strong> : {{ feed['data'] }} </p>
-                                            {% endif %}
-                                            {% if feed['nature'] == 4 or feed['nature'] == 0 %}
-                                                  <p style="font-size: 13px;"><strong>Record Updated</strong> : {{ feed['data'] }}<br/>
-                                                  {% if feed['last_value'] %} Preview Modification ({{ feed['last_value'] }}) {% endif %} </p>
-                                            {% endif %}
-                                            <footer style="font-size: 65%;">{{ feed['time']|format_date("%d-%m-%Y %H:%M:%S") }} by {{ feed['user'].get().first_name }} {{ feed['user'].get().last_name }}</footer>
-                                        </blockquote>
-                                    {% else %}
-                                        <blockquote style="padding: 10px 6px;">
-                                            <p style="font-size: 13px;"><strong>No recent activity</strong> </p>
-                                        </blockquote>
-                                    {% endfor %}
-                                    {% if count > 5 %}
-                                        <a href="{{ url_for('Question_Index', modal="1") }}" class="btn btn-link pull-right" data-toggle="modal" data-target="#myModal" data-backdrop="static">view more</a>
-                                    {% endif %}
-                        </div>
+
                     </div>
                 </section>
             </div>

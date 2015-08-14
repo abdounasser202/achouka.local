@@ -12,7 +12,7 @@ cache = Cache(app)
 def Boarding():
     menu = 'boarding'
 
-    if not session.get('agence_id'):
+    if not session.get('agence_id_local'):
         flash('You can\'t use boarding. You don\'t have permissions', 'danger')
 
     number = request.args.get('ticket_id')
@@ -32,12 +32,12 @@ def Boarding():
     )
 
     if current_user.have_agency():
-        agence_id = session.get('agence_id')
+        agence_id = session.get('agence_id_local')
         user_agence = AgencyModel.get_by_id(int(agence_id))
 
         for dep in departure:
             departure_time = function.add_time(dep.schedule, dep.time_delay)
-            departure_datetime = datetime.datetime(departure.departure_date.year, departure.departure_date.month, departure.departure_date.day, departure.departure_date.year, departure_time.hour, departure_time.minute, departure_time.second)
+            departure_datetime = datetime.datetime(dep.departure_date.year, dep.departure_date.month, dep.departure_date.day, departure_time.hour, departure_time.minute, departure_time.second)
             if dep.destination.get().destination_start == user_agence.destination and departure_datetime > today:
                 current_departure = dep
                 break
@@ -58,7 +58,7 @@ def Boarding():
 @roles_required(('employee_Boarding', 'super_admin'))
 def Search_Ticket_Boarding(ticket_id=None):
 
-    if not session.get('agence_id'):
+    if not session.get('agence_id_local'):
         flash('You can\'t find a ticket. you dont have this permission', 'danger')
         return redirect('Boarding')
 
@@ -174,7 +174,7 @@ def Update_Ticket_For_Boarding(ticket_id):
                     Answers.response = False
             Answers.put()
         ticket.is_boarding = True
-        # cas de ticket allee et retour qui a un journey type
+        # cas d'un ticket simple
         if ticket.journey_name and not ticket.journey_name.get().returned and not ticket.is_return:
             ticket.statusValid = False
         # cas de tricket return qui n'a pas de journey type

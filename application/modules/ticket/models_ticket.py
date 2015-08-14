@@ -41,6 +41,7 @@ class TicketPoly(polymodel.PolyModel):
     is_boarding = ndb.BooleanProperty(default=False)
 
     datecreate = ndb.DateTimeProperty()
+    date_update = ndb.DateTimeProperty(auto_now=True)
 
 
 class TicketModel(TicketPoly):
@@ -75,6 +76,11 @@ class TicketModel(TicketPoly):
 
         to_dict['travel_ticket'] = self.travel_ticket.id()
         to_dict['is_boarding'] = self.is_boarding
+
+        if self.parent_return:
+            to_dict['parent_return'] = self.parent_return.id()
+        else:
+            to_dict['parent_return'] = None
 
         upgrade = False
         if self.is_upgrade:

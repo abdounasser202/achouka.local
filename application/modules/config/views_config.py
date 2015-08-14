@@ -24,18 +24,18 @@ def synchronization():
         date = None
 
     # ajout des informations
-    vessel_api(url_config.url_server, token, "/vessel/get/", date)
-    currency_api(url_config.url_server, token, "/currency/get/", date)
-    destination_api(url_config.url_server, token, "/destination/get/", date)
+    data_vessel = vessel_api(url_config.url_server, token, "/vessel/get/", date)
+    data_currency = currency_api(url_config.url_server, token, "/currency/get/", date)
+    data_destination = destination_api(url_config.url_server, token, "/destination/get/", date)
     travel_line_api(url_config.url_server, token, "/travel/get/", date)
     agency_api(url_config.url_server, token, "/agency/get/", date)
     role_api(url_config.url_server, token, "/role/get/", date)
     profil_api(url_config.url_server, token, "/profil/get/", date)
     user_api(url_config.url_server, token, "/user/get/", date)
     departure_api(url_config.url_server, token, "/departure/get/", date)
-    class_api(url_config.url_server, token, "/class/get/", date)
-    journey_api(url_config.url_server, token, "/journey/get/", date)
-    category_api(url_config.url_server, token, "/category/get/", date)
+    data_class = class_api(url_config.url_server, token, "/class/get/", date)
+    data_journey = journey_api(url_config.url_server, token, "/journey/get/", date)
+    data_category = category_api(url_config.url_server, token, "/category/get/", date)
     tickettype_api(url_config.url_server, token, "/tickets/get/", date)
     customer_api(url_config.url_server, token, "/customer/get/", date)
 
@@ -50,14 +50,20 @@ def synchronization():
     transaction_do_api_2(url_config.url_server, token, "/transaction/get/", date)
     get_doublons_ticket_return_api(url_config.url_server, token, "/tickets_doublons_ticket_return_sale/get/", date)
 
+    if date:
+        #envoie des tickets non valide
+        change_status_ticket_put(url_config.url_server, token, "/ticket_disable_api/get/", date)
+
+    get_ticket_return_foreign_disable(url_config.url_server, token, "/get_ticket_return_foreign_disabled/get/", date)
+
     # Netoyage de la base de donnee
-    clean_vessel()
-    clean_currency()
-    clean_destination()
-    clean_class()
-    clean_journey()
+    clean_vessel(data_vessel)
+    clean_currency(data_currency)
+    clean_destination(data_destination)
+    clean_class(data_class)
+    clean_journey(data_journey)
+    clean_categpry(data_category)
     clean_ticket()
-    clean_categpry()
 
     Synchro = SynchroModel()
     Synchro.agency_synchro = url_config.local_ref
@@ -155,18 +161,18 @@ def active_local_agency(agency_id):
         date = None
 
     # ajout des informations
-    vessel_api(url_config.url_server, url_config.token_agency, "/vessel/get/", date)
-    currency_api(url_config.url_server, url_config.token_agency, "/currency/get/", date)
-    destination_api(url_config.url_server, url_config.token_agency, "/destination/get/", date)
+    data_vessel = vessel_api(url_config.url_server, url_config.token_agency, "/vessel/get/", date)
+    data_currency = currency_api(url_config.url_server, url_config.token_agency, "/currency/get/", date)
+    data_destination = destination_api(url_config.url_server, url_config.token_agency, "/destination/get/", date)
     travel_line_api(url_config.url_server, url_config.token_agency, "/travel/get/", date)
     agency_api(url_config.url_server, url_config.token_agency, "/agency/get/", date)
     role_api(url_config.url_server, url_config.token_agency, "/role/get/", date)
     profil_api(url_config.url_server, url_config.token_agency, "/profil/get/", date)
     user_api(url_config.url_server, url_config.token_agency, "/user/get/", date)
     departure_api(url_config.url_server, url_config.token_agency, "/departure/get/", date)
-    class_api(url_config.url_server, url_config.token_agency, "/class/get/", date)
-    journey_api(url_config.url_server, url_config.token_agency, "/journey/get/", date)
-    category_api(url_config.url_server, url_config.token_agency, "/category/get/", date)
+    data_class = class_api(url_config.url_server, url_config.token_agency, "/class/get/", date)
+    data_journey = journey_api(url_config.url_server, url_config.token_agency, "/journey/get/", date)
+    data_category = category_api(url_config.url_server, url_config.token_agency, "/category/get/", date)
     tickettype_api(url_config.url_server, url_config.token_agency, "/tickets/get/", date)
     customer_api(url_config.url_server, url_config.token_agency, "/customer/get/", date)
 
@@ -176,15 +182,16 @@ def active_local_agency(agency_id):
     get_ticket_sale_online(url_config.url_server, url_config.token_agency, "/get_ticket_online/get/", date)
     transaction_do_api_2(url_config.url_server, url_config.token_agency, "/transaction/get/", date)
     get_doublons_ticket_return_api(url_config.url_server, url_config.token_agency, "/tickets_doublons_ticket_return_sale/get/", date)
+    get_ticket_return_foreign_disable(url_config.url_server, url_config.token_agency, "/get_ticket_return_foreign_disabled/get/", date)
 
     # Netoyage de la base de donnee
-    # clean_vessel()
-    clean_currency()
-    clean_destination()
-    clean_class()
-    clean_journey()
+    clean_vessel(data_vessel)
+    clean_currency(data_currency)
+    clean_destination(data_destination)
+    clean_class(data_class)
+    clean_journey(data_journey)
+    clean_categpry(data_category)
     clean_ticket()
-    clean_categpry()
 
     Synchro = SynchroModel()
     SynchroModel.agency_synchro = agency_save
@@ -202,6 +209,7 @@ def vessel_api(url, tocken, segment, date=None):
     result = result.content
     result = json.loads(result)
 
+    _ids = []
     if result['status'] and result['status'] == 404:
         flash(result['message'], "danger")
         return redirect(url_for('Home'))
@@ -212,13 +220,15 @@ def vessel_api(url, tocken, segment, date=None):
                 old_data.name = data_get['vessel_name']
                 old_data.capacity = data_get['vessel_capacity']
                 old_data.immatricul = data_get['vessel_immatricul']
-                old_data.put()
+                data = old_data.put()
             else:
                 data_save = VesselModel(id=data_get['vessel_id'])
                 data_save.name = data_get['vessel_name']
                 data_save.capacity = data_get['vessel_capacity']
                 data_save.immatricul = data_get['vessel_immatricul']
-                data_save.put()
+                data = data_save.put()
+            _ids.append(data.id())
+    return _ids
 
 
 def currency_api(url, tocken, segment, date=None):
@@ -229,6 +239,7 @@ def currency_api(url, tocken, segment, date=None):
     result = result.content
     result = json.loads(result)
 
+    _ids = []
     if result['status'] and result['status'] == 404:
         flash(result['message'], "danger")
         return redirect(url_for('Home'))
@@ -238,12 +249,14 @@ def currency_api(url, tocken, segment, date=None):
             if old_data:
                 old_data.name = data_get['currency_name']
                 old_data.code = data_get['currency_code']
-                old_data.put()
+                data = old_data.put()
             else:
                 data_save = CurrencyModel(id=data_get['currency_id'])
                 data_save.name = data_get['currency_name']
                 data_save.code = data_get['currency_code']
-                data_save.put()
+                data = data_save.put()
+            _ids.append(data.id())
+    return _ids
 
 
 def destination_api(url, tocken, segment, date=None):
@@ -254,6 +267,7 @@ def destination_api(url, tocken, segment, date=None):
     result = result.content
     result = json.loads(result)
 
+    _ids = []
     if result['status'] and result['status'] == 404:
         flash(result['message'], "danger")
         return redirect(url_for('Home'))
@@ -267,7 +281,7 @@ def destination_api(url, tocken, segment, date=None):
                 local_currency = CurrencyModel.get_by_id(data_get['destination_currency']['currency_id'])
                 old_data.currency = local_currency.key
 
-                old_data.put()
+                data = old_data.put()
             else:
                 data_save = DestinationModel(id=data_get['destination_id'])
                 data_save.name = data_get['destination_name']
@@ -276,7 +290,9 @@ def destination_api(url, tocken, segment, date=None):
                 local_currency = CurrencyModel.get_by_id(data_get['destination_currency']['currency_id'])
                 data_save.currency = local_currency.key
 
-                data_save.put()
+                data = data_save.put()
+            _ids.append(data.id())
+    return _ids
 
 
 def travel_line_api(url, tocken, segment, date=None):
@@ -313,6 +329,7 @@ def travel_line_api(url, tocken, segment, date=None):
                 data_save.destination_check = local_check.key
 
                 data_save.put()
+
 
 
 def agency_api(url, tocken, segment, date=None):
@@ -544,6 +561,7 @@ def class_api(url, tocken, segment, date=None):
     result = result.content
     result = json.loads(result)
 
+    _ids = []
     if result['status'] and result['status'] == 404:
         flash(result['message'], "danger")
         return redirect(url_for('Home'))
@@ -553,13 +571,14 @@ def class_api(url, tocken, segment, date=None):
             if old_data:
                 old_data.default = data_get['class_default']
                 old_data.name = data_get['class_name']
-                old_data.put()
+                data = old_data.put()
             else:
                 data_save = ClassTypeModel(id=data_get['class_id'])
                 data_save.default = data_get['class_default']
                 data_save.name = data_get['class_name']
-                data_save.put()
-
+                data = data_save.put()
+            _ids.append(data.id())
+    return _ids
 
 def category_api(url, tocken, segment, date=None):
     from ..ticket_type.models_ticket_type import TicketTypeNameModel
@@ -569,6 +588,7 @@ def category_api(url, tocken, segment, date=None):
     result = result.content
     result = json.loads(result)
 
+    _ids = []
     if result['status'] and result['status'] == 404:
         flash(result['message'], "danger")
         return redirect(url_for('Home'))
@@ -580,15 +600,16 @@ def category_api(url, tocken, segment, date=None):
                 old_data.default = data_get['category_default']
                 old_data.special = data_get['category_special']
                 old_data.name = data_get['category_name']
-                old_data.put()
+                data = old_data.put()
             else:
                 data_save = TicketTypeNameModel(id=data_get['category_id'])
                 data_save.is_child = data_get['category_is_child']
                 data_save.default = data_get['category_default']
                 data_save.special = data_get['category_special']
                 data_save.name = data_get['category_name']
-                data_save.put()
-
+                data = data_save.put()
+            _ids.append(data.id())
+    return _ids
 
 def journey_api(url, tocken, segment, date=None):
     from ..ticket_type.models_ticket_type import JourneyTypeModel
@@ -598,6 +619,7 @@ def journey_api(url, tocken, segment, date=None):
     result = result.content
     result = json.loads(result)
 
+    _ids = []
     if result['status'] and result['status'] == 404:
         flash(result['message'], "danger")
         return redirect(url_for('Home'))
@@ -608,13 +630,15 @@ def journey_api(url, tocken, segment, date=None):
                 old_data.returned = data_get['journey_returned']
                 old_data.default = data_get['journey_default']
                 old_data.name = data_get['journey_name']
-                old_data.put()
+                data = old_data.put()
             else:
                 data_save = JourneyTypeModel(id=data_get['journey_id'])
                 data_save.returned = data_get['journey_returned']
                 data_save.default = data_get['journey_default']
                 data_save.name = data_get['journey_name']
-                data_save.put()
+                data = data_save.put()
+            _ids.append(data.id())
+    return _ids
 
 
 def tickettype_api(url, tocken, segment, date=None):
@@ -625,6 +649,7 @@ def tickettype_api(url, tocken, segment, date=None):
     result = result.content
     result = json.loads(result)
 
+    _ids = []
     if result['status'] and result['status'] == 404:
         flash(result['message'], "danger")
         return redirect(url_for('Home'))
@@ -652,7 +677,7 @@ def tickettype_api(url, tocken, segment, date=None):
                 travel_ticket = TravelModel.get_by_id(data_get['ticket_travel'])
                 old_data.travel = travel_ticket.key
 
-                old_data.put()
+                data = old_data.put()
             else:
                 data_save = TicketTypeModel(id=data_get['ticket_id'])
 
@@ -675,7 +700,9 @@ def tickettype_api(url, tocken, segment, date=None):
 
                 travel_ticket = TravelModel.get_by_id(data_get['ticket_travel'])
                 data_save.travel = travel_ticket.key
-                data_save.put()
+                data = data_save.put()
+            _ids.append(data.id())
+    return _ids
 
 
 def customer_api(url, tocken, segment, date=None):
@@ -1011,12 +1038,16 @@ def get_doublons_ticket_return_api(url, tocken, segment, date):
                     duplicate_ticket.put()
 
 
-def ticket_sale_put_api(url, tocken, segment, date):
+def ticket_sale_put_api(url, tocken, segment, date, synchro=True):
 
     from ..ticket.models_ticket import TicketModel, AgencyModel
     import urllib
 
-    date = datetime.datetime.combine(date, datetime.datetime.min.time())
+    if synchro:
+        date = datetime.datetime.combine(date, datetime.datetime.min.time())
+    else:
+        date = datetime.datetime.combine(date, datetime.datetime.now().time())
+
     ticket_sale = TicketModel.query(
         TicketModel.date_reservation >= date,
         TicketModel.selling == True,
@@ -1125,3 +1156,68 @@ def get_ticket_sale_online(url, tocken, segment, date):
                 data_save.date_reservation = function.datetime_convert(data_get['date_reservation'])
 
                 data_save.put()
+
+
+def change_status_ticket_put(url, tocken, segment, date, synchro=True):
+    from ..ticket.models_ticket import TicketModel
+    import urllib
+
+    #implementation de l'heure local
+    time_zones = pytz.timezone('Africa/Douala')
+    date_auto_nows = datetime.datetime.now(time_zones).strftime("%Y-%m-%d %H:%M:%S")
+
+    if synchro:
+        date = datetime.datetime.combine(date, datetime.datetime.min.time())
+    else:
+        date = datetime.datetime.combine(date, datetime.datetime.now().time())
+
+    ticket_status = TicketModel.query(
+        TicketModel.statusValid == True,
+        TicketModel.selling == True,
+        TicketModel.is_boarding == False,
+        TicketModel.date_update >= date
+    )
+
+    data = {'ticket_status': []}
+    for ticket in ticket_status:
+        date_valid = ticket.date_reservation - date_auto_nows
+        if date_valid.days >= 30 and not ticket.is_return:
+            data['ticket_status'].append(ticket.key.id())
+            ticket.statusValid = False
+            ticket.put()
+
+        if date_valid.days >= 60 and ticket.is_return:
+            data['ticket_status'].append(ticket.key.id())
+            ticket.statusValid = False
+            ticket.put()
+
+    data_format = urllib.urlencode(data)
+    url = url+segment+tocken
+    result = urlfetch.fetch(url=url, payload=data_format, method=urlfetch.POST, headers={'Content-Type': 'application/x-www-form-urlencoded'})
+    result = result.content
+    result = json.loads(result)
+
+    if result['status'] and result['status'] == 404:
+        flash(result['message'], "warning")
+    else:
+        flash(result['message'], "success")
+
+
+def get_ticket_return_foreign_disable(url, tocken, segment, date):
+
+    from ..ticket.models_ticket import TicketModel
+
+    url = ""+url+segment+tocken+"?last_update="+str(date)
+    result = urlfetch.fetch(url)
+    result = result.content
+    result = json.loads(result)
+
+    if result['status'] and result['status'] == 404:
+        flash(result['message'], "danger")
+        return redirect(url_for('Home'))
+    else:
+        for data_get in result['tickets_return_disabled']:
+            old_data = TicketModel.get_by_id(data_get)
+            if old_data:
+                old_data.statusValid = False
+                old_data.put()

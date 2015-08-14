@@ -18,7 +18,7 @@ def Departure_Index():
 
     if not current_user.has_roles(('admin', 'super_admin')) and current_user.has_roles('manager_agency'):
         from ..agency.models_agency import AgencyModel
-        agency_user = AgencyModel.get_by_id(int(session.get('agence_id')))
+        agency_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
         return redirect(url_for('Departure_manager_agency', agency_id=agency_user.key.id()))
 
     year = datetime.date.today().year

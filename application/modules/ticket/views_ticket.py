@@ -21,7 +21,7 @@ def Ticket_Index():
     submenu = 'ticket'
 
     if not current_user.has_roles(('admin','super_admin')) and current_user.has_roles('manager_agency'):
-        agency_user = AgencyModel.get_by_id(int(session.get('agence_id')))
+        agency_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
         return redirect(url_for('Stat_View', agency_id=agency_user.key.id()))
 
     # Utiliser pour afficher la liste des agences avec leur ticket

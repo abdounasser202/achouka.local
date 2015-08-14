@@ -15,7 +15,7 @@ def Transaction_Index():
     submenu = 'transaction'
 
     if not current_user.has_roles(('admin','super_admin')) and current_user.has_roles('manager_agency'):
-        agency_user = AgencyModel.get_by_id(int(session.get('agence_id')))
+        agency_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
         return redirect(url_for('Transaction_Agency', agency_id=agency_user.key.id()))
 
     List_agency = AgencyModel.query()
@@ -152,7 +152,7 @@ def Transaction_user(user_id=None):
         parent_transaction.destination = user_get_id.agency.get().destination
         parent_transaction.transaction_date = function.datetime_convert(date_auto_nows)
 
-        user_current_id = UserModel.get_by_id(int(session.get('user_id')))
+        user_current_id = UserModel.get_by_id(int(session.get('user_id_local')))
         parent_transaction.user = user_current_id.key
 
         parent_transaction = parent_transaction.put()
@@ -299,7 +299,7 @@ def Transaction_foreign_user(user_id=None, travel_id=None):
         parent_transaction.destination = travel_get_id.destination_start
         parent_transaction.transaction_date = function.datetime_convert(date_auto_nows)
 
-        user_current_id = UserModel.get_by_id(int(session.get('user_id')))
+        user_current_id = UserModel.get_by_id(int(session.get('user_id_local')))
         parent_transaction.user = user_current_id.key
 
         parent_transaction = parent_transaction.put()

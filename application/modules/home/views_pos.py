@@ -38,19 +38,19 @@ def Pos(departure_id=None):
 
     if not departure_id:
         if current_user.have_agency():
-            agence_id = session.get('agence_id')
+            agence_id = session.get('agence_id_local')
             user_agence = AgencyModel.get_by_id(int(agence_id))
 
             for dep in departure:
                 departure_time = function.add_time(dep.schedule, dep.time_delay)
-                departure_datetime = datetime.datetime(departure.departure_date.year, departure.departure_date.month, departure.departure_date.day, departure.departure_date.year, departure_time.hour, departure_time.minute, departure_time.second)
+                departure_datetime = datetime.datetime(dep.departure_date.year, dep.departure_date.month, dep.departure_date.day, departure_time.hour, departure_time.minute, departure_time.second)
                 if dep.destination.get().destination_start == user_agence.destination and departure_datetime > today:
                     current_departure = dep
                     break
         else:
             for dep in departure:
                 departure_time = function.add_time(dep.schedule, dep.time_delay)
-                departure_datetime = datetime.datetime(departure.departure_date.year, departure.departure_date.month, departure.departure_date.day, departure.departure_date.year, departure_time.hour, departure_time.minute, departure_time.second)
+                departure_datetime = datetime.datetime(dep.departure_date.year, dep.departure_date.month, dep.departure_date.day, departure_time.hour, departure_time.minute, departure_time.second)
                 if departure_datetime > today:
                     current_departure = dep
                     break
@@ -63,8 +63,8 @@ def Pos(departure_id=None):
 @app.route('/reset_remaining_ticket')
 def reset_remaining_ticket():
 
-    if session.get('agence_id'):
-        agency_user = AgencyModel.get_by_id(int(session.get('agence_id')))
+    if session.get('agence_id_local'):
+        agency_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
         number = agency_user.TicketUnsold()
     else:
         number = 'No Ticket'
@@ -82,7 +82,7 @@ def reset_current_departure(departure_id=None):
     time_zones = pytz.timezone('Africa/Douala')
     date_auto_nows = datetime.datetime.now(time_zones).strftime("%Y-%m-%d %H:%M:%S")
 
-    heure = function.datetime_convert(date_auto_nows).time()
+    today = function.datetime_convert(date_auto_nows)
 
     departure = DepartureModel.query(
     ).order(
@@ -94,16 +94,20 @@ def reset_current_departure(departure_id=None):
 
     if not departure_id:
         if current_user.have_agency():
-            agence_id = session.get('agence_id')
+            agence_id = session.get('agence_id_local')
             user_agence = AgencyModel.get_by_id(int(agence_id))
 
             for dep in departure:
-                if dep.destination.get().destination_start == user_agence.destination and function.add_time(dep.schedule, dep.time_delay) >= heure:
+                departure_time = function.add_time(dep.schedule, dep.time_delay)
+                departure_datetime = datetime.datetime(dep.departure_date.year, dep.departure_date.month, dep.departure_date.day, departure_time.hour, departure_time.minute, departure_time.second)
+                if dep.destination.get().destination_start == user_agence.destination and departure_datetime > today:
                     current_departure = dep
                     break
         else:
-             for dep in departure:
-                if function.add_time(dep.schedule, dep.time_delay) >= heure:
+            for dep in departure:
+                departure_time = function.add_time(dep.schedule, dep.time_delay)
+                departure_datetime = datetime.datetime(dep.departure_date.year, dep.departure_date.month, dep.departure_date.day, departure_time.hour, departure_time.minute, departure_time.second)
+                if departure_datetime > today:
                     current_departure = dep
                     break
     else:
@@ -224,7 +228,7 @@ def create_customer_and_ticket_return(ticket_id, departure_id=None):
     Ticket_Return = TicketModel.get_by_id(ticket_id)
 
     #information de l'agence de l'utilisateur
-    agency_current_user = AgencyModel.get_by_id(int(session.get('agence_id')))
+    agency_current_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
 
     #implementation de l'heure local
     time_zones = pytz.timezone('Africa/Douala')
@@ -483,7 +487,7 @@ def create_customer_and_ticket_pos(customer_id=None, departure_id=None):
             TicketTypeModel.travel == print_depature.destination,
             TicketTypeModel.active == True
         ).get()
-        agency_current_user = AgencyModel.get_by_id(int(session.get('agence_id')))
+        agency_current_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
 
         Ticket_To_Sell = TicketModel.query(
             TicketModel.type_name == ticket_type_name_car.key,
@@ -697,8 +701,8 @@ def Search_Ticket_Type():
     ).get()
 
     Agency_ticket = 0
-    if session.get('agence_id'):
-        agency_user = AgencyModel.get_by_id(int(session.get('agence_id')))
+    if session.get('agence_id_local'):
+        agency_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
         Agency_ticket = TicketModel.query(
             TicketModel.class_name == classticket.key,
             TicketModel.type_name == typeticket.key,
@@ -812,7 +816,7 @@ def Ticket_POS():
     from ..ticket_type.models_ticket_type import TicketTypeModel
 
     #information de l'agence de l'utilisateur
-    current_agency = AgencyModel.get_by_id(int(session.get('agence_id')))
+    current_agency = AgencyModel.get_by_id(int(session.get('agence_id_local')))
 
     # TYPE DE TICKET EN POSSESSION PAR L'AGENCE (etranger ou local)
     ticket_type_query = TicketTypeModel.query(
@@ -906,7 +910,7 @@ def create_upgrade_ticket(departure_id, ticket_id, ticket_type_same_id, ticket_t
     Ticket_Return = TicketModel.get_by_id(ticket_id)
 
     #information de l'agence de l'utilisateur
-    agency_current_user = AgencyModel.get_by_id(int(session.get('agence_id')))
+    agency_current_user = AgencyModel.get_by_id(int(session.get('agence_id_local')))
 
     #implementation de l'heure local
     time_zones = pytz.timezone('Africa/Douala')
