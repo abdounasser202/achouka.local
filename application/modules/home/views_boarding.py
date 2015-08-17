@@ -77,7 +77,7 @@ def Search_Ticket_Boarding(ticket_id=None):
         ticket_sold = TicketPoly.query(
             TicketPoly.selling == True,
             TicketPoly.statusValid == True,
-            TicketPoly.is_boarding == False,
+            TicketPoly.generate_boarding == False,
             TicketPoly.departure == departure_id.key
         )
     else:
@@ -87,7 +87,7 @@ def Search_Ticket_Boarding(ticket_id=None):
             TicketPoly.key == ticket.key,
             TicketPoly.selling == True,
             TicketPoly.statusValid == True,
-            TicketPoly.is_boarding == False,
+            TicketPoly.generate_boarding == False,
             TicketPoly.departure == departure_id.key
         ).count()
 
@@ -173,7 +173,7 @@ def Update_Ticket_For_Boarding(ticket_id):
                 else:
                     Answers.response = False
             Answers.put()
-        ticket.is_boarding = True
+        ticket.generate_boarding = True
         # cas d'un ticket simple
         if ticket.journey_name and not ticket.journey_name.get().returned and not ticket.is_return:
             ticket.statusValid = False

@@ -29,7 +29,7 @@
                                   </tr>
                                   <tr>
                                       <td><strong>Seller ID</strong></td>
-                                      <td>{{ ticket.ticket_seller.get().key.id() }}</td>
+                                      <td>{% if ticket.ticket_seller %}{{ ticket.ticket_seller.get().key.id() }} {% else %} External user {% endif %}</td>
                                   </tr>
                                   <tr>
                                       <td><strong>Kind</strong></td>

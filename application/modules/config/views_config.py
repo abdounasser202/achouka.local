@@ -1016,6 +1016,9 @@ def get_doublons_ticket_return_api(url, tocken, segment, date):
                 data_save.is_return = data_get['is_return']
                 data_save.selling = data_get['selling']
                 data_save.is_ticket = data_get['is_ticket']
+                data_save.is_boarding = data_get['is_boarding']
+                data_save.date_reservation = function.datetime_convert(data_get['date_reservation'])
+                data_save.datecreate = function.datetime_convert(data_get['datecreate'])
 
                 customer_ticket = CustomerModel.get_by_id(data_get['customer'])
                 data_save.customer = customer_ticket.key
@@ -1180,7 +1183,7 @@ def change_status_ticket_put(url, tocken, segment, date, synchro=True):
 
     data = {'ticket_status': []}
     for ticket in ticket_status:
-        date_valid = ticket.date_reservation - date_auto_nows
+        date_valid = ticket.date_reservation - function.datetime_convert(date_auto_nows)
         if date_valid.days >= 30 and not ticket.is_return:
             data['ticket_status'].append(ticket.key.id())
             ticket.statusValid = False

@@ -39,6 +39,7 @@ class TicketPoly(polymodel.PolyModel):
     ticket_seller = ndb.KeyProperty(kind=UserModel)
     e_ticket_seller = ndb.KeyProperty(kind=UserModel)
     is_boarding = ndb.BooleanProperty(default=False)
+    generate_boarding = ndb.BooleanProperty(default=False)
 
     datecreate = ndb.DateTimeProperty()
     date_update = ndb.DateTimeProperty(auto_now=True)

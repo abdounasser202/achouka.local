@@ -335,7 +335,7 @@ def create_customer_and_ticket_return(ticket_id, departure_id=None):
         child_ticket.date_reservation = function.datetime_convert(date_auto_nows)
         child_ticket.travel_ticket = departure_current.destination
 
-        user = UserModel.get_by_id(int(session.get('user_id')))
+        user = UserModel.get_by_id(int(session.get('user_id_local')))
         child_ticket.ticket_seller = user.key
 
         #sauvegarde de l'agence de l'utilisateur courant
@@ -523,7 +523,7 @@ def create_customer_and_ticket_pos(customer_id=None, departure_id=None):
         departure_ticket = DepartureModel.get_by_id(int(form.current_departure.data))
         Ticket_To_Sell.departure = departure_ticket.key
 
-        user_ticket = UserModel.get_by_id(int(session.get('user_id')))
+        user_ticket = UserModel.get_by_id(int(session.get('user_id_local')))
         Ticket_To_Sell.ticket_seller = user_ticket.key
 
         from ..transaction.models_transaction import TransactionModel, ExpensePaymentTransactionModel
@@ -1032,7 +1032,7 @@ def create_upgrade_ticket(departure_id, ticket_id, ticket_type_same_id, ticket_t
 
         child_ticket.travel_ticket = ticket_type_choice_get.travel
 
-        user = UserModel.get_by_id(int(session.get('user_id')))
+        user = UserModel.get_by_id(int(session.get('user_id_local')))
         child_ticket.ticket_seller = user.key
         child_ticket.agency = user.agency
 
