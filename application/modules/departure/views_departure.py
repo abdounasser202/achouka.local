@@ -9,7 +9,7 @@ from forms_departure import FormDeparture
 cache = Cache(app)
 
 
-@app.route('/recording/journey')
+@app.route('/manage/journey')
 @login_required
 @roles_required(('super_admin', 'manager_agency'))
 def Departure_Index():

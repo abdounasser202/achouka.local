@@ -13,7 +13,7 @@ from forms_ticket import FormTicket
 cache = Cache(app)
 
 
-@app.route('/recording/ticket')
+@app.route('/manage/ticket')
 @login_required
 @roles_required(('super_admin', 'manager_agency'))
 def Ticket_Index():
@@ -32,7 +32,7 @@ def Ticket_Index():
     return render_template('ticket/index.html', **locals())
 
 
-@app.route('/recoding/ticket/statistics/<int:agency_id>')
+@app.route('/manage/ticket/statistics/<int:agency_id>')
 @login_required
 @roles_required(('super_admin', 'employee_POS'))
 def Stat_View(agency_id):

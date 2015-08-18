@@ -9,7 +9,7 @@ from forms_customer import FormCustomer
 cache = Cache(app)
 
 
-@app.route('/recording/customer')
+@app.route('/manage/customer')
 @login_required
 @roles_required(('super_admin', 'manager_agency'))
 def Customer_Index():
@@ -21,8 +21,8 @@ def Customer_Index():
     return render_template('customer/index.html', **locals())
 
 
-@app.route('/recording/customer/edit', methods=['GET', 'POST'])
-@app.route('/recording/customer/edit/<int:customer_id>', methods=['GET', 'POST'])
+@app.route('/manage/customer/edit', methods=['GET', 'POST'])
+@app.route('/manage/customer/edit/<int:customer_id>', methods=['GET', 'POST'])
 @login_required
 @roles_required(('super_admin', 'manager_agency'))
 def Customer_Edit(customer_id=None):
