@@ -7,7 +7,7 @@ from ..transaction.models_transaction import TransactionModel, AgencyModel, User
 # Flask-Cache (configured to use App Engine Memcache API)
 cache = Cache(app)
 
-@app.route('/recording/transaction')
+@app.route('/manage/transaction')
 @login_required
 @roles_required(('super_admin', 'manager_agency'))
 def Transaction_Index():
@@ -22,7 +22,7 @@ def Transaction_Index():
 
     return render_template('/transaction/index.html', **locals())
 
-@app.route('/recording/transaction/stat/<int:agency_id>')
+@app.route('/manage/transaction/stat/<int:agency_id>')
 @login_required
 @roles_required(('super_admin', 'manager_agency'))
 def Transaction_Agency(agency_id):

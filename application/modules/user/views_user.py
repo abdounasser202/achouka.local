@@ -63,7 +63,7 @@ def Super_Admin_Create():
     return render_template('user/edit-super-admin.html', **locals())
 
 
-@app.route('/recording/user')
+@app.route('/manage/user')
 @login_required
 @roles_required(('super_admin', 'manager_agency'))
 def User_Index():
