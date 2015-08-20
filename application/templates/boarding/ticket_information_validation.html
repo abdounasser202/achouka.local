@@ -1,0 +1,74 @@
+<div class="modal-header bg-primary" xmlns="http://www.w3.org/1999/html">
+
+<h4 class="modal-title" id="myModalLabel">Ticket Information</h4>
+</div>
+<div class="modal-body">
+    <form class="form-horizontal" role="form">
+      <div class="form-group">
+        <label class="col-sm-5 control-label">Ticket ID</label>
+        <div class="col-sm-7">
+          <p class="form-control-static">{{ ticket.key.id() }}</p>
+        </div>
+      </div>
+        <div class="form-group">
+        <label class="col-sm-5 control-label">Class Ticket</label>
+        <div class="col-sm-7">
+          <p class="form-control-static">{{ ticket.class_name.get().name }}</p>
+        </div>
+      </div>
+        <div class="form-group">
+        <label class="col-sm-5 control-label">Customer ID Card/Passport</label>
+        <div class="col-sm-7">
+          <p class="form-control-static">
+              {% if ticket.customer.get().nic_number %}
+                                {{ ticket.customer.get().nic_number }}
+                            {% else %}
+                                {{ ticket.customer.get().passport_number }}
+                            {% endif %}
+          </p>
+        </div>
+      </div>
+        <div class="form-group">
+        <label class="col-sm-5 control-label">Customer Name</label>
+        <div class="col-sm-7">
+          <p class="form-control-static">{{ ticket.customer.get().last_name }} {{ ticket.customer.get().first_name }}</p>
+        </div>
+      </div>
+    </form>
+</div>
+<div class="modal-footer">
+<button type="button" class="btn btn-success" data-loading-text="Loading..." id="confirm" {% if close %} disabled="disabled {% endif %}"> Confirm </button>
+<button type="button" class="btn btn-default {% if close %} hidden {% endif %}" data-dismiss="modal" id="close">Close</button>
+</div>
+<script>
+
+    {% if close %}
+        var close = true;
+    {% else %}
+        var close = false;
+    {% endif %}
+
+    if(close == true){
+        $.get({{ url_for('customer_aboard', departure_id=departure_id) }}, function(data) {
+            $('#NoFoundTicketBoarding').addClass('hidden');
+            $('#FindTicketBoarding').removeClass('hidden').empty().html(data);
+            $('#print_customer_aboard').removeClass('hidden');
+        });
+        $('button#close').trigger("click");
+    }
+
+
+    var btn = $('button#confirm');
+    btn.click(function(e) {
+        e.preventDefault();
+        var btn = $(this);
+        btn.button('loading');
+        $.ajax({
+            url: "{{ url_for('ticket_information', ticket_id=ticket_id) }}"+"?confirm=1",
+            type: 'GET',
+            success: function(data) {
+                $('.modal-content').html(data);
+            }
+        });
+    });
+</script>

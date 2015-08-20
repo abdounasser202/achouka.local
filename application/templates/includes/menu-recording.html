@@ -1,5 +1,5 @@
 <ul class="list-group list-menu">
-  <li class="list-group-header"><i class="fa fa-hdd-o"></i> - Recording</li>
+  <li class="list-group-header"><i class="fa fa-hdd-o"></i> - Manage</li>
 
 {% if current_user.has_roles(('super_admin','manager_agency')) %}
   <li class="list-group-item {% if submenu == 'transaction' %} active {% endif %}">

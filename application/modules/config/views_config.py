@@ -42,6 +42,7 @@ def synchronization():
     if date:
         customer_api_put(url_config.url_server, token, "/customer/put/", date)
         ticket_sale_put_api(url_config.url_server, token, "/ticket_local_sale_put/put/", date)
+        ticket_sale_put_api(url_config.url_server, token, "/ticket_local_sale_put/put/", date, transaction=False)
 
     transaction_do_api(url_config.url_server, token, "/transaction/get/", date)
     # Insertion des tickets alloues
@@ -1041,7 +1042,7 @@ def get_doublons_ticket_return_api(url, tocken, segment, date):
                     duplicate_ticket.put()
 
 
-def ticket_sale_put_api(url, tocken, segment, date, synchro=True):
+def ticket_sale_put_api(url, tocken, segment, date, synchro=True, transaction=True):
 
     from ..ticket.models_ticket import TicketModel, AgencyModel
     import urllib
@@ -1051,18 +1052,28 @@ def ticket_sale_put_api(url, tocken, segment, date, synchro=True):
     else:
         date = datetime.datetime.combine(date, datetime.datetime.now().time())
 
-    ticket_sale = TicketModel.query(
-        TicketModel.date_reservation >= date,
-        TicketModel.selling == True,
-        TicketModel.is_boarding == False
-    )
+
+    data = {}
+    data['ticket_sale'] = []
+
+    if transaction:
+        data['transaction'] = 1
+        ticket_sale = TicketModel.query(
+            TicketModel.date_reservation >= date,
+            TicketModel.selling == True,
+            TicketModel.is_boarding == False
+        )
+    else:
+        data['transaction'] = 0
+        ticket_sale = TicketModel.query(
+            TicketModel.date_update >= date,
+            TicketModel.selling == True
+        )
 
     active_local_agency = AgencyModel.query(
         AgencyModel.local_status == True
     ).get()
 
-    data = {}
-    data['ticket_sale'] = []
     for ticket in ticket_sale:
         if ticket.travel_ticket.get().destination_start == active_local_agency.destination:
             data['ticket_sale'].append(ticket.make_to_dict())
@@ -1224,3 +1235,4 @@ def get_ticket_return_foreign_disable(url, tocken, segment, date):
             if old_data:
                 old_data.statusValid = False
                 old_data.put()
+

@@ -75,8 +75,9 @@
                                     </div>
 
                                     <div class="panel-footer">
+                                            <button class="btn btn-info btn-block btn-sm" id="all_journey_day">view passengers for travel day</button>
                                         {% if current_departure %}
-                                            <button class="btn btn-info btn-block btn-sm" id="customer_aboard">View passengers onboard</button>
+                                            <button class="btn btn-primary btn-block btn-sm" id="customer_aboard">View passengers for current journey</button>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -142,11 +143,21 @@
             });
         });
 
+        $('body').on('click', "#all_journey_day", function(){
+            $.ajax({
+                url: "{{ url_for('departure_for_boarding') }}" ,
+                type: 'GET',
+                success: function(data) {
+                    $('#NoFoundTicketBoarding').addClass('hidden');
+                    $('#FindTicketBoarding').removeClass('hidden').html(data);
+                    $('#print_customer_aboard').removeClass('hidden')
+                }
+            });
+        });
+
         if($('#number_ticket').val().length == 16){
             $('#SubmitTicketNumber').trigger('click');
         }
-
-
 
 {#        function printDiv(divName) {#}
 {##}

@@ -1,0 +1,36 @@
+<table class="table table-hover" {% if not printer %} id="dataTables" {% endif %}>
+        <thead>
+        <tr>
+            <th>Ticket ID</th>
+            <th>Class</th>
+            <th>ID Card/Passport</th>
+            <th>Customer Name</th>
+        </tr>
+        </thead>
+        <tbody>
+            {% for customer in list_ticket_sold %}
+                <tr id="{{ customer.key.id() }}" {% if not customer.is_boarding %} class="ValidTicket info" {% endif %}>
+                        <td>{{ customer.key.id() }}</td>
+                        <td>{{ customer.class_name.get().name }}</td>
+                        <td>
+                            {% if customer.customer.get().nic_number %}
+                                {{ customer.customer.get().nic_number }}
+                            {% else %}
+                                {{ customer.customer.get().passport_number }}
+                            {% endif %}
+                        </td>
+                        <td>{{ customer.customer.get().last_name }} {{ customer.customer.get().first_name }}</td>
+
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+<script>
+    $('#dataTables').dataTable({
+    'aoColumnDefs': [
+        {'bSortable': false, 'aTargets': ['nosort']},
+        {'bSearchable': false, "aTargets": ['nosort']}
+    ]
+    });
+</script>

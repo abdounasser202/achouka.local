@@ -1,6 +1,21 @@
 <div class="panel panel-info">
   <div class="panel-heading text-center">
-    <h3>Passengers Onboard</h3>
+        <h3 style="margin-top: 0;">Passengers</h3>
+        <h4 style="margin-top: 0;"><small>{{ departure_get.destination.get().destination_start.get().name }} - {{ departure_get.destination.get().destination_check.get().name }} ({{ departure_get.schedule|add_time(departure_get.time_delay)|format_date('%H:%M') }})</small></h4>
+      <form class="form-horizontal clearfix" id="FormTicketNumberGenerated">
+          <div class="form-group">
+            <label class="col-sm-3 control-label">Passenger onboard :</label>
+            <div class="col-sm-6">
+                <input type="text" class="form-control" placeholder="Enter ticket number" name="number_ticket_generated" id="number_ticket_generated" autocomplete="false" >
+
+            </div>
+              <div class="col-sm-3">
+                  <button type="submit" class="btn btn-success hidden" id="SubmitTicketNumberGenerated"><i class="fa fa-plus"></i> Add</button>
+                  <button class="btn btn-danger reset" id="customer_aboards" disabled="disabled">Reset</button>
+              </div>
+
+          </div>
+      </form>
   </div>
   <div class="panel-body" id="printer">
     {% if printer %}
@@ -13,7 +28,7 @@
             <tr>
                 <td><strong>Journey</strong>: {{ departure_get.destination.get().destination_start.get().name }} - {{ departure_get.destination.get().destination_check.get().name }} </td>
                 <td><strong>Date</strong>: {{ departure_get.departure_date }}</td>
-                <td><strong>Time</strong>: {{ departure_get.schedule|add_time(departure_get.time_delay) }}</td>
+                <td><strong>Time</strong>: {{ departure_get.schedule|add_time(departure_get.time_delay)|format_date('%H:%M') }}</td>
             </tr>
             </tbody>
         </table>
@@ -23,35 +38,66 @@
         </div>
 
    {% endif %}
-    <table class="table table-hover" {% if not printer %} id="dataTables" {% endif %}>
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>Last Name</th>
-            <th>First Name</th>
-        </tr>
-        </thead>
-        <tbody>
-            {% for customer in ticket_user_query %}
-                <tr>
-                    <td>{{ customer.customer.get().key.id() }}</td>
-                    <td>{{ customer.customer.get().last_name }}</td>
-                    <td>{{ customer.customer.get().first_name }}</td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+      <div id="table_customer">
+        <table class="table table-hover table-condensed" {% if not printer %} id="dataTables" {% endif %}>
+            <thead>
+            <tr>
+                {% if printer %}
+                    <th>No</th>
+                {% endif %}
+                <th>Ticket ID</th>
+                <th>Class</th>
+                <th>ID Card/Passport</th>
+                <th>Customer Name</th>
+            </tr>
+            </thead>
+            <tbody>
+                {% set num = 1 %}
+                {% for customer in ticket_user_query %}
+                    <tr id="{{ customer.key.id() }}" {% if not customer.is_boarding %} class="ValidTicket info" {% endif %}>
+                        {% if printer %}
+                            <td>{{ num }}</td>
+                        {% endif %}
+                        <td>{{ customer.key.id() }}</td>
+                        <td>{{ customer.class_name.get().name }}</td>
+                        <td>
+                            {% if customer.customer.get().nic_number %}
+                                {{ customer.customer.get().nic_number }}
+                            {% else %}
+                                {{ customer.customer.get().passport_number }}
+                            {% endif %}
+                        </td>
+                        <td>{{ customer.customer.get().last_name }} {{ customer.customer.get().first_name }}</td>
+                    </tr>
+                    {% if printer %}
+                           {% set num = num + 1 %}
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+      </div>
   </div>
   <div class="panel-footer">
          <button class="btn btn-danger hidden" id="print_customer_aboard">Print Passengers Onboard</button>
   </div>
 </div>
+
+<!-- Modal -->
+<div class="modal fade" id="myModal" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+    </div>
+  </div>
+</div>
+
 <script>
+
     $('#dataTables').dataTable({
-    'aoColumnDefs': [
-        {'bSortable': false, 'aTargets': ['nosort']},
-        {'bSearchable': false, "aTargets": ['nosort']}
-    ]
+        'aoColumnDefs': [
+            {'bSortable': false, 'aTargets': ['nosort']},
+            {'bSearchable': false, "aTargets": ['nosort']}
+        ]
     });
 
     $('body').on('click', '#print_customer_aboard', function(){
@@ -74,4 +120,53 @@
             }
         });
     });
+
+    $('#number_ticket_generated').inputmask("9999999999999999", { placeholder:"****************"});
+
+    $('body').on('click', '#SubmitTicketNumberGenerated', function(e) {
+        e.preventDefault()
+        $.ajax({
+            url: "{{ url_for('search_customer_to_board', departure_id=departure_id) }}",
+            data: $('#FormTicketNumberGenerated').serialize(),
+            type: 'POST',
+            success: function (data) {
+                $('#table_customer').empty().html(data);
+                $('#customer_aboards.reset').removeAttr("disabled");
+                $('#print_customer_aboard').attr({disabled:"disabled"});
+            }
+        });
+    });
+
+    $('body').on('click', "#customer_aboards.reset", function(e){
+            e.preventDefault();
+            $.ajax({
+                url: "{{ url_for('customer_aboard', departure_id=departure_id) }}",
+                type: 'GET',
+                success: function(data) {
+                    $('#NoFoundTicketBoarding').addClass('hidden');
+                    $('#FindTicketBoarding').removeClass('hidden').empty().html(data);
+                    $('#print_customer_aboard').removeClass('hidden');
+                }
+            });
+    });
+
+    $('body').on('click', ".ValidTicket", function(e){
+            e.preventDefault();
+            var _id = $(this).attr("id");
+            var url_modal = "{{ url_for('ticket_information') }}"+_id;
+            $('#myModal').modal({
+                 show: true,
+                 backdrop:"static"
+            });
+            $.get(url_modal, function(data) {
+              $('.modal-content').empty().html(data);
+            });
+
+    });
+
+    $('#myModal').on('hide.bs.modal', function() {
+        $('.modal-content').html('');
+        $(this).removeData('bs.modal');
+    });
+
 </script>

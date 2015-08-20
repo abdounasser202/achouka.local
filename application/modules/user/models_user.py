@@ -108,7 +108,6 @@ class UserModel(ndb.Model):
             number = 'No Ticket'
         return number+' Available'
 
-
     def ticket_number_selling(self, user_ticket_query=None, local_agency=True):
         from ..transaction.models_transaction import ExpensePaymentTransactionModel, TicketModel
 

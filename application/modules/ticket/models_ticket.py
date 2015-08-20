@@ -74,8 +74,10 @@ class TicketModel(TicketPoly):
         to_dict['is_prepayment'] = self.is_prepayment
         to_dict['statusValid'] = self.statusValid
         to_dict['is_return'] = self.is_return
+        to_dict['selling'] = self.selling
 
         to_dict['travel_ticket'] = self.travel_ticket.id()
+        to_dict['generate_boarding'] = self.generate_boarding
         to_dict['is_boarding'] = self.is_boarding
 
         if self.parent_return:

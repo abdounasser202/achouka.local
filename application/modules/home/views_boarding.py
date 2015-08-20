@@ -346,17 +346,83 @@ def customer_aboard(departure_id):
 
     departure_get = DepartureModel.get_by_id(departure_id)
 
+    ticket_user_query = TicketModel.query(
+        TicketModel.selling == True,
+        TicketModel.departure == departure_get.key,
+        TicketModel.generate_boarding == True
+    ).order(TicketModel.class_name)
+
     printer = False
     if request.args.get('printer'):
         printer = True
 
-    ticket_user_query = TicketModel.query(
-        TicketModel.selling == True,
-        TicketModel.departure == departure_get.key,
-        TicketModel.is_boarding == True
-    )
+        ticket_user_query = TicketModel.query(
+            TicketModel.selling == True,
+            TicketModel.departure == departure_get.key,
+            TicketModel.generate_boarding == True,
+            TicketModel.is_boarding == True
+        ).order(TicketModel.class_name)
 
     return render_template('/boarding/customer_aboard.html', **locals())
 
+
+@app.route('/search_customer_to_board/<int:departure_id>', methods=['POST'])
+def search_customer_to_board(departure_id):
+
+    departure_get = DepartureModel.get_by_id(departure_id)
+
+    number_ticket = str(request.form['number_ticket_generated'])
+    number_ticket = ''.join(number_ticket.split('*'))
+
+    ticket_sold = TicketPoly.query(
+        TicketPoly.selling == True,
+        TicketPoly.statusValid == False,
+        TicketPoly.generate_boarding == True,
+        TicketPoly.is_boarding == False,
+        TicketPoly.departure == departure_get.key
+    )
+
+    list_ticket_sold = []
+    for ticket in ticket_sold:
+        find_ticket_sold = function.find(str(ticket.key.id())+" ", str(number_ticket))
+        if find_ticket_sold:
+            list_ticket_sold.append(ticket)
+
+    return render_template('/boarding/list_ticket_found_unboard.html', **locals())
+
+
+@app.route('/ticket_information/<int:ticket_id>')
+@app.route('/ticket_information/')
+def ticket_information(ticket_id=None):
+
+    ticket = TicketPoly.get_by_id(ticket_id)
+
+    confirm = request.args.get('confirm')
+    close = False
+    if confirm:
+        ticket.is_boarding = True
+        ticket.put()
+        close = True
+
+    return render_template('/boarding/ticket_information_validation.html', **locals())
+
+@app.route('/departure_for_boarding')
+def departure_for_boarding():
+
+    from ..departure.models_departure import DepartureModel
+
+    year = datetime.date.today().year
+    current_month_active = datetime.date.today().month
+    current_day_active = datetime.date.today().day
+
+    date = datetime.date(year, current_month_active, current_day_active)
+    departure_list = DepartureModel.query(
+        DepartureModel.departure_date == date
+    ).order(
+        DepartureModel.schedule,
+        DepartureModel.time_delay
+    )
+
+    return render_template('/boarding/departure_for_boarding.html', **locals())
 
 
