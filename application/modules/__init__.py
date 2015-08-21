@@ -46,7 +46,7 @@ from operator import itemgetter
 
 date_age = {
     'min':7,
-    'max':17
+    'max':13
 }
 
 global_current_country = {
