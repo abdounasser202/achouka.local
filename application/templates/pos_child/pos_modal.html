@@ -1,0 +1,170 @@
+<div class="modal-header bg-primary">
+    <h4 class="modal-title" id="myModalLabel">Sell a ticket for a child</h4>
+</div>
+<div class="modal-body">
+    <div id="list_all_departure">
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="panel panel-primary">
+                  <div class="panel-body">
+                      <form action="#" class="form-inline clearfix" id="SearchCustomer_child">
+                          <fieldset>
+                              <legend>SELL A TICKET FOR A CHILD</legend>
+                              <div class="form-group birth" style=" width: 45%;">
+                                <label>Date of birth :</label>
+                                <input type="text" class="form-control datepickerbirth_child" name="birthday" id="datepickerbirth_child" autofocus autocomplete="false" >
+                                <input type="hidden" name="current_departure" value="{% if departure_get %}{{ departure_get.key.id() }}{% endif %}" id="CurrentDeparture_child"/>
+                              </div>
+                              <div class="form-group" style=" width: 40%;">
+                                <label>Full Name :</label>
+                                <input type="text" class="form-control" name="full_name" style=" width: 68%;" autocomplete="false">
+                              </div>
+                              <button type="submit" class="btn" id="SubmitCustomer_child"><i class="fa fa-search"></i>  Find</button>
+
+
+                              <div class="pull-right" style="margin-top: 24px;">
+                                  <a href="{{ url_for('create_customer_and_ticket_pos') }}" class="btn btn-primary btn-sm" id="CreateCustomer_child" >Create customer</a>
+                              </div>
+                          </fieldset>
+                      </form>
+                  </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-12">
+                <div id="Error_no_select_departure" class="hidden">
+                    <div class="alert alert-danger text-center">
+                        <h3 style="margin-top: 10px;">No current departure</h3>
+                    </div>
+                </div>
+                <div id="Error_age" class="hidden">
+                    <div class="alert alert-danger text-center">
+                        <h3 style="margin-top: 10px;">This customer is an adult.
+                            <br/>
+                            Please create a ticket for adult to this customer </h3>
+                    </div>
+                </div>
+                <div id="Error_age_free" class="hidden">
+                    <div class="alert alert-danger text-center">
+                        <h3 style="margin-top: 10px;">We do not treat passengers that age. He is too young </h3>
+                    </div>
+                </div>
+                <div id="result_search_customer">
+                    <table class="table table-hover table-condensed" id="dataTables">
+                        <thead>
+                        <tr>
+                            <th>Customer name</th>
+                            <th class="nosort">Date of birth</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal-footer">
+<button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+</div>
+<script type="text/javascript" src="/static/js/date-fr-FR.js"></script>
+<script>
+        $('#datepickerbirth_child').inputmask("date", { placeholder:"__/__/____"});
+
+        $('#ScreenCreateTicket').empty();
+
+        $('#dataTables').dataTable({
+            "paging": true,
+            "bFilter": true,
+            'aoColumnDefs': [
+                {'bSortable': false, 'aTargets': ['nosort']}
+            ]
+        });
+        // fonction de verification de date
+        function ValidateDate(dtValue)
+        {
+            var dtRegex = new RegExp(/\b\d{1,2}[\/-]\d{1,2}[\/-]\d{4}\b/);
+            return dtRegex.test(dtValue);
+        }
+        // traitement de la recherche de client
+        $('button#SubmitCustomer_child').click(function(e) {
+            e.preventDefault();
+            searchcustomer();
+        });
+
+        // traitement de la creation du client
+        $('#myModal2').on("click","#CreateCustomer_child", function(e){
+            e.preventDefault();
+            url = $(this).attr('href');
+
+            dtVal = $('#SearchCustomer_child #datepickerbirth_child').val();
+            today = new Date();
+            dateMax = new Date(today.getFullYear() - {{ age['max'] }}, today.getMonth(), today.getDate());
+            dateMin = new Date(today.getFullYear() - {{ age['min'] }}, today.getMonth(), today.getDate());
+            dateUser = Date.parse(dtVal);
+
+                if (ValidateDate(dtVal)){
+                     if (dateUser <= dateMax && dateUser <= dateMin){
+                           $.ajax({
+                                url: url,
+                                data: $('#SearchCustomer_child').serialize(),
+                                type: 'GET',
+                                success: function(data) {
+                                    $('#ScreenIndexPos').hide();
+                                    $('#ScreenCreateTicket').removeClass('hidden').html(data);
+                                }
+                            });
+                     }else{
+                         $('#Error_age').removeClass('hidden');
+                         $('#result_search_customer').hide();
+                     }
+                }else{
+                    $('#SearchCustomer_child .form-group').addClass('has-error')
+                }
+
+
+        });
+
+        // fonction de la recherche de client
+        function searchcustomer(){
+            departure = $('#SearchCustomer_child #CurrentDeparture_child').val();
+            dtVal = $('#SearchCustomer_child #datepickerbirth_child').val();
+            today = new Date();
+            dateMax = new Date(today.getFullYear() - {{ age['max'] }}, today.getMonth(), today.getDate());
+            dateMin = new Date(today.getFullYear() - {{ age['min'] }}, today.getMonth(), today.getDate());
+            dateUser = Date.parse(dtVal);
+
+            if (dateUser >= dateMax && dateUser <= dateMin){
+                if (departure != ''){
+                            $.ajax({
+                                url: '{{ url_for('search_customer_pos') }}',
+                                data: $('#SearchCustomer_child').serialize(),
+                                type: 'POST',
+                                success: function(data) {
+                                    $('#SearchCustomer_child .form-group.birth').removeClass('has-error');
+                                    $('#Error_no_select_departure').addClass('hidden');
+                                    $('#result_search_customer').show().html(data);
+                                    $('#Error_age').addClass('hidden');
+                                    $('#Error_age_free').addClass('hidden');
+                                }
+                            }).fail(function(){
+                                $('#SearchCustomer_child .form-group.birth').addClass('has-error')
+                            });
+                }else{
+                    $('#Error_no_select_departure').removeClass('hidden');
+                    $('#result_search_customer').hide();
+                }
+            }else{
+                if (dateUser > dateMin) {
+                    $('#Error_age_free').removeClass('hidden');
+                    $('#result_search_customer').hide();
+                }else{
+                    $('#Error_age').removeClass('hidden');
+                    $('#result_search_customer').hide();
+                }
+            }
+        }
+
+    </script>
