@@ -56,7 +56,7 @@ def Pos(departure_id=None):
                     break
     else:
         current_departure = DepartureModel.get_by_id(departure_id)
-
+    age = date_age
     return render_template('/index/pos.html', **locals())
 
 
@@ -438,10 +438,20 @@ def create_customer_and_ticket_pos(customer_id=None, departure_id=None):
     if departure_id:
         form.current_departure.data = str(departure_id)
 
-    journey_ticket = JourneyTypeModel.query()
     class_ticket = ClassTypeModel.query()
     ticket_type_name = TicketTypeNameModel.query()
 
+    child = request.args.get('child')
+    parent_ticket = int(request.args.get('parent_ticket'))
+    if child:
+        parent = TicketModel.get_by_id(parent_ticket)
+        class_ticket = ClassTypeModel.query(
+            ClassTypeModel.key == parent.class_name
+        )
+        ticket_type_name = TicketTypeNameModel.query(
+            TicketTypeNameModel.is_child == True
+        )
+    journey_ticket = JourneyTypeModel.query()
 
 
     modal = 'false'
@@ -516,6 +526,9 @@ def create_customer_and_ticket_pos(customer_id=None, departure_id=None):
         Ticket_To_Sell.date_reservation = function.datetime_convert(date_auto_nows)
         Ticket_To_Sell.sellprice = priceticket.price
         Ticket_To_Sell.sellpriceCurrency = priceticket.currency
+
+        if parent_ticket:
+            Ticket_To_Sell.parent_child = parent.key
 
         customer_ticket = CustomerModel.get_by_id(customer_save.id())
         Ticket_To_Sell.customer = customer_ticket.key

@@ -23,7 +23,7 @@
 
 
                               <div class="pull-right" style="margin-top: 24px;">
-                                  <a href="{{ url_for('create_customer_and_ticket_pos') }}" class="btn btn-primary btn-sm" id="CreateCustomer_child" >Create customer</a>
+                                  <a href="{{ url_for('create_customer_and_ticket_pos', child="1", parent_ticket=ticket_id) }}" class="btn btn-primary btn-sm" id="CreateCustomer_child" >Create customer</a>
                               </div>
                           </fieldset>
                       </form>
@@ -67,7 +67,7 @@
     </div>
 </div>
 <div class="modal-footer">
-<button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+<button type="button" class="btn btn-danger" data-dismiss="modal" id="closeModal">Cancel</button>
 </div>
 <script type="text/javascript" src="/static/js/date-fr-FR.js"></script>
 <script>
@@ -106,19 +106,27 @@
             dateUser = Date.parse(dtVal);
 
                 if (ValidateDate(dtVal)){
-                     if (dateUser <= dateMax && dateUser <= dateMin){
+                     if (dateUser >= dateMax && dateUser <= dateMin){
                            $.ajax({
                                 url: url,
                                 data: $('#SearchCustomer_child').serialize(),
                                 type: 'GET',
                                 success: function(data) {
                                     $('#ScreenIndexPos').hide();
+                                    $('#closeModal').trigger('click');
                                     $('#ScreenCreateTicket').removeClass('hidden').html(data);
                                 }
                             });
                      }else{
-                         $('#Error_age').removeClass('hidden');
-                         $('#result_search_customer').hide();
+                         if (dateUser > dateMin) {
+                            $('#Error_age_free').removeClass('hidden');
+                            $('#Error_age').addClass('hidden');
+                            $('#result_search_customer').hide();
+                         }else{
+                            $('#Error_age').removeClass('hidden');
+                            $('#Error_age_free').addClass('hidden');
+                            $('#result_search_customer').hide();
+                         }
                      }
                 }else{
                     $('#SearchCustomer_child .form-group').addClass('has-error')
@@ -159,9 +167,11 @@
             }else{
                 if (dateUser > dateMin) {
                     $('#Error_age_free').removeClass('hidden');
+                    $('#Error_age').addClass('hidden');
                     $('#result_search_customer').hide();
                 }else{
                     $('#Error_age').removeClass('hidden');
+                    $('#Error_age_free').addClass('hidden');
                     $('#result_search_customer').hide();
                 }
             }

@@ -1118,6 +1118,10 @@ def get_ticket_sale_online(url, tocken, segment, date):
                 departure_ticket = DepartureModel.get_by_id(data_get['departure'])
                 old_data.departure = departure_ticket.key
 
+                if data_get['parent_child']:
+                    parent_child = TicketModel.get_by_id(data_get['parent_child'])
+                    old_data.parent_child = parent_child.key
+
                 user_ticket = UserModel.get_by_id(data_get['ticket_seller'])
                 old_data.ticket_seller = user_ticket.key
 
@@ -1166,6 +1170,11 @@ def get_ticket_sale_online(url, tocken, segment, date):
                 data_save.departure = departure_ticket.key
 
                 user_ticket = UserModel.get_by_id(data_get['ticket_seller'])
+
+                if data_get['parent_child']:
+                    parent_child = TicketModel.get_by_id(data_get['parent_child'])
+                    data_save.parent_child = parent_child.key
+
                 data_save.ticket_seller = user_ticket.key
                 data_save.date_reservation = function.datetime_convert(data_get['date_reservation'])
 
