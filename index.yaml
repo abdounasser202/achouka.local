@@ -173,6 +173,15 @@ indexes:
 - kind: TicketPoly
   properties:
   - name: class
+  - name: is_count
+  - name: selling
+  - name: ticket_seller
+  - name: date_reservation
+    direction: desc
+
+- kind: TicketPoly
+  properties:
+  - name: class
   - name: selling
   - name: date_update
 
