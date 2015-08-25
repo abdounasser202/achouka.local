@@ -22,7 +22,7 @@
                       {% for ticket in ticket_sold %}
                           {% if ticket.key.id() in list_ticket_sold %}
                               <tr>
-                                  <td><a href="{{ url_for('Ticket_found', ticket_id=ticket.key.id()) }}" class="link_ticket">{{ ticket.key.id() }}</a></td>
+                                  <td><a href="{{ url_for('Ticket_found', ticket_id=ticket.key.id(), departure=departure_id) }}" class="link_ticket">{{ ticket.key.id() }}</a></td>
                                   <td>{{ ticket.customer.get().first_name }} {{ ticket.customer.get().last_name }}</td>
                                   <td>
                                       {{ ticket.departure.get().destination.get().destination_start.get().name }}

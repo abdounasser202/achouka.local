@@ -188,9 +188,17 @@ def search_customer_pos():
 @login_required
 @roles_required(('employee_POS', 'super_admin'))
 def search_ticket_pos():
+
+    from ..departure.models_departure import DepartureModel
     number_ticket = request.form['number_ticket']
 
     number_ticket = ''.join(number_ticket.split('*'))
+
+    departure_get = None
+    departure_id = request.args.get('departure')
+    if departure_id:
+        departure_find = DepartureModel.get_by_id(int(departure_id))
+        departure_get = departure_find.key
 
     if len(number_ticket) < 16:
         ticket_sold = TicketModel.query(
@@ -211,7 +219,16 @@ def search_ticket_pos():
 @login_required
 @roles_required(('employee_POS', 'super_admin'))
 def Ticket_found(ticket_id):
+    from ..departure.models_departure import DepartureModel
+
     ticket = TicketModel.get_by_id(ticket_id)
+
+    departure_get = None
+    departure_id = request.args.get('departure')
+    if departure_id:
+        departure_find = DepartureModel.get_by_id(int(departure_id))
+        departure_get = departure_find.key
+
     return render_template('/pos/ticket_found.html', **locals())
 
 

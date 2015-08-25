@@ -887,6 +887,9 @@ def transaction_do_api(url, tocken, segment, date):
                     user_save = user.key
 
                 data_save.user = user_save
+                data_save.pre_amount = data_get['pre_amount']
+                employe = UserModel.get_by_id(data_get['employe'])
+                data_save.employe = employe.key
                 data_save.transaction_admin = data_get['transaction_admin']
                 data_save.put()
 

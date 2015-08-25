@@ -214,7 +214,8 @@
             // Traitement de la recherche de ticket
             $('#SubmitTicket').click(function(e){
                 e.preventDefault();
-                url = $(this).attr('href');
+                departure = $('#SearchCustomer #CurrentDeparture').val();
+                url = $(this).attr('href')+"?departure="+departure;
                 $.ajax({
                     url: url,
                     data: $('#SearchTicket').serialize(),
