@@ -295,23 +295,8 @@ def Dashboard():
     menu = 'dashboard'
     from ..ticket.models_ticket import AgencyModel, TicketModel
 
-    #implementation de l'heure local
-    time_zones = pytz.timezone('Africa/Douala')
-    date_auto_nows = datetime.datetime.now(time_zones).strftime("%Y-%m-%d %H:%M:%S")
-
-    #TRAITEMENT DU TRAFIC GABON
-    all_agency = AgencyModel.query()
-
-    the_ticket_agency_gabon = []
-    the_ticket_agency_cm_ngn = []
-
-    time_minus_14days = datetime.datetime.now(time_zones) - datetime.timedelta(days=14)
-    time_minus_14days = time_minus_14days.strftime("%Y-%m-%d %H:%M:%S")
-
-    month_current = function.datetime_convert(date_auto_nows).month
-
     # TRAITEMENT DU DASHBOARD DE SELLER
-    if not current_user.has_roles(('admin', 'manager_agency', 'super_admin')) and current_user.has_roles('employee_POS'):
+    if not current_user.has_roles(('admin', 'super_admin')) and current_user.has_roles('employee_POS'):
 
         user_ticket = TicketModel.query(
             TicketModel.ticket_seller == current_user.key,
@@ -324,129 +309,32 @@ def Dashboard():
         user_ticket_tab = []
         for ticket in user_ticket:
             tickets = {}
+            tickets['date'] = str(ticket.date_reservation.date())
             tickets['class'] = ticket.class_name
             tickets['journey'] = ticket.journey_name
             tickets['type'] = ticket.type_name
             tickets['travel'] = ticket.travel_ticket
-            tickets['price'] = ticket.sellprice
+            tickets['prices'] = ticket.sellprice
             tickets['currency'] = ticket.sellpriceCurrency.get().code
             user_ticket_tab.append(tickets)
 
-        groupers = itemgetter("class", "type", "journey", "travel")
+        groupers = itemgetter("date","class", "type", "journey", "travel", "prices")
 
         the_ticket_sale = []
         for key, grp in groupby(sorted(user_ticket_tab, key=groupers), groupers):
-            temp_dict = dict(zip(["class", "type", "journey", "travel"], key))
+            temp_dict = dict(zip(["date", "class", "type", "journey", "travel", "prices"], key))
             temp_dict['number'] = 0
             temp_dict['price'] = 0
             for item in grp:
                 temp_dict['number'] += 1
-                temp_dict['price'] += item['price']
+                temp_dict['price'] += item['prices']
                 temp_dict['currency'] = item['currency']
             the_ticket_sale.append(temp_dict)
 
-        from ..transaction.models_transaction import ExpensePaymentTransactionModel
 
-        local_tocal = 0
-        user_tickets_tab = []
-        for ticket in user_ticket:
-
-            expensepayment_query = ExpensePaymentTransactionModel.query(
-                ExpensePaymentTransactionModel.ticket == ticket.key
-            )
-
-            #RECUPERATION DES TICKETS QUE L'ON VA SOLDER
-            number_attend_payment = 0
-            transaction_amount = 0
-            for transaction_line in expensepayment_query:
-                if transaction_line.transaction.get().is_payment is True and transaction_line.is_difference is False:
-                    number_attend_payment += 1
-                    transaction_amount += transaction_line.amount
-
-
-            # Calcul du montant total
-            if ticket.travel_ticket.get().destination_start == agency_user.destination:
-
-                if number_attend_payment == 0 and not transaction_amount:
-                    local_tocal += ticket.sellprice
-
-                if number_attend_payment >= 1 and ticket.sellprice > transaction_amount:
-                    local_tocal += ticket.sellprice - transaction_amount
-
-            # recuperation des tickets non locaux
-            if ticket.travel_ticket.get().destination_start != agency_user.destination:
-
-                tickets = {}
-                if number_attend_payment == 0 and not transaction_amount:
-                    tickets['travel'] = ticket.travel_ticket
-                    tickets['amount'] = ticket.sellprice
-                    tickets['currency'] = ticket.sellpriceCurrency.get().code
-                    user_tickets_tab.append(tickets)
-
-                if number_attend_payment >= 1 and ticket.sellprice > transaction_amount:
-                    tickets['travel'] = ticket.travel_ticket
-                    tickets['amount'] = ticket.sellprice - transaction_amount
-                    tickets['currency'] = ticket.sellpriceCurrency.get().code
-                    user_tickets_tab.append(tickets)
-
-        groupers_2 = itemgetter("travel", "currency")
-
-        the_amount_foreign_sale = []
-        for key, grp in groupby(sorted(user_tickets_tab, key=groupers_2), groupers_2):
-            temp_dict = dict(zip(["travel", "currency"], key))
-            temp_dict['price'] = 0
-            for item in grp:
-                temp_dict['price'] += item['amount']
-            the_amount_foreign_sale.append(temp_dict)
-
-        return render_template('/index/dashboard_pos.html', **locals())
-
-
-    # TRAITEMENT DU DASHBOARD DU MANAGER
-    if not current_user.has_roles(('admin','super_admin')) and current_user.has_roles('manager_agency'):
-
-        user_agency = AgencyModel.get_by_id(int(session.get('agence_id_local')))
-
-        ticket_agency = TicketModel.query(
-            TicketModel.agency == user_agency.key,
-            TicketModel.selling == True,
-            TicketModel.is_count == True,
-            TicketModel.date_reservation <= function.datetime_convert(date_auto_nows),
-            TicketModel.date_reservation > function.datetime_convert(time_minus_14days)
-        )
-        the_ticket_agency_tab = []
-        for ticket in ticket_agency:
-            tickets = {}
-            tickets['date'] = function.format_date(ticket.departure.get().departure_date, "%Y-%m-%d")
-            tickets['departure'] = ticket.departure
-            tickets['departure_start'] = ticket.departure.get().destination.get().destination_start.get().name
-            tickets['departure_check'] = ticket.departure.get().destination.get().destination_check.get().name
-            tickets['heure'] = function.format_date(function.add_time(ticket.departure.get().schedule, ticket.departure.get().time_delay), "%H:%M:%S")
-            tickets['price'] = ticket.sellprice
-            tickets['currency'] = ticket.sellpriceCurrency.get().code
-            the_ticket_agency_tab.append(tickets)
-        else:
-            tickets = {}
-            tickets['date'] = function.format_date(datetime.datetime.now(), "%Y-%m-%d")
-            tickets['departure'] = '11111111111'
-            tickets['departure_start'] = "No destination start"
-            tickets['departure_check'] = "No destination check"
-            tickets['heure'] = function.format_date(datetime.datetime.now().time(), "%H:%M:%S")
-            tickets['price'] = 0
-            tickets['currency'] = user_agency.destination.get().currency.get().code
-            the_ticket_agency_tab.append(tickets)
-
-        grouper = itemgetter("date", "heure", "departure", "currency")
-
-        the_ticket_agency = []
-        for key, grp in groupby(sorted(the_ticket_agency_tab, key=grouper), grouper):
-            temp_dict = dict(zip(["date", "heure", "departure", "currency"], key))
-            temp_dict['price'] = 0
-            for item in grp:
-                temp_dict['departure_start'] = item['departure_start']
-                temp_dict['departure_check'] = item['departure_check']
-                temp_dict['price'] += item['price']
-            the_ticket_agency.append(temp_dict)
+        #implementation de l'heure local
+        time_zones = pytz.timezone('Africa/Douala')
+        date_auto_nows = datetime.datetime.now(time_zones).strftime("%Y-%m-%d %H:%M:%S")
 
         heure = function.datetime_convert(date_auto_nows).time()
 
@@ -462,12 +350,12 @@ def Dashboard():
         )
 
         for dep in departure:
-            if dep.destination.get().destination_start == user_agency.destination:
+            if dep.destination.get().destination_start == agency_user.destination:
                 current_departure = dep
                 break
 
         for dep in departure:
-            if dep.destination.get().destination_check == user_agency.destination:
+            if dep.destination.get().destination_check == agency_user.destination:
                 current_departure_check = dep
                 break
 
@@ -488,45 +376,7 @@ def Dashboard():
                 current_departure_in_progress = dep
                 break
 
-
-        ticket_agency = TicketModel.query(
-            TicketModel.agency == user_agency.key,
-            TicketModel.selling == True,
-            TicketModel.is_count == True
-        )
-
-        ticket_sale_local = {}
-        ticket_sale_local['price'] = 0
-        ticket_sale_local['number'] = 0
-        for ticket in ticket_agency:
-            if function.datetime_convert(ticket.date_reservation).month == month_current and ticket.travel_ticket.get().destination_start == user_agency.destination:
-                ticket_sale_local['price'] += ticket.sellprice
-                ticket_sale_local['number'] += 1
-                ticket_sale_local['currency'] = ticket.sellpriceCurrency.get().code
-
-        ticket_sale_foreign_tab = []
-        for ticket in ticket_agency:
-            if function.datetime_convert(ticket.date_reservation).month == month_current and ticket.travel_ticket.get().destination_start != user_agency.destination:
-                ticket_sale_foreign = {}
-                ticket_sale_foreign['travel'] = ticket.travel_ticket
-                ticket_sale_foreign['price'] = ticket.sellprice
-                ticket_sale_foreign['number'] = 1
-                ticket_sale_foreign['currency'] = ticket.sellpriceCurrency.get().code
-                ticket_sale_foreign_tab.append(ticket_sale_foreign)
-
-        groupers = itemgetter("travel", "currency")
-
-        the_ticket_sale_foreign = []
-        for key, grp in groupby(sorted(ticket_sale_foreign_tab, key=groupers), groupers):
-            temp_dict = dict(zip(["travel", "currency"], key))
-            temp_dict['price'] = 0
-            temp_dict['number'] = 0
-            for item in grp:
-                temp_dict['price'] += item['price']
-                temp_dict['number'] += item['number']
-            the_ticket_sale_foreign.append(temp_dict)
-
-        return render_template('/index/dashboard_manager.html', **locals())
+        return render_template('/index/dashboard_pos.html', **locals())
 
     # Redirection d'un utilisateur employe boarding
     if not current_user.has_roles(('admin', 'manager_agency', 'super_admin', 'employee_POS')) and current_user.has_roles('employee_Boarding'):
@@ -535,7 +385,7 @@ def Dashboard():
     from ..config.model_config import ConfigModel, SynchroModel
 
     list_conf = ConfigModel.query()
-    list_sync = SynchroModel.query().order(-SynchroModel.date).get()
+    list_sync = SynchroModel.query().order(-SynchroModel.date)
 
     return render_template('/index/dashboard.html', **locals())
 

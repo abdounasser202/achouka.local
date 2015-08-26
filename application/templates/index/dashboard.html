@@ -13,7 +13,15 @@
 
                     <ul class="nav nav-tabs nav-pills nav-tabs-google">
                       <li class="active"><a href="#agency" data-toggle="tab">Configuration Local Agency</a></li>
-                      <li><a><strong>Last Synchronization for {{ list_sync.agency_synchro.get().name  }} :</strong> {{ list_sync.date|format_date('%d - %m - %Y') }}</a></li>
+                      <li><a><strong>Last Synchronization for
+                          {% set sync = 0 %}
+                          {% for list_sync in list_sync %}
+                              {% if list_sync.agency_synchro.get().local_status and sync == 1 %}
+                                    {{ list_sync.agency_synchro.get().name  }} :</strong> {{ list_sync.date|format_date('%d - %m - %Y') }}
+                              {% endif %}
+                              {% set sync = sync + 1 %}
+                          {% endfor %}
+                      </a></li>
                     </ul>
                     <br/>
 

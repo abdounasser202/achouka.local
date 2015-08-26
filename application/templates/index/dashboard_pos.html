@@ -12,7 +12,56 @@
                     <br/>
 
                     <div class="row">
-                        <div class="col-lg-8">
+                        <div class="col-lg-4">
+                            <div class="list-group">
+                              <a class="list-group-item text-center">
+                                <h3 class="list-group-item-heading text-info">Next Journey</h3>
+                                  {% if current_departure %}
+                                    <p class="list-group-item-text">
+                                        {{ current_departure.destination.get().destination_start.get().name }} - {{ current_departure.destination.get().destination_check.get().name }}
+                                        <br/>
+                                        {{ current_departure.departure_date|format_date("%d-%m-%Y") }} {{ current_departure.schedule|add_time(current_departure.time_delay)|format_date("%H:%M") }} {% if current_departure.time_delay %}({{ current_departure.time_delay }}) {% endif %}
+                                    </p>
+                                  {% else %}
+                                    <p class="list-group-item-text">None</p>
+                                  {% endif %}
+                              </a>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="list-group">
+                              <a class="list-group-item text-center">
+                                <h3 class="list-group-item-heading">Incoming Journey</h3>
+                                {% if current_departure_check %}
+                                    <p class="list-group-item-text">
+                                        {{ current_departure_check.destination.get().destination_start.get().name }} - {{ current_departure_check.destination.get().destination_check.get().name }}
+                                        <br/>
+                                        {{ current_departure_check.departure_date|format_date("%d-%m-%Y") }} {{ current_departure_check.schedule|add_time(current_departure_check.time_delay)|format_date("%H:%M") }} {% if current_departure_check.time_delay %}({{ current_departure_check.time_delay }}) {% endif %}
+                                    </p>
+                                  {% else %}
+                                    <p class="list-group-item-text">None</p>
+                                  {% endif %}
+                              </a>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+
+                            <div class="list-group">
+                              <a class="list-group-item text-center">
+                                <h3 class="list-group-item-heading">Ongoing Journey</h3>
+                                {% if current_departure_in_progress %}
+                                    <p class="list-group-item-text">
+                                        {{ current_departure_in_progress.destination.get().destination_start.get().name }} - {{ current_departure_in_progress.destination.get().destination_check.get().name }}
+                                        <br/>
+                                        {{ current_departure_in_progress.departure_date|format_date("%d-%m-%Y") }} {{ current_departure_in_progress.schedule|add_time(current_departure_in_progress.time_delay)|format_date("%H:%M") }} {% if current_departure_in_progress.time_delay %}({{ current_departure_in_progress.time_delay }}) {% endif %}
+                                    </p>
+                                  {% else %}
+                                    <p class="list-group-item-text">None</p>
+                                  {% endif %}
+                              </a>
+                            </div>
+                     </div>
+                        <div class="col-lg-12">
                             <div class="panel panel-info">
                               <div class="panel-heading">
                                 <span class="lead text-center">Local Ticket Sale</span>
@@ -21,7 +70,9 @@
                                  <table class="table table-hover" id="dataTableDash">
                                     <thead>
                                     <tr>
+                                        <th>Date</th>
                                         <th>Name</th>
+                                        <th>U.P</th>
                                         <th class="nosort text-center">Number</th>
                                         <th class="nosort text-center">Amount</th>
                                     </tr>
@@ -30,11 +81,13 @@
                                         {% for type in the_ticket_sale %}
                                            {% if type['travel'].get().destination_start == agency_user.destination %}
                                                 <tr>
+                                                    <td>{{ type['date'] }}</td>
                                                     <td>
                                                         <strong>{{ type['travel'].get().destination_start.get().name }} - {{ type['travel'].get().destination_check.get().name }} </strong> <br/>
                                                         <small>{{ type['class'].get().name }} - {{ type['type'].get().name }} - {{ type['journey'].get().name }}</small>
 
                                                     </td>
+                                                    <td>{{ type['prices']|format_price() }} {{ type['currency'] }}</td>
                                                     <td class="text-center">{{ type['number'] }}</td>
                                                     <td class="text-center">{{ type['price']|format_price() }} {{ type['currency'] }}</td>
                                                 </tr>
@@ -53,7 +106,9 @@
                                  <table class="table table-hover" id="dataTableDash2">
                                     <thead>
                                     <tr>
+                                        <th>Date</th>
                                         <th>Name</th>
+                                        <th>U.P</th>
                                         <th class="nosort text-center">Number</th>
                                         <th class="nosort text-center">Amount</th>
                                     </tr>
@@ -62,11 +117,13 @@
                                         {% for type in the_ticket_sale %}
                                            {% if type['travel'].get().destination_start != agency_user.destination %}
                                                 <tr>
+                                                    <td>{{ type['date'] }}</td>
                                                     <td>
                                                         <strong>{{ type['travel'].get().destination_start.get().name }} - {{ type['travel'].get().destination_check.get().name }} </strong> <br/>
                                                         <small>{{ type['class'].get().name }} - {{ type['type'].get().name }} - {{ type['journey'].get().name }}</small>
 
                                                     </td>
+                                                    <td>{{ type['prices']|format_price() }} {{ type['currency'] }}</td>
                                                     <td class="text-center">{{ type['number'] }}</td>
                                                     <td class="text-center">{{ type['price']|format_price() }} {{ type['currency'] }}</td>
                                                 </tr>
@@ -77,25 +134,7 @@
                               </div>
                             </div>
                         </div>
-                        <div class="col-lg-4">
-                            <div class="well text-center">
-                                <strong>Balance</strong>
-                                <br/><br/>
-                                <table class="table table-condensed">
-                                    <tr>
-                                        <td>LOCAL</td>
-                                        <td>{{ local_tocal|format_price() }} {{ agency_user.destination.get().currency.get().code }}</td>
-                                    </tr>
-                                    {% for foreign_amount in the_amount_foreign_sale  %}
-                                        <tr>
-                                            <td>{{ foreign_amount['travel'].get().destination_start.get().name }}</td>
-                                            <td>{{ foreign_amount['price']|format_price() }} {{ foreign_amount['currency'] }}</td>
-                                        </tr>
-                                    {% endfor %}
-                                </table>
 
-                            </div>
-                        </div>
                     </div>
 
                 </section>
@@ -109,8 +148,7 @@
         $('#dataTableDash').dataTable({
             "paging": true,
             "sPaginationType":"full_numbers",
-            "iDisplayLength": 25,
-            "bFilter": false,
+            "bFilter": true,
             'aoColumnDefs': [
                 {'bSortable': false, 'aTargets': ['nosort']},
                 {'bSearchable': false, "aTargets": ['nosort']}
@@ -121,8 +159,7 @@
         $('#dataTableDash2').dataTable({
             "paging": true,
             "sPaginationType":"full_numbers",
-            "iDisplayLength": 25,
-            "bFilter": false,
+            "bFilter": true,
             'aoColumnDefs': [
                 {'bSortable': false, 'aTargets': ['nosort']},
                 {'bSearchable': false, "aTargets": ['nosort']}
