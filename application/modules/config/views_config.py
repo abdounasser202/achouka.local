@@ -141,7 +141,6 @@ def active_local_agency(agency_id):
         AgencyModel.local_status == True
     ).get()
     if agency_active:
-
         agency_active.local_status = False
         agency_active.put()
 
@@ -195,7 +194,7 @@ def active_local_agency(agency_id):
     clean_ticket()
 
     Synchro = SynchroModel()
-    SynchroModel.agency_synchro = agency_save
+    SynchroModel.agency_synchro = url_config.local_ref
     Synchro.put()
 
     flash("Agency activated : "+agency.name, "success")
