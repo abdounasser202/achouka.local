@@ -76,7 +76,7 @@ def synchronization():
 
 @app.route('/add_agency', methods=['POST'])
 def add_agency():
-    from ..agency.models_agency import AgencyModel
+    from ..agency.models_agency import AgencyModel, DestinationModel
 
     token = request.form['token']
     if not token:
@@ -114,6 +114,10 @@ def add_agency():
                 new_data.reduction = float(result['agency']['agency_reduction'])
                 new_data.status = result['agency']['agency_status']
                 new_data.is_achouka = result['agency']['agency_is_achouka']
+
+                destination = DestinationModel.get_by_id(result['agency']['agency_destination'])
+                new_data.destination = destination.key
+
                 agency_new = new_data.put()
             else:
                 flash("This token exist", "danger")
