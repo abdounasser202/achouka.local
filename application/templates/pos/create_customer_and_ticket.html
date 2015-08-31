@@ -132,8 +132,10 @@
                                         <div class="col-lg-10">
                                           <select name="type_name_select" id="CheckBox-Select" class="form-control"  disabled="disabled">
                                               {% for type_name in ticket_type_name %}
-                                                  {% if type_name.special %}
+                                                  {% if type_name.special and not type_name.is_child %}
                                                       <option value="{{ type_name.key.id() }}" {% if form.type_name.data|int == type_name.key.id() %} selected {% endif %}>{{ type_name.name }}</option>
+                                                  {% else %}
+                                                      <option value="">No Special</option>
                                                   {% endif %}
                                               {% else %}
                                                   <option value="">No Special</option>

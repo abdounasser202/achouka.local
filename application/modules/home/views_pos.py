@@ -459,7 +459,7 @@ def create_customer_and_ticket_pos(customer_id=None, departure_id=None):
     ticket_type_name = TicketTypeNameModel.query()
 
     child = request.args.get('child')
-
+    parent_ticket = None
     if child:
         parent_ticket = int(request.args.get('parent_ticket'))
         parent = TicketModel.get_by_id(parent_ticket)
