@@ -37,7 +37,7 @@
     </form>
 </div>
 <div class="modal-footer">
-<button type="button" class="btn btn-success" data-loading-text="Loading..." id="confirm" {% if close %} disabled="disabled {% endif %}"> Confirm </button>
+<button type="button" class="btn btn-success" data-loading-text="Loading..." id="confirm" {% if close %} disabled="disabled {% endif %}"> Confirm onboard </button>
 <button type="button" class="btn btn-default {% if close %} hidden {% endif %}" data-dismiss="modal" id="close">Close</button>
 </div>
 <script>
@@ -49,7 +49,7 @@
     {% endif %}
 
     if(close == true){
-        $.get({{ url_for('customer_aboard', departure_id=departure_id) }}, function(data) {
+        $.get("{{ url_for('customer_aboard', departure_id=departure_id) }}", function(data) {
             $('#NoFoundTicketBoarding').addClass('hidden');
             $('#FindTicketBoarding').removeClass('hidden').empty().html(data);
             $('#print_customer_aboard').removeClass('hidden');
@@ -64,7 +64,7 @@
         var btn = $(this);
         btn.button('loading');
         $.ajax({
-            url: "{{ url_for('ticket_information', ticket_id=ticket_id) }}"+"?confirm=1",
+            url: "{{ url_for('ticket_information', ticket_id=ticket_id, departure_id=departure_id) }}"+"?confirm=1",
             type: 'GET',
             success: function(data) {
                 $('.modal-content').html(data);

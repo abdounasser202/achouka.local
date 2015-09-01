@@ -352,6 +352,7 @@ def customer_aboard(departure_id):
         TicketModel.generate_boarding == True
     ).order(TicketModel.class_name)
 
+    search = False
     printer = False
     if request.args.get('printer'):
         printer = True
@@ -382,6 +383,7 @@ def search_customer_to_board(departure_id):
         TicketPoly.departure == departure_get.key
     )
 
+    search = True
     list_ticket_sold = []
     for ticket in ticket_sold:
         find_ticket_sold = function.find(str(ticket.key.id())+" ", str(number_ticket))
@@ -391,9 +393,9 @@ def search_customer_to_board(departure_id):
     return render_template('/boarding/list_ticket_found_unboard.html', **locals())
 
 
-@app.route('/ticket_information/<int:ticket_id>')
+@app.route('/ticket_information/<int:ticket_id>/<int:departure_id>')
 @app.route('/ticket_information/')
-def ticket_information(ticket_id=None):
+def ticket_information(ticket_id=None, departure_id=None):
 
     ticket = TicketPoly.get_by_id(ticket_id)
 

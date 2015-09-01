@@ -53,21 +53,21 @@
             </thead>
             <tbody>
                 {% set num = 1 %}
-                {% for customer in ticket_user_query %}
-                    <tr id="{{ customer.key.id() }}" {% if not customer.is_boarding %} class="ValidTicket info" {% endif %}>
+                {% for ticket in ticket_user_query %}
+                    <tr id="{{ ticket.key.id() }}"  class="{% if not ticket.is_boarding and search %} ValidTicket info{% endif %} ">
                         {% if printer %}
                             <td>{{ num }}</td>
                         {% endif %}
-                        <td>{{ customer.key.id() }}</td>
-                        <td>{{ customer.class_name.get().name }}</td>
+                        <td>{{ ticket.key.id() }}</td>
+                        <td>{{ ticket.class_name.get().name }}</td>
                         <td>
-                            {% if customer.customer.get().nic_number %}
-                                {{ customer.customer.get().nic_number }}
+                            {% if ticket.customer.get().nic_number %}
+                                {{ ticket.customer.get().nic_number }}
                             {% else %}
-                                {{ customer.customer.get().passport_number }}
+                                {{ ticket.customer.get().passport_number }}
                             {% endif %}
                         </td>
-                        <td>{{ customer.customer.get().last_name }} {{ customer.customer.get().first_name }}</td>
+                        <td>{{ ticket.customer.get().last_name }} {{ ticket.customer.get().first_name }}</td>
                     </tr>
                     {% if printer %}
                            {% set num = num + 1 %}
@@ -78,7 +78,7 @@
       </div>
   </div>
   <div class="panel-footer">
-         <button class="btn btn-danger hidden" id="print_customer_aboard">Print Passengers Onboard</button>
+         <button href="{{ url_for('customer_aboard', departure_id=departure_id) }}?printer=1" class="btn btn-danger hidden" id="print_customer_aboard">Print Passengers Onboard</button>
   </div>
 </div>
 
@@ -100,9 +100,11 @@
         ]
     });
 
-    $('body').on('click', '#print_customer_aboard', function(){
+    $('#print_customer_aboard').on('click',function(e){
+        e.preventDefault();
+        var url = $(this).attr("href");
         $.ajax({
-            url: "{{ url_for('customer_aboard', departure_id=departure_id) }}?printer=1",
+            url: url,
             type: 'GET',
             success: function(data) {
 
@@ -153,7 +155,8 @@
     $('body').on('click', ".ValidTicket", function(e){
             e.preventDefault();
             var _id = $(this).attr("id");
-            var url_modal = "{{ url_for('ticket_information') }}"+_id;
+            var _departure_id = {{ departure_id }};
+            var url_modal = "{{ url_for('ticket_information') }}"+_id+"/"+_departure_id;
             $('#myModal').modal({
                  show: true,
                  backdrop:"static"
