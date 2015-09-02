@@ -154,6 +154,10 @@ def reset_current_departure(departure_id=None):
 def search_customer_pos():
     from ..departure.models_departure import DepartureModel
 
+    child = False
+    if request.args.get('child'):
+        child = True
+
     current_departure = None
     if request.form['current_departure']:
         current_departure = DepartureModel.get_by_id(int(request.form['current_departure']))
