@@ -3,7 +3,7 @@
 # Event Calendar widget
 # author: Andy Robinson
 
-__version__=''' $Id: eventcal.py 3660 2010-02-08 18:17:33Z damian $ '''
+__version__=''' $Id$ '''
 __doc__="""This file is a
 """
 
@@ -298,7 +298,7 @@ def test():
     for format in ['pdf']:#,'gif','png']:
         out = d.asString(format)
         open('eventcal.%s' % format, 'wb').write(out)
-        print 'saved eventcal.%s' % format
+        print('saved eventcal.%s' % format)
 
 if __name__=='__main__':
     test()

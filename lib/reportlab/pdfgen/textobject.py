@@ -1,7 +1,7 @@
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/pdfgen/textobject.py
-__version__=''' $Id: textobject.py 3778 2010-09-17 11:24:04Z rgbecker $ '''
+__version__=''' $Id$ '''
 __doc__="""
 PDFTextObject is an efficient way to add text to a Canvas. Do not
 instantiate directly, obtain one from the Canvas instead.
@@ -12,8 +12,19 @@ Progress Reports:
 import string
 from types import *
 from reportlab.lib.colors import Color, CMYKColor, CMYKColorSep, toColor, black, white, _CMYK_black, _CMYK_white
-from reportlab.lib.utils import fp_str
+from reportlab.lib.utils import isBytes, isStr, asUnicode
+from reportlab.lib.rl_accel import fp_str
 from reportlab.pdfbase import pdfmetrics
+from reportlab.rl_config import rtlSupport
+
+log2vis = None
+if rtlSupport:
+    try:
+        from pyfribidi2 import log2vis, ON as DIR_ON, LTR as DIR_LTR, RTL as DIR_RTL
+        directionsMap = dict(LTR=DIR_LTR,RTL=DIR_RTL)
+    except:
+        import warnings
+        warnings.warn('pyfribidi is not installed - RTL not supported')
 
 class _PDFColorSetter:
     '''Abstracts the color setting operations; used in Canvas and Textobject
@@ -78,7 +89,7 @@ class _PDFColorSetter:
                 self._code.append('%s k' % fp_str(aColor))
             else:
                 raise ValueError('Unknown color %r' % aColor)
-        elif isinstance(aColor,basestring):
+        elif isStr(aColor):
             self.setFillColor(toColor(aColor))
         else:
             raise ValueError('Unknown color %r' % aColor)
@@ -110,11 +121,11 @@ class _PDFColorSetter:
                 self._strokeColorObj = aColor
                 self._code.append('%s RG' % fp_str(aColor) )
             elif l==4:
-                self._fillColorObj = aColor
+                self._strokeColorObj = aColor
                 self._code.append('%s K' % fp_str(aColor))
             else:
                 raise ValueError('Unknown color %r' % aColor)
-        elif isinstance(aColor,basestring):
+        elif isStr(aColor):
             self.setStrokeColor(toColor(aColor))
         else:
             raise ValueError('Unknown color %r' % aColor)
@@ -167,7 +178,7 @@ class PDFTextObject(_PDFColorSetter):
 
     It keeps track of x and y coordinates relative to its origin."""
 
-    def __init__(self, canvas, x=0,y=0):
+    def __init__(self, canvas, x=0,y=0, direction=None):
         self._code = ['BT']    #no point in [] then append RGB
         self._canvas = canvas  #canvas sets this so it has access to size info
         self._fontname = self._canvas._fontname
@@ -178,12 +189,17 @@ class PDFTextObject(_PDFColorSetter):
         self._enforceColorSpace = getattr(canvas,'_enforceColorSpace',None)
         font = pdfmetrics.getFont(self._fontname)
         self._curSubset = -1
+        self.direction = direction
         self.setTextOrigin(x, y)
+        self._textRenderMode = 0
+        self._clipping = 0
 
     def getCode(self):
         "pack onto one line; used internally"
         self._code.append('ET')
-        return string.join(self._code, ' ')
+        if self._clipping:
+            self._code.append('%d Tr' % (self._textRenderMode^4))
+        return ' '.join(self._code)
 
     def setTextOrigin(self, x, y):
         if self._canvas.bottomup:
@@ -220,11 +236,11 @@ class PDFTextObject(_PDFColorSetter):
         # Check if we have a previous move cursor call, and combine
         # them if possible.
         if self._code and self._code[-1][-3:]==' Td':
-            L = string.split(self._code[-1])
+            L = self._code[-1].split()
             if len(L)==3:
                 del self._code[-1]
             else:
-                self._code[-1] = string.join(L[:-4])
+                self._code[-1] = ''.join(L[:-4])
 
             # Work out the last movement
             lastDx = float(L[-3])
@@ -336,20 +352,30 @@ class PDFTextObject(_PDFColorSetter):
         4 = Fill text and add to clipping path
         5 = Stroke text and add to clipping path
         6 = Fill then stroke and add to clipping path
-        7 = Add to clipping path"""
+        7 = Add to clipping path
+
+        after we start clipping we mustn't change the mode back until after the ET
+        """
 
         assert mode in (0,1,2,3,4,5,6,7), "mode must be in (0,1,2,3,4,5,6,7)"
-        self._textRenderMode = mode
-        self._code.append('%d Tr' % mode)
+        if (mode & 4)!=self._clipping:
+            mode |= 4
+            self._clipping = mode & 4
+        if self._textRenderMode!=mode:
+            self._textRenderMode = mode
+            self._code.append('%d Tr' % mode)
 
     def setRise(self, rise):
-        "Move text baseline up or down to allow superscrip/subscripts"
+        "Move text baseline up or down to allow superscript/subscripts"
         self._rise = rise
         self._y = self._y - rise    # + ?  _textLineMatrix?
         self._code.append('%s Ts' % fp_str(rise))
 
     def _formatText(self, text):
         "Generates PDF text output operator(s)"
+        if log2vis and self.direction in ('LTR','RTL'):
+            # Use pyfribidi to write the text in the correct visual order.
+            text = log2vis(text, directionsMap.get(self.direction.upper(),DIR_ON),clean=True)
         canv = self._canvas
         font = pdfmetrics.getFont(self._fontname)
         R = []
@@ -372,10 +398,10 @@ class PDFTextObject(_PDFColorSetter):
         else:
             #convert to T1  coding
             fc = font
-            if not isinstance(text,unicode):
+            if isBytes(text):
                 try:
                     text = text.decode('utf8')
-                except UnicodeDecodeError,e:
+                except UnicodeDecodeError as e:
                     i,j = e.args[2:4]
                     raise UnicodeDecodeError(*(e.args[:4]+('%s\n%s-->%s<--%s' % (e.args[4],text[max(i-10,0):i],text[i:j],text[j:j+10]),)))
 
@@ -420,10 +446,10 @@ class PDFTextObject(_PDFColorSetter):
         since this may be indented, by default it trims whitespace
         off each line and from the beginning; set trim=0 to preserve
         whitespace."""
-        if isinstance(stuff,basestring):
-            lines = string.split(string.strip(stuff), '\n')
+        if isStr(stuff):
+            lines = asUnicode(stuff).strip().split(u'\n')
             if trim==1:
-                lines = map(string.strip,lines)
+                lines = [s.strip() for s in lines]
         elif isinstance(stuff,(tuple,list)):
             lines = stuff
         else:
@@ -437,3 +463,16 @@ class PDFTextObject(_PDFColorSetter):
     def __nonzero__(self):
         'PDFTextObject is true if it has something done after the init'
         return self._code != ['BT']
+
+    def _setFillAlpha(self,v):
+        self._canvas._doc.ensureMinPdfVersion('transparency')
+        self._canvas._extgstate.set(self,'ca',v)
+
+    def _setStrokeOverprint(self,v):
+        self._canvas._extgstate.set(self,'OP',v)
+
+    def _setFillOverprint(self,v):
+        self._canvas._extgstate.set(self,'op',v)
+
+    def _setOverprintMask(self,v):
+        self._canvas._extgstate.set(self,'OPM',v and 1 or 0)

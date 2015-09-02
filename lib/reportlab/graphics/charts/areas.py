@@ -1,14 +1,15 @@
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/charts/areas.py
 
-__version__=''' $Id: areas.py 3602 2009-11-26 16:25:50Z meitham $ '''
+__version__=''' $Id$ '''
 __doc__='''This module defines a Area mixin classes'''
 
 from reportlab.lib.validators import isNumber, isColor, isColorOrNone, isNoneOrShape
 from reportlab.graphics.widgetbase import Widget
 from reportlab.graphics.shapes import Rect, Group, Line, Polygon
 from reportlab.lib.attrmap import AttrMap, AttrMapValue
+from reportlab.lib.colors import grey
 
 class PlotArea(Widget):
     "Abstract base class representing a chart's plot area, pretty unusable by itself."

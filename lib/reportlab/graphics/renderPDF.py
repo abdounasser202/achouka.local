@@ -1,9 +1,9 @@
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/renderPDF.py
 # renderPDF - draws Drawings onto a canvas
 
-__version__=''' $Id: renderPDF.py 3751 2010-07-30 09:28:28Z rgbecker $ '''
+__version__=''' $Id$ '''
 __doc__="""Render Drawing objects within others PDFs or standalone
 
 Usage::
@@ -18,9 +18,9 @@ changed
 from reportlab.graphics.shapes import *
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.pdfbase.pdfmetrics import stringWidth
-from reportlab.lib.utils import getStringIO
+from reportlab.lib.utils import getBytesIO
 from reportlab import rl_config
-from renderbase import Renderer, StateTracker, getStateDelta, renderScaledDrawing
+from reportlab.graphics.renderbase import Renderer, StateTracker, getStateDelta, renderScaledDrawing
 
 # the main entry point for users...
 def draw(drawing, canvas, x, y, showBoundary=rl_config._unset_):
@@ -78,10 +78,11 @@ class _PDFRenderer(Renderer):
                     )
 
     def drawImage(self, image):
+        path = image.path
         # currently not implemented in other renderers
-        if image.path and os.path.exists(image.path):
+        if path and (hasattr(path,'mode') or os.path.exists(image.path)):
             self._canvas.drawInlineImage(
-                    image.path,
+                    path,
                     image.x, image.y,
                     image.width, image.height
                     )
@@ -108,25 +109,28 @@ class _PDFRenderer(Renderer):
             self._canvas.drawPath(path)
 
     def drawWedge(self, wedge):
-        centerx, centery, radius, startangledegrees, endangledegrees = \
-         wedge.centerx, wedge.centery, wedge.radius, wedge.startangledegrees, wedge.endangledegrees
-        yradius, radius1, yradius1 = wedge._xtraRadii()
-        if yradius is None: yradius = radius
-        angle = endangledegrees-startangledegrees
-        path = self._canvas.beginPath()
-        if (radius1==0 or radius1 is None) and (yradius1==0 or yradius1 is None):
-            path.moveTo(centerx, centery)
-            path.arcTo(centerx-radius, centery-yradius, centerx+radius, centery+yradius,
-                   startangledegrees, angle)
+        if wedge.annular:
+            self.drawPath(wedge.asPolygon())
         else:
-            path.arc(centerx-radius, centery-yradius, centerx+radius, centery+yradius,
-                   startangledegrees, angle)
-            path.arcTo(centerx-radius1, centery-yradius1, centerx+radius1, centery+yradius1,
-                   endangledegrees, -angle)
-        path.close()
-        self._canvas.drawPath(path,
-                    fill=self._fill,
-                    stroke=self._stroke)
+            centerx, centery, radius, startangledegrees, endangledegrees = \
+             wedge.centerx, wedge.centery, wedge.radius, wedge.startangledegrees, wedge.endangledegrees
+            yradius, radius1, yradius1 = wedge._xtraRadii()
+            if yradius is None: yradius = radius
+            angle = endangledegrees-startangledegrees
+            path = self._canvas.beginPath()
+            if (radius1==0 or radius1 is None) and (yradius1==0 or yradius1 is None):
+                path.moveTo(centerx, centery)
+                path.arcTo(centerx-radius, centery-yradius, centerx+radius, centery+yradius,
+                       startangledegrees, angle)
+            else:
+                path.arc(centerx-radius, centery-yradius, centerx+radius, centery+yradius,
+                       startangledegrees, angle)
+                path.arcTo(centerx-radius1, centery-yradius1, centerx+radius1, centery+yradius1,
+                       endangledegrees, -angle)
+            path.close()
+            self._canvas.drawPath(path,
+                        fill=self._fill,
+                        stroke=self._stroke)
 
     def drawEllipse(self, ellipse):
         #need to convert to pdfgen's bounding box representation
@@ -164,7 +168,7 @@ class _PDFRenderer(Renderer):
                 elif text_anchor=='numeric':
                     x -= numericXShift(text_anchor,text,textLen,font,font_size,enc)
                 else:
-                    raise ValueError, 'bad value for textAnchor '+str(text_anchor)
+                    raise ValueError('bad value for textAnchor '+str(text_anchor))
             t = self._canvas.beginText(x,y)
             t.textLine(text)
             self._canvas.drawText(t)
@@ -217,7 +221,12 @@ class _PDFRenderer(Renderer):
 #                self._canvas.setDash(array=value)
             elif key == 'strokeDashArray':
                 if value:
-                    self._canvas.setDash(value)
+                    if isinstance(value,(list,tuple)) and len(value)==2 and isinstance(value[1],(tuple,list)):
+                        phase = value[0]
+                        value = value[1]
+                    else:
+                        phase = 0
+                    self._canvas.setDash(value,phase)
                 else:
                     self._canvas.setDash()
             elif key == 'fillColor':
@@ -297,7 +306,7 @@ def drawToFile(d, fn, msg="", showBoundary=rl_config._unset_, autoSize=1):
 
 def drawToString(d, msg="", showBoundary=rl_config._unset_,autoSize=1):
     "Returns a PDF as a string in memory, without touching the disk"
-    s = getStringIO()
+    s = getBytesIO()
     drawToFile(d, s, msg=msg, showBoundary=showBoundary,autoSize=autoSize)
     return s.getvalue()
 
@@ -307,9 +316,14 @@ def drawToString(d, msg="", showBoundary=rl_config._unset_,autoSize=1):
 #   Routine to draw them comes at the end.
 #
 #########################################################
-def test():
+def test(outDir='pdfout',shout=False):
     from reportlab.graphics.shapes import _baseGFontName, _baseGFontNameBI
-    c = Canvas('renderPDF.pdf')
+    from reportlab.rl_config import verbose
+    import os
+    if not os.path.isdir(outDir):
+        os.mkdir(outDir)
+    fn = os.path.join(outDir,'renderPDF.pdf')
+    c = Canvas(fn)
     c.setFont(_baseGFontName, 36)
     c.drawString(80, 750, 'Graphics Test')
 
@@ -350,7 +364,8 @@ def test():
     if y!=740: c.showPage()
 
     c.save()
-    print 'saved renderPDF.pdf'
+    if shout or verbose>2:
+        print('saved %s' % ascii(fn))
 
 ##def testFlowable():
 ##    """Makes a platypus document"""
@@ -379,5 +394,11 @@ def test():
 ##    print 'saves test_flowable.pdf'
 
 if __name__=='__main__':
-    test()
+    test(shout=True)
+    import sys
+    if len(sys.argv)>1:
+        outdir = sys.argv[1]
+    else:
+        outdir = 'pdfout'
+    test(outdir,shout=True)
     #testFlowable()

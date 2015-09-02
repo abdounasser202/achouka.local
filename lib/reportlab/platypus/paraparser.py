@@ -1,30 +1,31 @@
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/platypus/paraparser.py
-__version__=''' $Id: paraparser.py 3774 2010-09-08 15:11:10Z rgbecker $ '''
+__version__=''' $Id$ '''
 __doc__='''The parser used to process markup within paragraphs'''
 import string
 import re
-from types import TupleType, UnicodeType, StringType
 import sys
 import os
 import copy
 import base64
-try:
-    import cPickle as pickle
-except:
-    import pickle
+from pprint import pprint as pp
 import unicodedata
 import reportlab.lib.sequencer
+
 from reportlab.lib.abag import ABag
-from reportlab.lib.utils import ImageReader
-
-from reportlab.lib import xmllib
-
+from reportlab.lib.utils import ImageReader, isPy3, annotateException, encode_label, asUnicode, asBytes, uniChr
 from reportlab.lib.colors import toColor, white, black, red, Color
 from reportlab.lib.fonts import tt2ps, ps2tt
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER, TA_JUSTIFY
 from reportlab.lib.units import inch,mm,cm,pica
+if isPy3:
+    from html.parser import HTMLParser
+    from html.entities import name2codepoint
+else:
+    from HTMLParser import HTMLParser
+    from htmlentitydefs import name2codepoint
+
 _re_para = re.compile(r'^\s*<\s*para(?:\s+|>|/>)')
 
 sizeDelta = 2       # amount to reduce font size by for super and sub script
@@ -32,7 +33,6 @@ subFraction = 0.5   # fraction of font size that a sub script should be lowered
 superFraction = 0.5 # fraction of font size that a super script should be raised
 
 DEFAULT_INDEX_NAME='_indexAdd'
-
 
 def _convnum(s, unit=1, allowRelative=True):
     if s[0] in ('+','-') and allowRelative:
@@ -106,12 +106,18 @@ def _autoLeading(x):
     raise ValueError('Invalid autoLeading=%r' % x )
 
 def _align(s):
-    s = string.lower(s)
+    s = s.lower()
     if s=='left': return TA_LEFT
     elif s=='right': return TA_RIGHT
     elif s=='justify': return TA_JUSTIFY
     elif s in ('centre','center'): return TA_CENTER
-    else: raise ValueError
+    else: raise ValueError('illegal alignment %r' % s)
+
+def _bAnchor(s):
+    s = s.lower()
+    if not s in ('start','middle','end','numeric'):
+        raise ValueError('illegal bullet anchor %r' % s)
+    return s
 
 _paraAttrMap = {'font': ('fontName', None),
                 'face': ('fontName', None),
@@ -130,6 +136,7 @@ _paraAttrMap = {'font': ('fontName', None),
                 'boffsety': ('bulletOffsetY',_num),
                 'bindent': ('bulletIndent',_num),
                 'bcolor': ('bulletColor',toColor),
+                'banchor': ('bulletAnchor',_bAnchor),
                 'color':('textColor',toColor),
                 'backcolor':('backColor',toColor),
                 'bgcolor':('backColor',toColor),
@@ -146,6 +153,7 @@ _bulletAttrMap = {
                 'indent': ('bulletIndent',_num),
                 'color': ('bulletColor',toColor),
                 'fg': ('bulletColor',toColor),
+                'anchor': ('bulletAnchor',_bAnchor),
                 }
 
 #things which are valid font attributes
@@ -156,6 +164,16 @@ _fontAttrMap = {'size': ('fontSize', _num),
                 'color':('textColor', toColor),
                 'backcolor':('backColor',toColor),
                 'bgcolor':('backColor',toColor),
+                }
+#things which are valid span attributes
+_spanAttrMap = {'size': ('fontSize', _num),
+                'face': ('fontName', None),
+                'name': ('fontName', None),
+                'fg':   ('textColor', toColor),
+                'color':('textColor', toColor),
+                'backcolor':('backColor',toColor),
+                'bgcolor':('backColor',toColor),
+                'style': ('style',None),
                 }
 #things which are valid font attributes
 _linkAttrMap = {'size': ('fontSize', _num),
@@ -193,24 +211,23 @@ _indexAttrMap = {
                 }
 
 def _addAttributeNames(m):
-    K = m.keys()
+    K = list(m.keys())
     for k in K:
         n = m[k][0]
         if n not in m: m[n] = m[k]
-        n = string.lower(n)
+        n = n.lower()
         if n not in m: m[n] = m[k]
 
 _addAttributeNames(_paraAttrMap)
 _addAttributeNames(_fontAttrMap)
+_addAttributeNames(_spanAttrMap)
 _addAttributeNames(_bulletAttrMap)
 _addAttributeNames(_anchorAttrMap)
 _addAttributeNames(_linkAttrMap)
 
 def _applyAttributes(obj, attr):
     for k, v in attr.items():
-        if type(v) is TupleType and v[0]=='relative':
-            #AR 20/5/2000 - remove 1.5.2-ism
-            #v = v[1]+getattr(obj,k,0)
+        if isinstance(v,(list,tuple)) and v[0]=='relative':
             if hasattr(obj, k):
                 v = v[1]+getattr(obj,k)
             else:
@@ -221,268 +238,276 @@ def _applyAttributes(obj, attr):
 #with additions suggested by Christoph Zwerschke who also suggested the
 #numeric entity names that follow.
 greeks = {
-    'Aacute': '\xc3\x81',
-    'aacute': '\xc3\xa1',
-    'Acirc': '\xc3\x82',
-    'acirc': '\xc3\xa2',
-    'acute': '\xc2\xb4',
-    'AElig': '\xc3\x86',
-    'aelig': '\xc3\xa6',
-    'Agrave': '\xc3\x80',
-    'agrave': '\xc3\xa0',
-    'alefsym': '\xe2\x84\xb5',
-    'Alpha': '\xce\x91',
-    'alpha': '\xce\xb1',
-    'and': '\xe2\x88\xa7',
-    'ang': '\xe2\x88\xa0',
-    'Aring': '\xc3\x85',
-    'aring': '\xc3\xa5',
-    'asymp': '\xe2\x89\x88',
-    'Atilde': '\xc3\x83',
-    'atilde': '\xc3\xa3',
-    'Auml': '\xc3\x84',
-    'auml': '\xc3\xa4',
-    'bdquo': '\xe2\x80\x9e',
-    'Beta': '\xce\x92',
-    'beta': '\xce\xb2',
-    'brvbar': '\xc2\xa6',
-    'bull': '\xe2\x80\xa2',
-    'cap': '\xe2\x88\xa9',
-    'Ccedil': '\xc3\x87',
-    'ccedil': '\xc3\xa7',
-    'cedil': '\xc2\xb8',
-    'cent': '\xc2\xa2',
-    'Chi': '\xce\xa7',
-    'chi': '\xcf\x87',
-    'circ': '\xcb\x86',
-    'clubs': '\xe2\x99\xa3',
-    'cong': '\xe2\x89\x85',
-    'copy': '\xc2\xa9',
-    'crarr': '\xe2\x86\xb5',
-    'cup': '\xe2\x88\xaa',
-    'curren': '\xc2\xa4',
-    'dagger': '\xe2\x80\xa0',
-    'Dagger': '\xe2\x80\xa1',
-    'darr': '\xe2\x86\x93',
-    'dArr': '\xe2\x87\x93',
-    'deg': '\xc2\xb0',
-    'delta': '\xce\xb4',
-    'Delta': '\xe2\x88\x86',
-    'diams': '\xe2\x99\xa6',
-    'divide': '\xc3\xb7',
-    'Eacute': '\xc3\x89',
-    'eacute': '\xc3\xa9',
-    'Ecirc': '\xc3\x8a',
-    'ecirc': '\xc3\xaa',
-    'Egrave': '\xc3\x88',
-    'egrave': '\xc3\xa8',
-    'empty': '\xe2\x88\x85',
-    'emsp': '\xe2\x80\x83',
-    'ensp': '\xe2\x80\x82',
-    'Epsilon': '\xce\x95',
-    'epsilon': '\xce\xb5',
-    'epsiv': '\xce\xb5',
-    'equiv': '\xe2\x89\xa1',
-    'Eta': '\xce\x97',
-    'eta': '\xce\xb7',
-    'ETH': '\xc3\x90',
-    'eth': '\xc3\xb0',
-    'Euml': '\xc3\x8b',
-    'euml': '\xc3\xab',
-    'euro': '\xe2\x82\xac',
-    'exist': '\xe2\x88\x83',
-    'fnof': '\xc6\x92',
-    'forall': '\xe2\x88\x80',
-    'frac12': '\xc2\xbd',
-    'frac14': '\xc2\xbc',
-    'frac34': '\xc2\xbe',
-    'frasl': '\xe2\x81\x84',
-    'Gamma': '\xce\x93',
-    'gamma': '\xce\xb3',
-    'ge': '\xe2\x89\xa5',
-    'harr': '\xe2\x86\x94',
-    'hArr': '\xe2\x87\x94',
-    'hearts': '\xe2\x99\xa5',
-    'hellip': '\xe2\x80\xa6',
-    'Iacute': '\xc3\x8d',
-    'iacute': '\xc3\xad',
-    'Icirc': '\xc3\x8e',
-    'icirc': '\xc3\xae',
-    'iexcl': '\xc2\xa1',
-    'Igrave': '\xc3\x8c',
-    'igrave': '\xc3\xac',
-    'image': '\xe2\x84\x91',
-    'infin': '\xe2\x88\x9e',
-    'int': '\xe2\x88\xab',
-    'Iota': '\xce\x99',
-    'iota': '\xce\xb9',
-    'iquest': '\xc2\xbf',
-    'isin': '\xe2\x88\x88',
-    'Iuml': '\xc3\x8f',
-    'iuml': '\xc3\xaf',
-    'Kappa': '\xce\x9a',
-    'kappa': '\xce\xba',
-    'Lambda': '\xce\x9b',
-    'lambda': '\xce\xbb',
-    'lang': '\xe2\x8c\xa9',
-    'laquo': '\xc2\xab',
-    'larr': '\xe2\x86\x90',
-    'lArr': '\xe2\x87\x90',
-    'lceil': '\xef\xa3\xae',
-    'ldquo': '\xe2\x80\x9c',
-    'le': '\xe2\x89\xa4',
-    'lfloor': '\xef\xa3\xb0',
-    'lowast': '\xe2\x88\x97',
-    'loz': '\xe2\x97\x8a',
-    'lrm': '\xe2\x80\x8e',
-    'lsaquo': '\xe2\x80\xb9',
-    'lsquo': '\xe2\x80\x98',
-    'macr': '\xc2\xaf',
-    'mdash': '\xe2\x80\x94',
-    'micro': '\xc2\xb5',
-    'middot': '\xc2\xb7',
-    'minus': '\xe2\x88\x92',
-    'mu': '\xc2\xb5',
-    'Mu': '\xce\x9c',
-    'nabla': '\xe2\x88\x87',
-    'nbsp': '\xc2\xa0',
-    'ndash': '\xe2\x80\x93',
-    'ne': '\xe2\x89\xa0',
-    'ni': '\xe2\x88\x8b',
-    'notin': '\xe2\x88\x89',
-    'not': '\xc2\xac',
-    'nsub': '\xe2\x8a\x84',
-    'Ntilde': '\xc3\x91',
-    'ntilde': '\xc3\xb1',
-    'Nu': '\xce\x9d',
-    'nu': '\xce\xbd',
-    'Oacute': '\xc3\x93',
-    'oacute': '\xc3\xb3',
-    'Ocirc': '\xc3\x94',
-    'ocirc': '\xc3\xb4',
-    'OElig': '\xc5\x92',
-    'oelig': '\xc5\x93',
-    'Ograve': '\xc3\x92',
-    'ograve': '\xc3\xb2',
-    'oline': '\xef\xa3\xa5',
-    'omega': '\xcf\x89',
-    'Omega': '\xe2\x84\xa6',
-    'Omicron': '\xce\x9f',
-    'omicron': '\xce\xbf',
-    'oplus': '\xe2\x8a\x95',
-    'ordf': '\xc2\xaa',
-    'ordm': '\xc2\xba',
-    'or': '\xe2\x88\xa8',
-    'Oslash': '\xc3\x98',
-    'oslash': '\xc3\xb8',
-    'Otilde': '\xc3\x95',
-    'otilde': '\xc3\xb5',
-    'otimes': '\xe2\x8a\x97',
-    'Ouml': '\xc3\x96',
-    'ouml': '\xc3\xb6',
-    'para': '\xc2\xb6',
-    'part': '\xe2\x88\x82',
-    'permil': '\xe2\x80\xb0',
-    'perp': '\xe2\x8a\xa5',
-    'phis': '\xcf\x86',
-    'Phi': '\xce\xa6',
-    'phi': '\xcf\x95',
-    'piv': '\xcf\x96',
-    'Pi': '\xce\xa0',
-    'pi': '\xcf\x80',
-    'plusmn': '\xc2\xb1',
-    'pound': '\xc2\xa3',
-    'prime': '\xe2\x80\xb2',
-    'Prime': '\xe2\x80\xb3',
-    'prod': '\xe2\x88\x8f',
-    'prop': '\xe2\x88\x9d',
-    'Psi': '\xce\xa8',
-    'psi': '\xcf\x88',
-    'radic': '\xe2\x88\x9a',
-    'rang': '\xe2\x8c\xaa',
-    'raquo': '\xc2\xbb',
-    'rarr': '\xe2\x86\x92',
-    'rArr': '\xe2\x87\x92',
-    'rceil': '\xef\xa3\xb9',
-    'rdquo': '\xe2\x80\x9d',
-    'real': '\xe2\x84\x9c',
-    'reg': '\xc2\xae',
-    'rfloor': '\xef\xa3\xbb',
-    'Rho': '\xce\xa1',
-    'rho': '\xcf\x81',
-    'rlm': '\xe2\x80\x8f',
-    'rsaquo': '\xe2\x80\xba',
-    'rsquo': '\xe2\x80\x99',
-    'sbquo': '\xe2\x80\x9a',
-    'Scaron': '\xc5\xa0',
-    'scaron': '\xc5\xa1',
-    'sdot': '\xe2\x8b\x85',
-    'sect': '\xc2\xa7',
-    'shy': '\xc2\xad',
-    'sigmaf': '\xcf\x82',
-    'sigmav': '\xcf\x82',
-    'Sigma': '\xce\xa3',
-    'sigma': '\xcf\x83',
-    'sim': '\xe2\x88\xbc',
-    'spades': '\xe2\x99\xa0',
-    'sube': '\xe2\x8a\x86',
-    'sub': '\xe2\x8a\x82',
-    'sum': '\xe2\x88\x91',
-    'sup1': '\xc2\xb9',
-    'sup2': '\xc2\xb2',
-    'sup3': '\xc2\xb3',
-    'supe': '\xe2\x8a\x87',
-    'sup': '\xe2\x8a\x83',
-    'szlig': '\xc3\x9f',
-    'Tau': '\xce\xa4',
-    'tau': '\xcf\x84',
-    'there4': '\xe2\x88\xb4',
-    'thetasym': '\xcf\x91',
-    'thetav': '\xcf\x91',
-    'Theta': '\xce\x98',
-    'theta': '\xce\xb8',
-    'thinsp': '\xe2\x80\x89',
-    'THORN': '\xc3\x9e',
-    'thorn': '\xc3\xbe',
-    'tilde': '\xcb\x9c',
-    'times': '\xc3\x97',
-    'trade': '\xef\xa3\xaa',
-    'Uacute': '\xc3\x9a',
-    'uacute': '\xc3\xba',
-    'uarr': '\xe2\x86\x91',
-    'uArr': '\xe2\x87\x91',
-    'Ucirc': '\xc3\x9b',
-    'ucirc': '\xc3\xbb',
-    'Ugrave': '\xc3\x99',
-    'ugrave': '\xc3\xb9',
-    'uml': '\xc2\xa8',
-    'upsih': '\xcf\x92',
-    'Upsilon': '\xce\xa5',
-    'upsilon': '\xcf\x85',
-    'Uuml': '\xc3\x9c',
-    'uuml': '\xc3\xbc',
-    'weierp': '\xe2\x84\x98',
-    'Xi': '\xce\x9e',
-    'xi': '\xce\xbe',
-    'Yacute': '\xc3\x9d',
-    'yacute': '\xc3\xbd',
-    'yen': '\xc2\xa5',
-    'yuml': '\xc3\xbf',
-    'Yuml': '\xc5\xb8',
-    'Zeta': '\xce\x96',
-    'zeta': '\xce\xb6',
-    'zwj': '\xe2\x80\x8d',
-    'zwnj': '\xe2\x80\x8c',
-
+    'Aacute': u'\xc1',
+    'aacute': u'\xe1',
+    'Acirc': u'\xc2',
+    'acirc': u'\xe2',
+    'acute': u'\xb4',
+    'AElig': u'\xc6',
+    'aelig': u'\xe6',
+    'Agrave': u'\xc0',
+    'agrave': u'\xe0',
+    'alefsym': u'\u2135',
+    'Alpha': u'\u0391',
+    'alpha': u'\u03b1',
+    'and': u'\u2227',
+    'ang': u'\u2220',
+    'Aring': u'\xc5',
+    'aring': u'\xe5',
+    'asymp': u'\u2248',
+    'Atilde': u'\xc3',
+    'atilde': u'\xe3',
+    'Auml': u'\xc4',
+    'auml': u'\xe4',
+    'bdquo': u'\u201e',
+    'Beta': u'\u0392',
+    'beta': u'\u03b2',
+    'brvbar': u'\xa6',
+    'bull': u'\u2022',
+    'cap': u'\u2229',
+    'Ccedil': u'\xc7',
+    'ccedil': u'\xe7',
+    'cedil': u'\xb8',
+    'cent': u'\xa2',
+    'Chi': u'\u03a7',
+    'chi': u'\u03c7',
+    'circ': u'\u02c6',
+    'clubs': u'\u2663',
+    'cong': u'\u2245',
+    'copy': u'\xa9',
+    'crarr': u'\u21b5',
+    'cup': u'\u222a',
+    'curren': u'\xa4',
+    'dagger': u'\u2020',
+    'Dagger': u'\u2021',
+    'darr': u'\u2193',
+    'dArr': u'\u21d3',
+    'deg': u'\xb0',
+    'delta': u'\u03b4',
+    'Delta': u'\u2206',
+    'diams': u'\u2666',
+    'divide': u'\xf7',
+    'Eacute': u'\xc9',
+    'eacute': u'\xe9',
+    'Ecirc': u'\xca',
+    'ecirc': u'\xea',
+    'Egrave': u'\xc8',
+    'egrave': u'\xe8',
+    'empty': u'\u2205',
+    'emsp': u'\u2003',
+    'ensp': u'\u2002',
+    'Epsilon': u'\u0395',
+    'epsilon': u'\u03b5',
+    'epsiv': u'\u03b5',
+    'equiv': u'\u2261',
+    'Eta': u'\u0397',
+    'eta': u'\u03b7',
+    'ETH': u'\xd0',
+    'eth': u'\xf0',
+    'Euml': u'\xcb',
+    'euml': u'\xeb',
+    'euro': u'\u20ac',
+    'exist': u'\u2203',
+    'fnof': u'\u0192',
+    'forall': u'\u2200',
+    'frac12': u'\xbd',
+    'frac14': u'\xbc',
+    'frac34': u'\xbe',
+    'frasl': u'\u2044',
+    'Gamma': u'\u0393',
+    'gamma': u'\u03b3',
+    'ge': u'\u2265',
+    'harr': u'\u2194',
+    'hArr': u'\u21d4',
+    'hearts': u'\u2665',
+    'hellip': u'\u2026',
+    'Iacute': u'\xcd',
+    'iacute': u'\xed',
+    'Icirc': u'\xce',
+    'icirc': u'\xee',
+    'iexcl': u'\xa1',
+    'Igrave': u'\xcc',
+    'igrave': u'\xec',
+    'image': u'\u2111',
+    'infin': u'\u221e',
+    'int': u'\u222b',
+    'Iota': u'\u0399',
+    'iota': u'\u03b9',
+    'iquest': u'\xbf',
+    'isin': u'\u2208',
+    'Iuml': u'\xcf',
+    'iuml': u'\xef',
+    'Kappa': u'\u039a',
+    'kappa': u'\u03ba',
+    'Lambda': u'\u039b',
+    'lambda': u'\u03bb',
+    'lang': u'\u2329',
+    'laquo': u'\xab',
+    'larr': u'\u2190',
+    'lArr': u'\u21d0',
+    'lceil': u'\uf8ee',
+    'ldquo': u'\u201c',
+    'le': u'\u2264',
+    'lfloor': u'\uf8f0',
+    'lowast': u'\u2217',
+    'loz': u'\u25ca',
+    'lrm': u'\u200e',
+    'lsaquo': u'\u2039',
+    'lsquo': u'\u2018',
+    'macr': u'\xaf',
+    'mdash': u'\u2014',
+    'micro': u'\xb5',
+    'middot': u'\xb7',
+    'minus': u'\u2212',
+    'mu': u'\xb5',
+    'Mu': u'\u039c',
+    'nabla': u'\u2207',
+    'nbsp': u'\xa0',
+    'ndash': u'\u2013',
+    'ne': u'\u2260',
+    'ni': u'\u220b',
+    'notin': u'\u2209',
+    'not': u'\xac',
+    'nsub': u'\u2284',
+    'Ntilde': u'\xd1',
+    'ntilde': u'\xf1',
+    'Nu': u'\u039d',
+    'nu': u'\u03bd',
+    'Oacute': u'\xd3',
+    'oacute': u'\xf3',
+    'Ocirc': u'\xd4',
+    'ocirc': u'\xf4',
+    'OElig': u'\u0152',
+    'oelig': u'\u0153',
+    'Ograve': u'\xd2',
+    'ograve': u'\xf2',
+    'oline': u'\uf8e5',
+    'omega': u'\u03c9',
+    'Omega': u'\u2126',
+    'Omicron': u'\u039f',
+    'omicron': u'\u03bf',
+    'oplus': u'\u2295',
+    'ordf': u'\xaa',
+    'ordm': u'\xba',
+    'or': u'\u2228',
+    'Oslash': u'\xd8',
+    'oslash': u'\xf8',
+    'Otilde': u'\xd5',
+    'otilde': u'\xf5',
+    'otimes': u'\u2297',
+    'Ouml': u'\xd6',
+    'ouml': u'\xf6',
+    'para': u'\xb6',
+    'part': u'\u2202',
+    'permil': u'\u2030',
+    'perp': u'\u22a5',
+    'phis': u'\u03c6',
+    'Phi': u'\u03a6',
+    'phi': u'\u03d5',
+    'piv': u'\u03d6',
+    'Pi': u'\u03a0',
+    'pi': u'\u03c0',
+    'plusmn': u'\xb1',
+    'pound': u'\xa3',
+    'prime': u'\u2032',
+    'Prime': u'\u2033',
+    'prod': u'\u220f',
+    'prop': u'\u221d',
+    'Psi': u'\u03a8',
+    'psi': u'\u03c8',
+    'radic': u'\u221a',
+    'rang': u'\u232a',
+    'raquo': u'\xbb',
+    'rarr': u'\u2192',
+    'rArr': u'\u21d2',
+    'rceil': u'\uf8f9',
+    'rdquo': u'\u201d',
+    'real': u'\u211c',
+    'reg': u'\xae',
+    'rfloor': u'\uf8fb',
+    'Rho': u'\u03a1',
+    'rho': u'\u03c1',
+    'rlm': u'\u200f',
+    'rsaquo': u'\u203a',
+    'rsquo': u'\u2019',
+    'sbquo': u'\u201a',
+    'Scaron': u'\u0160',
+    'scaron': u'\u0161',
+    'sdot': u'\u22c5',
+    'sect': u'\xa7',
+    'shy': u'\xad',
+    'sigmaf': u'\u03c2',
+    'sigmav': u'\u03c2',
+    'Sigma': u'\u03a3',
+    'sigma': u'\u03c3',
+    'sim': u'\u223c',
+    'spades': u'\u2660',
+    'sube': u'\u2286',
+    'sub': u'\u2282',
+    'sum': u'\u2211',
+    'sup1': u'\xb9',
+    'sup2': u'\xb2',
+    'sup3': u'\xb3',
+    'supe': u'\u2287',
+    'sup': u'\u2283',
+    'szlig': u'\xdf',
+    'Tau': u'\u03a4',
+    'tau': u'\u03c4',
+    'there4': u'\u2234',
+    'thetasym': u'\u03d1',
+    'thetav': u'\u03d1',
+    'Theta': u'\u0398',
+    'theta': u'\u03b8',
+    'thinsp': u'\u2009',
+    'THORN': u'\xde',
+    'thorn': u'\xfe',
+    'tilde': u'\u02dc',
+    'times': u'\xd7',
+    'trade': u'\uf8ea',
+    'Uacute': u'\xda',
+    'uacute': u'\xfa',
+    'uarr': u'\u2191',
+    'uArr': u'\u21d1',
+    'Ucirc': u'\xdb',
+    'ucirc': u'\xfb',
+    'Ugrave': u'\xd9',
+    'ugrave': u'\xf9',
+    'uml': u'\xa8',
+    'upsih': u'\u03d2',
+    'Upsilon': u'\u03a5',
+    'upsilon': u'\u03c5',
+    'Uuml': u'\xdc',
+    'uuml': u'\xfc',
+    'weierp': u'\u2118',
+    'Xi': u'\u039e',
+    'xi': u'\u03be',
+    'Yacute': u'\xdd',
+    'yacute': u'\xfd',
+    'yen': u'\xa5',
+    'yuml': u'\xff',
+    'Yuml': u'\u0178',
+    'Zeta': u'\u0396',
+    'zeta': u'\u03b6',
+    'zwj': u'\u200d',
+    'zwnj': u'\u200c',
     }
+
+known_entities = dict([(k,uniChr(v)) for k,v in name2codepoint.items()])
+for k in greeks:
+    if k not in known_entities:
+        known_entities[k] = greeks[k]
+f = isPy3 and asBytes or asUnicode
+K = list(known_entities.keys())
+for k in K:
+    known_entities[f(k)] = known_entities[k]
+del k, f, K
 
 #------------------------------------------------------------------------
 class ParaFrag(ABag):
     """class ParaFrag contains the intermediate representation of string
-    segments as they are being parsed by the XMLParser.
+    segments as they are being parsed by the ParaParser.
     fontname, fontSize, rise, textColor, cbDefn
     """
-
 
 _greek2Utf8=None
 def _greekConvert(data):
@@ -490,16 +515,20 @@ def _greekConvert(data):
     if not _greek2Utf8:
         from reportlab.pdfbase.rl_codecs import RL_Codecs
         import codecs
-        dm = decoding_map = codecs.make_identity_dict(xrange(32,256))
-        for k in xrange(0,32):
+        #our decoding map
+        dm = codecs.make_identity_dict(range(32,256))
+        for k in range(0,32):
             dm[k] = None
         dm.update(RL_Codecs._RL_Codecs__rl_codecs_data['symbol'][0])
         _greek2Utf8 = {}
-        for k,v in dm.iteritems():
+        for k,v in dm.items():
             if not v:
                 u = '\0'
             else:
-                u = unichr(v).encode('utf8')
+                if isPy3:
+                    u = chr(v)
+                else:
+                    u = unichr(v).encode('utf8')
             _greek2Utf8[chr(k)] = u
     return ''.join(map(_greek2Utf8.__getitem__,data))
 
@@ -515,6 +544,7 @@ def _greekConvert(data):
 #       < sup > < /sup > - superscript
 #       < sub > < /sub > - subscript
 #       <font name=fontfamily/fontname color=colorname size=float>
+#        <span name=fontfamily/fontname color=colorname backcolor=colorname size=float style=stylename>
 #       < bullet > </bullet> - bullet text (at head of para only)
 #       <onDraw name=callable label="a label"/>
 #       <index [name="callablecanvasattribute"] label="a label"/>
@@ -544,7 +574,7 @@ def _greekConvert(data):
 #
 # It will also be able to handle any MathML specified Greek characters.
 #------------------------------------------------------------------
-class ParaParser(xmllib.XMLParser):
+class ParaParser(HTMLParser):
 
     #----------------------------------------------------------
     # First we will define all of the xml tag handler functions.
@@ -565,56 +595,55 @@ class ParaParser(xmllib.XMLParser):
         if attrName!=attrName.lower() and attrName!="caseSensitive" and not self.caseSensitive and \
             (attrName.startswith("start_") or attrName.startswith("end_")):
                 return getattr(self,attrName.lower())
-        raise AttributeError, attrName
+        raise AttributeError(attrName)
 
     #### bold
     def start_b( self, attributes ):
-        self._push(bold=1)
+        self._push('b',bold=1)
 
     def end_b( self ):
-        self._pop(bold=1)
+        self._pop('b')
 
     def start_strong( self, attributes ):
-        self._push(bold=1)
+        self._push('strong',bold=1)
 
     def end_strong( self ):
-        self._pop(bold=1)
+        self._pop('strong')
 
     #### italics
     def start_i( self, attributes ):
-        self._push(italic=1)
+        self._push('i',italic=1)
 
     def end_i( self ):
-        self._pop(italic=1)
+        self._pop('i')
 
     def start_em( self, attributes ):
-        self._push(italic=1)
+        self._push('em', italic=1)
 
     def end_em( self ):
-        self._pop(italic=1)
+        self._pop('em')
 
     #### underline
     def start_u( self, attributes ):
-        self._push(underline=1)
+        self._push('u',underline=1)
 
     def end_u( self ):
-        self._pop(underline=1)
+        self._pop('u')
 
     #### strike
     def start_strike( self, attributes ):
-        self._push(strike=1)
+        self._push('strike',strike=1)
 
     def end_strike( self ):
-        self._pop(strike=1)
+        self._pop('strike')
 
     #### link
     def start_link(self, attributes):
-        self._push(**self.getAttributes(attributes,_linkAttrMap))
+        self._push('link',**self.getAttributes(attributes,_linkAttrMap))
 
     def end_link(self):
-        frag = self._stack[-1]
-        del self._stack[-1]
-        assert frag.link!=None
+        if self._pop('link').link is None:
+            raise ValueError('<link> has no target or href')
 
     #### anchor
     def start_a(self, attributes):
@@ -630,37 +659,37 @@ class ParaParser(xmllib.XMLParser):
             A['_selfClosingTag'] = 'anchor'
         else:
             href = A.get('href','').strip()
-            if not href:
-                self._syntax_error('<a> tag must have non-blank name or href attribute')
             A['link'] = href    #convert to our link form
-            A.pop('href')
-        self._push(**A)
+            A.pop('href',None)
+        self._push('a',**A)
 
     def end_a(self):
         frag = self._stack[-1]
         sct = getattr(frag,'_selfClosingTag','')
         if sct:
-            assert sct=='anchor' and frag.name,'Parser failure in <a/>'
+            if not (sct=='anchor' and frag.name):
+                raise ValueError('Parser failure in <a/>')
             defn = frag.cbDefn = ABag()
             defn.label = defn.kind = 'anchor'
             defn.name = frag.name
             del frag.name, frag._selfClosingTag
             self.handle_data('')
-            self._pop()
+            self._pop('a')
         else:
-            del self._stack[-1]
-            assert frag.link!=None
+            if self._pop('a').link is None:
+                raise ValueError('<link> has no href')
 
     def start_img(self,attributes):
         A = self.getAttributes(attributes,_imgAttrMap)
         if not A.get('src'):
             self._syntax_error('<img> needs src attribute')
         A['_selfClosingTag'] = 'img'
-        self._push(**A)
+        self._push('img',**A)
 
     def end_img(self):
         frag = self._stack[-1]
-        assert getattr(frag,'_selfClosingTag',''),'Parser failure in <img/>'
+        if not getattr(frag,'_selfClosingTag',''):
+            raise ValueError('Parser failure in <img/>')
         defn = frag.cbDefn = ABag()
         defn.kind = 'img'
         defn.src = getattr(frag,'src',None)
@@ -671,24 +700,27 @@ class ParaParser(xmllib.XMLParser):
         defn.valign = getattr(frag,'valign','bottom')
         del frag._selfClosingTag
         self.handle_data('')
-        self._pop()
+        self._pop('img')
 
     #### super script
     def start_super( self, attributes ):
-        self._push(super=1)
+        self._push('super',super=1)
 
     def end_super( self ):
-        self._pop(super=1)
+        self._pop('super')
 
-    start_sup = start_super
-    end_sup = end_super
+    def start_sup( self, attributes ):
+        self._push('sup',super=1)
+
+    def end_sup( self ):
+        self._pop('sup')
 
     #### sub script
     def start_sub( self, attributes ):
-        self._push(sub=1)
+        self._push('sub',sub=1)
 
     def end_sub( self ):
-        self._pop(sub=1)
+        self._pop('sub')
 
     #### greek script
     #### add symbol encoding
@@ -701,13 +733,7 @@ class ParaParser(xmllib.XMLParser):
         except ValueError:
             self.unknown_charref(name)
             return
-        self.handle_data(unichr(n).encode('utf8'))
-
-    def handle_entityref(self,name):
-        if name in greeks:
-            self.handle_data(greeks[name])
-        else:
-            xmllib.XMLParser.handle_entityref(self,name)
+        self.handle_data(uniChr(n))   #.encode('utf8'))
 
     def syntax_error(self,lineno,message):
         self._syntax_error(message)
@@ -717,54 +743,77 @@ class ParaParser(xmllib.XMLParser):
         self.errors.append(message)
 
     def start_greek(self, attr):
-        self._push(greek=1)
+        self._push('greek',greek=1)
 
     def end_greek(self):
-        self._pop(greek=1)
+        self._pop('greek')
 
     def start_unichar(self, attr):
         if 'name' in attr:
             if 'code' in attr:
                 self._syntax_error('<unichar/> invalid with both name and code attributes')
             try:
-                v = unicodedata.lookup(attr['name']).encode('utf8')
+                v = unicodedata.lookup(attr['name'])
             except KeyError:
-                self._syntax_error('<unichar/> invalid name attribute\n"%s"' % name)
+                self._syntax_error('<unichar/> invalid name attribute\n"%s"' % ascii(attr['name']))
                 v = '\0'
         elif 'code' in attr:
             try:
-                v = unichr(int(eval(attr['code']))).encode('utf8')
+                v = int(eval(attr['code']))
+                v = chr(v) if isPy3 else unichr(v)
             except:
-                self._syntax_error('<unichar/> invalid code attribute %s' % attr['code'])
+                self._syntax_error('<unichar/> invalid code attribute %s' % ascii(attr['code']))
                 v = '\0'
         else:
             v = None
             if attr:
-                self._syntax_error('<unichar/> invalid attribute %s' % attr.keys()[0])
+                self._syntax_error('<unichar/> invalid attribute %s' % list(attr.keys())[0])
 
         if v is not None:
             self.handle_data(v)
-        self._push(_selfClosingTag='unichar')
+        self._push('unichar',_selfClosingTag='unichar')
 
     def end_unichar(self):
-        self._pop()
+        self._pop('unichar')
 
     def start_font(self,attr):
-        self._push(**self.getAttributes(attr,_fontAttrMap))
+        A = self.getAttributes(attr,_spanAttrMap)
+        if 'fontName' in A:
+            A['fontName'], A['bold'], A['italic'] = ps2tt(A['fontName'])
+        self._push('font',**A)
 
     def end_font(self):
-        self._pop()
+        self._pop('font')
+
+    def start_span(self,attr):
+        A = self.getAttributes(attr,_spanAttrMap)
+        if 'style' in A:
+            style = self.findSpanStyle(A.pop('style'))
+            D = {}
+            for k in 'fontName fontSize textColor backColor'.split():
+                v = getattr(style,k,self)
+                if v is self: continue
+                D[k] = v
+            D.update(A)
+            A = D
+        if 'fontName' in A:
+            A['fontName'], A['bold'], A['italic'] = ps2tt(A['fontName'])
+        self._push('span',**A)
+
+    def end_span(self):
+        self._pop('span')
 
     def start_br(self, attr):
-        #just do the trick to make sure there is no content
-        self._push(_selfClosingTag='br',lineBreak=True,text='')
-
+        self._push('br',_selfClosingTag='br',lineBreak=True,text='')
+        
     def end_br(self):
+        #print('\nend_br called, %d frags in list' % len(self.fragList))
         frag = self._stack[-1]
-        assert frag._selfClosingTag=='br' and frag.lineBreak,'Parser failure in <br/>'
+        if not (frag._selfClosingTag=='br' and frag.lineBreak):
+                raise ValueError('Parser failure in <br/>')
         del frag._selfClosingTag
         self.handle_data('')
-        self._pop()
+        self._pop('br')
 
     def _initial_frag(self,attr,attrMap,bullet=0):
         style = self._style
@@ -793,10 +842,12 @@ class ParaParser(xmllib.XMLParser):
         return frag
 
     def start_para(self,attr):
-        self._stack = [self._initial_frag(attr,_paraAttrMap)]
+        frag = self._initial_frag(attr,_paraAttrMap)
+        frag.__tag__ = 'para'
+        self._stack = [frag]
 
     def end_para(self):
-        self._pop()
+        self._pop('para')
 
     def start_bullet(self,attr):
         if hasattr(self,'bFragList'):
@@ -804,10 +855,11 @@ class ParaParser(xmllib.XMLParser):
         self.bFragList = []
         frag = self._initial_frag(attr,_bulletAttrMap,1)
         frag.isBullet = 1
+        frag.__tag__ = 'bullet'
         self._stack.append(frag)
 
     def end_bullet(self):
-        self._pop()
+        self._pop('bullet')
 
     #---------------------------------------------------------------
     def start_seqdefault(self, attr):
@@ -896,17 +948,18 @@ class ParaParser(xmllib.XMLParser):
     def end_seq(self):
         pass
 
-    def start_onDraw(self,attr):
+    def start_ondraw(self,attr):
         defn = ABag()
         if 'name' in attr: defn.name = attr['name']
         else: self._syntax_error('<onDraw> needs at least a name attribute')
 
         if 'label' in attr: defn.label = attr['label']
         defn.kind='onDraw'
-        self._push(cbDefn=defn)
+        self._push('ondraw',cbDefn=defn)
         self.handle_data('')
-        self._pop()
-    end_onDraw=end_seq
+        self._pop('ondraw')
+    start_onDraw=start_ondraw 
+    end_onDraw=end_ondraw=end_seq
 
     def start_index(self,attr):
         attr=self.getAttributes(attr,_indexAttrMap)
@@ -928,37 +981,40 @@ class ParaParser(xmllib.XMLParser):
                 offset = int(offset)
             except:
                 raise ValueError('index tag offset is %r not an int' % offset)
-        defn.label = base64.encodestring(pickle.dumps((label,format,offset))).strip()
+        defn.label = encode_label((label,format,offset))
         defn.name = name
         defn.kind='index'
-        self._push(cbDefn=defn)
+        self._push('index',cbDefn=defn)
         self.handle_data('')
-        self._pop()
+        self._pop('index',)
     end_index=end_seq
 
+    def start_unknown(self,attr):
+        pass
+    end_unknown=end_seq
+
     #---------------------------------------------------------------
-    def _push(self,**attr):
+    def _push(self,tag,**attr):
         frag = copy.copy(self._stack[-1])
+        frag.__tag__ = tag
         _applyAttributes(frag,attr)
         self._stack.append(frag)
 
-    def _pop(self,**kw):
-        frag = self._stack[-1]
-        del self._stack[-1]
-        for k, v in kw.items():
-            assert getattr(frag,k)==v
-        return frag
+    def _pop(self,tag):
+        frag = self._stack.pop()
+        if tag==frag.__tag__: return frag
+        raise ValueError('Parse error: saw </%s> instead of expected </%s>' % (tag,frag.__tag__))
 
     def getAttributes(self,attr,attrMap):
         A = {}
         for k, v in attr.items():
             if not self.caseSensitive:
-                k = string.lower(k)
-            if k in attrMap.keys():
+                k = k.lower()
+            if k in list(attrMap.keys()):
                 j = attrMap[k]
                 func = j[1]
                 try:
-                    A[j[0]] = (func is None) and v or func(v)
+                    A[j[0]] = v if func is None else func(v)
                 except:
                     self._syntax_error('%s: invalid value %s'%(k,v))
             else:
@@ -967,9 +1023,14 @@ class ParaParser(xmllib.XMLParser):
 
     #----------------------------------------------------------------
 
-    def __init__(self,verbose=0):
-        self.caseSensitive = 0
-        xmllib.XMLParser.__init__(self,verbose=verbose)
+    def __init__(self,verbose=0, caseSensitive=0, ignoreUnknownTags=1):
+        HTMLParser.__init__(self,
+            **(dict(convert_charrefs=False) if sys.version_info>=(3,4) else {}))
+        self.verbose = verbose
+        #HTMLParser is case insenstive anyway, but the rml interface still needs this
+        #all start/end_ methods should have a lower case version for HMTMParser
+        self.caseSensitive = caseSensitive
+        self.ignoreUnknownTags = ignoreUnknownTags
 
     def _iReset(self):
         self.fragList = []
@@ -977,8 +1038,8 @@ class ParaParser(xmllib.XMLParser):
 
     def _reset(self, style):
         '''reset the parser'''
-        xmllib.XMLParser.reset(self)
 
+        HTMLParser.reset(self)
         # initialize list of string segments to empty
         self.errors = []
         self._style = style
@@ -987,6 +1048,12 @@ class ParaParser(xmllib.XMLParser):
     #----------------------------------------------------------------
     def handle_data(self,data):
         "Creates an intermediate representation of string segments."
+
+        #The old parser would only 'see' a string after all entities had
+        #been processed.  Thus, 'Hello &trade; World' would emerge as one
+        #fragment.    HTMLParser processes these separately.  We want to ensure
+        #that successive calls like this are concatenated, to prevent too many
+        #fragments being created.
 
         frag = copy.copy(self._stack[-1])
         if hasattr(frag,'cbDefn'):
@@ -1031,33 +1098,8 @@ class ParaParser(xmllib.XMLParser):
         self._seq = reportlab.lib.sequencer.getSequencer()
         self._reset(style)  # reinitialise the parser
 
-    def parse(self, text, style):
-        """Given a formatted string will return a list of
-        ParaFrag objects with their calculated widths.
-        If errors occur None will be returned and the
-        self.errors holds a list of the error messages.
-        """
-        # AR 20040612 - when we feed Unicode strings in, sgmlop
-        # tries to coerce to ASCII.  Must intercept, coerce to
-        # any 8-bit encoding which defines most of 256 points,
-        # and revert at end.  Yuk.  Preliminary step prior to
-        # removal of parser altogether.
-        enc = self._enc = 'utf8' #our legacy default
-        self._UNI = type(text) is UnicodeType
-        if self._UNI:
-            text = text.encode(enc)
-
-        self._setup_for_parse(style)
-        # the xmlparser requires that all text be surrounded by xml
-        # tags, therefore we must throw some unused flags around the
-        # given string
-        if not(len(text)>=6 and text[0]=='<' and _re_para.match(text)):
-            text = "<para>"+text+"</para>"
-        self.feed(text)
-        self.close()    # force parsing to complete
-        return self._complete_parse()
-
     def _complete_parse(self):
+        "Reset after parsing, to be ready for next paragraph"
         del self._seq
         style = self._style
         del self._style
@@ -1068,57 +1110,122 @@ class ParaParser(xmllib.XMLParser):
         else:
             fragList = bFragList = None
 
-        if self._UNI:
-            #reconvert to unicode
-            if fragList:
-                for frag in fragList:
-                    frag.text = unicode(frag.text, self._enc)
-            if bFragList:
-                for frag in bFragList:
-                    frag.text = unicode(frag.text, self._enc)
-
         return style, fragList, bFragList
 
-    def _tt_parse(self,tt):
+    def _tt_handle(self,tt):
+        "Iterate through a pre-parsed tuple tree (e.g. from pyRXP)"
+        #import pprint
+        #pprint.pprint(tt)
+        #find the corresponding start_tagname and end_tagname methods.
+        #These must be defined.
         tag = tt[0]
         try:
             start = getattr(self,'start_'+tag)
             end = getattr(self,'end_'+tag)
         except AttributeError:
-            raise ValueError('Invalid tag "%s"' % tag)
+            if not self.ignoreUnknownTags:
+                raise ValueError('Invalid tag "%s"' % tag)
+            start = self.start_unknown
+            end = self.end_unknown
+
+        #call the start_tagname method
         start(tt[1] or {})
+        #if tree node has any children, they will either be further nodes,
+        #or text.  Accordingly, call either this function, or handle_data.
         C = tt[2]
         if C:
             M = self._tt_handlers
             for c in C:
-                M[type(c) is TupleType](c)
+                M[isinstance(c,(list,tuple))](c)
+
+        #call the end_tagname method
         end()
+
+    def _tt_start(self,tt):
+        self._tt_handlers = self.handle_data,self._tt_handle
+        self._tt_handle(tt)
 
     def tt_parse(self,tt,style):
         '''parse from tupletree form'''
         self._setup_for_parse(style)
-        self._tt_handlers = self.handle_data,self._tt_parse
-        self._tt_parse(tt)
+        self._tt_start(tt)
         return self._complete_parse()
+
+    def findSpanStyle(self,style):
+        raise ValueError('findSpanStyle not implemented in this parser')
+
+    #HTMLParser interface
+    def parse(self, text, style):
+        "attempt replacement for parse"
+        self._setup_for_parse(style)
+        text = asUnicode(text)
+        if not(len(text)>=6 and text[0]=='<' and _re_para.match(text)):
+            text = u"<para>"+text+u"</para>"
+        try:
+            self.feed(text)
+        except:
+            annotateException('\nparagraph text %s caused exception' % ascii(text))
+        return self._complete_parse()
+
+    def handle_starttag(self, tag, attrs):
+        "Called by HTMLParser when a tag starts"
+
+        #tuple tree parser used to expect a dict.  HTML parser
+        #gives list of two-element tuples
+        if isinstance(attrs, list):
+            d = {}
+            for (k,  v) in attrs:
+                d[k] = v
+            attrs = d
+        if not self.caseSensitive: tag = tag.lower()
+        try:
+            start = getattr(self,'start_'+tag)
+        except AttributeError:
+            if not self.ignoreUnknownTags:
+                raise ValueError('Invalid tag "%s"' % tag)
+            start = self.start_unknown
+        #call it
+        start(attrs or {})
+        
+    def handle_endtag(self, tag):
+        "Called by HTMLParser when a tag ends"
+        #find the existing end_tagname method
+        if not self.caseSensitive: tag = tag.lower()
+        try:
+            end = getattr(self,'end_'+tag)
+        except AttributeError:
+            if not self.ignoreUnknownTags:
+                raise ValueError('Invalid tag "%s"' % tag)
+            end = self.end_unknown
+        #call it
+        end()
+
+    def handle_entityref(self, name):
+        "Handles a named entity.  "
+        try:
+            v = known_entities[name]
+        except:
+            v = u'&%s;' % name
+        self.handle_data(v)
 
 if __name__=='__main__':
     from reportlab.platypus import cleanBlockQuotedText
     from reportlab.lib.styles import _baseFontName
     _parser=ParaParser()
     def check_text(text,p=_parser):
-        print '##########'
+        print('##########')
         text = cleanBlockQuotedText(text)
         l,rv,bv = p.parse(text,style)
         if rv is None:
             for l in _parser.errors:
-                print l
+                print(l)
         else:
-            print 'ParaStyle', l.fontName,l.fontSize,l.textColor
+            print('ParaStyle', l.fontName,l.fontSize,l.textColor)
             for l in rv:
-                print l.fontName,l.fontSize,l.textColor,l.bold, l.rise, '|%s|'%l.text[:25],
+                sys.stdout.write(l.fontName,l.fontSize,l.textColor,l.bold, l.rise, '|%s|'%l.text[:25])
                 if hasattr(l,'cbDefn'):
-                    print 'cbDefn',getattr(l.cbDefn,'name',''),getattr(l.cbDefn,'label',''),l.cbDefn.kind
-                else: print
+                    print('cbDefn',getattr(l.cbDefn,'name',''),getattr(l.cbDefn,'label',''),l.cbDefn.kind)
+                else: print()
 
     style=ParaFrag()
     style.fontName=_baseFontName
@@ -1233,5 +1340,5 @@ them when the man struck up with his tune.]''')
     check_text('''Here comes <font face="Helvetica" size="14pt">Helvetica 14</font> with <Strong>strong</Strong> <em>emphasis</em>.''')
     check_text('''Here comes <font face="Courier" size="3cm">Courier 3cm</font> and normal again.''')
     check_text('''Before the break <br/>the middle line <br/> and the last line.''')
-    check_text('''This should be an inline image <img src='../docs/images/testimg.gif'/>!''')
+    check_text('''This should be an inline image <img src='../../../docs/images/testimg.gif'/>!''')
     check_text('''aaa&nbsp;bbbb <u>underline&#32;</u> cccc''')

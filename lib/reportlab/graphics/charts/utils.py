@@ -1,39 +1,37 @@
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/charts/utils.py
 
-__version__=''' $Id: utils.py 3746 2010-07-21 10:32:55Z rgbecker $ '''
+__version__=''' $Id$ '''
 __doc__="Utilities used here and there."
 from time import mktime, gmtime, strftime
+from math import log10, pi, floor, sin, cos, sqrt, hypot
+import weakref
+from reportlab.graphics.shapes import transformPoint, transformPoints, inverse, Ellipse, Group, String, Path, numericXShift
+from reportlab.lib.utils import flatten
+from reportlab.pdfbase.pdfmetrics import stringWidth
 
 ### Dinu's stuff used in some line plots (likely to vansih).
-
 def mkTimeTuple(timeString):
     "Convert a 'dd/mm/yyyy' formatted string to a tuple for use in the time module."
 
     list = [0] * 9
-    dd, mm, yyyy = map(int, timeString.split('/'))
+    dd, mm, yyyy = list(map(int, timeString.split('/')))
     list[:3] = [yyyy, mm, dd]
 
     return tuple(list)
-
 
 def str2seconds(timeString):
     "Convert a number of seconds since the epoch into a date string."
 
     return mktime(mkTimeTuple(timeString))
 
-
 def seconds2str(seconds):
     "Convert a date string into the number of seconds since the epoch."
 
     return strftime('%Y-%m-%d', gmtime(seconds))
 
-
 ### Aaron's rounding function for making nice values on axes.
-
-from math import log10
-
 def nextRoundNumber(x):
     """Return the first 'nice round number' greater than or equal to x
 
@@ -72,15 +70,8 @@ def nextRoundNumber(x):
         else:
             return base * 10.0
 
-
-### Robin's stuff from rgb_ticks.
-
-from math import log10, floor
-
 _intervals=(.1, .2, .25, .5)
 _j_max=len(_intervals)-1
-
-
 def find_interval(lo,hi,I=5):
     'determine tick parameters for range [lo, hi] using I intervals'
 
@@ -93,7 +84,7 @@ def find_interval(lo,hi,I=5):
                 lo = 0.9*lo
                 hi = 1.1*hi
         else:
-            raise ValueError, "lo>hi"
+            raise ValueError("lo>hi")
     x=(hi - lo)/float(I)
     b= (x>0 and (x<1 or x>10)) and 10**floor(log10(x)) or 1
     b = b
@@ -128,7 +119,6 @@ def find_interval(lo,hi,I=5):
             b = b*10
     return n, x, ss, lo - n + x - hi
 
-
 def find_good_grid(lower,upper,n=(4,5,6,7,8,9), grid=None):
     if grid:
         t = divmod(lower,grid)[0] * grid
@@ -139,7 +129,7 @@ def find_good_grid(lower,upper,n=(4,5,6,7,8,9), grid=None):
         try:
             n[0]
         except TypeError:
-            n = xrange(max(1,n-2),max(n+3,2))
+            n = range(max(1,n-2),max(n+3,2))
 
         w = 1e308
         for i in n:
@@ -148,7 +138,6 @@ def find_good_grid(lower,upper,n=(4,5,6,7,8,9), grid=None):
                 t, hi, grid = z[:3]
                 w=z[3]
     return t, hi, grid
-
 
 def ticks(lower, upper, n=(4,5,6,7,8,9), split=1, percent=0, grid=None, labelVOffset=0):
     '''
@@ -177,13 +166,13 @@ def ticks(lower, upper, n=(4,5,6,7,8,9), split=1, percent=0, grid=None, labelVOf
     n = int(float(hi-t)/grid+0.1)+1
     if split:
         labels = []
-        for i in xrange(n):
+        for i in range(n):
             v = t+grid*i
             T.append(v)
             labels.append(format % (v+labelVOffset))
         return T, labels
     else:
-        for i in xrange(n):
+        for i in range(n):
             v = t+grid*i
             T.append((v, format % (v+labelVOffset)))
         return T
@@ -200,7 +189,7 @@ def findNones(data):
             l -= 1
         l+=1
         if b or l: data = data[b:l]
-        I = [i for i in xrange(len(data)) if data[i] is None]
+        I = [i for i in range(len(data)) if data[i] is None]
         for i in I:
             data[i] = 0.5*(data[i-1]+data[i+1])
         return b, l, data
@@ -217,15 +206,12 @@ def pairFixNones(pairs):
 
 def maverage(data,n=6):
     data = (n-1)*[data[0]]+data
-    data = [float(sum(data[i-n:i]))/n for i in xrange(n,len(data)+1)]
+    data = [float(sum(data[i-n:i]))/n for i in range(n,len(data)+1)]
     return data
 
 def pairMaverage(data,n=6):
     return [(x[0],s) for x,s in zip(data, maverage([x[1] for x in data],n))]
 
-import weakref
-from reportlab.graphics.shapes import transformPoint, transformPoints, inverse, Ellipse
-from reportlab.lib.utils import flatten
 class DrawTimeCollector(object):
     '''
     generic mechanism for collecting information about nodes at the time they are about to be drawn
@@ -293,7 +279,7 @@ class DrawTimeCollector(object):
             p = [(x[1],x[2]) for x in p]
         else:
             p = node.asPolygon().points
-            p = [(p[i],p[i+1]) for i in xrange(0,len(p),2)]
+            p = [(p[i],p[i+1]) for i in range(0,len(p),2)]
 
         D = kwds.copy()
         D['poly'] = self.transformAndFlatten(A,p)
@@ -311,3 +297,94 @@ class DrawTimeCollector(object):
             pprint.pprint(self._info,f)
         finally:
             f.close()
+
+def xyDist(xxx_todo_changeme, xxx_todo_changeme1 ):
+    '''return distance between two points'''
+    (x0,y0) = xxx_todo_changeme
+    (x1,y1) = xxx_todo_changeme1
+    return hypot((x1-x0),(y1-y0))
+
+def lineSegmentIntersect(xxx_todo_changeme2, xxx_todo_changeme3, xxx_todo_changeme4, xxx_todo_changeme5
+                ):
+    (x00,y00) = xxx_todo_changeme2
+    (x01,y01) = xxx_todo_changeme3
+    (x10,y10) = xxx_todo_changeme4
+    (x11,y11) = xxx_todo_changeme5
+    p = x00,y00
+    r = x01-x00,y01-y00
+
+    
+    q = x10,y10
+    s = x11-x10,y11-y10
+
+    rs = float(r[0]*s[1]-r[1]*s[0])
+    qp = q[0]-p[0],q[1]-p[1]
+
+    qpr = qp[0]*r[1]-qp[1]*r[0]
+    qps = qp[0]*s[1]-qp[1]*s[0]
+
+    if abs(rs)<1e-8:
+        if abs(qpr)<1e-8: return 'collinear'
+        return None
+
+    t = qps/rs
+    u = qpr/rs
+
+    if 0<=t<=1 and 0<=u<=1:
+        return p[0]+t*r[0], p[1]+t*r[1]
+
+def makeCircularString(x, y, radius, angle, text, fontName, fontSize, inside=0, G=None,textAnchor='start'):
+    '''make a group with circular text in it'''
+    if not G: G = Group()
+
+    angle %= 360
+    pi180 = pi/180
+    phi = angle*pi180
+    width = stringWidth(text, fontName, fontSize)
+    sig = inside and -1 or 1
+    hsig = sig*0.5
+    sig90 = sig*90
+
+    if textAnchor!='start':
+        if textAnchor=='middle':
+            phi += sig*(0.5*width)/radius
+        elif textAnchor=='end':
+            phi += sig*float(width)/radius
+        elif textAnchor=='numeric':
+            phi += sig*float(numericXShift(textAnchor,text,width,fontName,fontSize,None))/radius
+
+    for letter in text:
+        width = stringWidth(letter, fontName, fontSize)
+        beta = float(width)/radius
+        h = Group()
+        h.add(String(0, 0, letter, fontName=fontName,fontSize=fontSize,textAnchor="start"))
+        h.translate(x+cos(phi)*radius,y+sin(phi)*radius)    #translate to radius and angle
+        h.rotate((phi-hsig*beta)/pi180-sig90)               # rotate as needed
+        G.add(h)                                            #add to main group
+        phi -= sig*beta                                     #increment
+
+    return G
+
+class CustomDrawChanger:
+    '''
+    a class to simplify making changes at draw time
+    '''
+    def __init__(self):
+        self.store = None
+
+    def __call__(self,change,obj):
+        if change:
+            self.store = self._changer(obj)
+            assert isinstance(self.store,dict), '%s.changer should return a dict of changed attributes' % self.__class__.__name__
+        elif self.store is not None:
+            for a,v in self.store.items():
+                setattr(obj,a,v)
+            self.store = None
+
+    def _changer(self,obj):
+        '''
+        When implemented this method should return a dictionary of
+        original attribute values so that a future self(False,obj)
+        can restore them.
+        '''
+        raise RuntimeError('Abstract method _changer called')

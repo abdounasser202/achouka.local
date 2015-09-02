@@ -21,7 +21,7 @@ from reportlab.platypus.frames import Frame
 from reportlab.platypus.flowables import XBox, KeepTogether
 from reportlab.graphics.shapes import Drawing
 
-from reportlab.graphics.barcode import getCodes, getCodeNames, createBarcodeDrawing
+from reportlab.graphics.barcode import getCodes, getCodeNames, createBarcodeDrawing, createBarcodeImageInMemory
 def run():
     styles = getSampleStyleSheet()
     styleN = styles['Normal']
@@ -63,6 +63,10 @@ def run():
     story.append(bcd)
     story.append(Paragraph('EAN8', styleN))
     bcd = createBarcodeDrawing('EAN8', value='1234567')
+    story.append(bcd)
+    story.append(Paragraph('UPCA', styleN))
+    bcd = createBarcodeDrawing('UPCA', value='03600029145')
+    story.append(bcd)
     story.append(Paragraph('USPS_4State', styleN))
     bcd = createBarcodeDrawing('USPS_4State', value='01234567094987654321',routing='01234567891')
     story.append(bcd)
@@ -75,7 +79,7 @@ def run():
     f = Frame(inch, inch, 6*inch, 9*inch, showBoundary=1)
     f.addFromList(story, c)
     c.save()
-    print 'saved out.pdf'
+    print('saved out.pdf')
 
 def fullTest(fileName="test_full.pdf"):
     """Creates large-ish test document with a variety of parameters"""
@@ -163,8 +167,8 @@ def fullTest(fileName="test_full.pdf"):
     if height: options['height'] = height[0]
     if isoScale: options['isoScale'] = isoScale[0]
     scales = [x[8:].split(',') for x in sys.argv if x.startswith('--scale=')]
-    scales = map(float,scales and flatten(scales) or [1])
-    scales = map(float,scales and flatten(scales) or [1])
+    scales = list(map(float,scales and flatten(scales) or [1]))
+    scales = list(map(float,scales and flatten(scales) or [1]))
     for scale in scales:
         story.append(PageBreak())
         story.append(Paragraph('Scale = %.1f'%scale, styleH2))
@@ -181,8 +185,16 @@ def fullTest(fileName="test_full.pdf"):
             story.append(KeepTogether(s))
 
     SimpleDocTemplate(fileName).build(story)
-    print 'created', fileName
+    print('created', fileName)
 
 if __name__=='__main__':
     run()
     fullTest()
+    def createSample(name,memory):
+        f = open(name,'wb')
+        f.write(memory)
+        f.close()
+    createSample('test_cbcim.png',createBarcodeImageInMemory('EAN13', value='123456789012'))
+    createSample('test_cbcim.gif',createBarcodeImageInMemory('EAN8', value='1234567', format='gif'))
+    createSample('test_cbcim.pdf',createBarcodeImageInMemory('UPCA', value='03600029145',format='pdf'))
+    createSample('test_cbcim.tiff',createBarcodeImageInMemory('USPS_4State', value='01234567094987654321',routing='01234567891',format='tiff'))

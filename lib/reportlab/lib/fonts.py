@@ -1,8 +1,8 @@
 #!/bin/env python
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/lib/fonts.py
-__version__=''' $Id: fonts.py 3702 2010-04-14 17:13:41Z rgbecker $ '''
+__version__=''' $Id$ '''
 __doc__='''Utilities to associate bold and italic versions of fonts into families
 
 Bold, italic and plain fonts are usually implemented in separate disk files;
@@ -63,9 +63,13 @@ _tt2ps_map = {
             }
 
 _ps2tt_map={}
-for k,v in _tt2ps_map.items():
-    if k not in _ps2tt_map:
-        _ps2tt_map[v.lower()] = k
+for k in sorted(_tt2ps_map.keys()):
+    v = _tt2ps_map[k].lower()
+    if v not in _ps2tt_map:
+        _ps2tt_map[v] = k
+    v = k[0].lower()
+    if v not in _ps2tt_map:
+        _ps2tt_map[v] = k
 
 def ps2tt(psfn):
     'ps fontname to family name, bold, italic'

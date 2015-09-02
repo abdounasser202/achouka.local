@@ -1,9 +1,9 @@
 #!/bin/env python
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2013
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/lib/randomtext.py
 
-__version__=''' $Id: randomtext.py 3342 2008-12-12 15:55:34Z andy $ '''
+__version__=''' $Id$ '''
 
 ###############################################################################
 #   generates so-called 'Greek Text' for use in filling documents.
@@ -221,6 +221,13 @@ leadins=[
     "Let us continue to suppose that",
     "Notice, incidentally, that",
     "A majority  of informed linguistic specialists agree that",
+    "There is also a different approach to the [unification] problem,",
+    "This approach divorces the cognitive sciences from a biological setting,",
+    "The approach relies on the \"Turing Test,\" devised by mathematician Alan Turing,",
+    "Adopting this approach,",
+    "There is no fact, no meaningful question to be answered,",
+    "Another superficial similarity is the interest in simulation of behavior,",
+    "A lot of sophistication has been developed about the utilization of machines for complex purposes,",
     ]
  
 subjects = [
@@ -298,7 +305,7 @@ def chomsky(times = 1):
     prevparts = []
     newparts = []
     output = []
-    for i in xrange(times):
+    for i in range(times):
         for partlist in (leadins, subjects, verbs, objects):
             while 1:
                 part = random.choice(partlist)
@@ -315,7 +322,7 @@ if rl_config.invariant:
     if not getattr(rl_config,'_random',None):
         rl_config._random = 1
         import random
-        random.seed(2342471922L)
+        random.seed(2342471922)
         del random
 del rl_config
 
@@ -324,7 +331,7 @@ def randomText(theme=STARTUP, sentences=5):
     if type(theme)==type(''):
         if theme.lower()=='chomsky': return chomsky(sentences)
         elif theme.upper() in ('STARTUP','COMPUTERS','BLAH','BUZZWORD','STARTREK','PRINTING','PYTHON'):
-            theme = globals()[theme]
+            theme = globals()[theme.upper()]
         else:
             raise ValueError('Unknown theme "%s"' % theme)
 
@@ -346,4 +353,19 @@ def randomText(theme=STARTUP, sentences=5):
     return output
 
 if __name__=='__main__':
-    print chomsky(5)
+    import sys
+    argv = sys.argv[1:]
+    if argv:
+        theme = argv.pop(0)
+        if argv:
+            sentences = int(argv.pop(0))
+        else:
+            sentences = 5
+        try:
+            print(randomText(theme,sentences))
+        except:
+            sys.stderr.write("Usage: randomtext.py [theme [#sentences]]\n")
+            sys.stderr.write(" theme in chomsky|STARTUP|COMPUTERS|BLAH|BUZZWORD|STARTREK|PRINTING|PYTHON\n")
+            raise
+    else:
+        print(chomsky(5))

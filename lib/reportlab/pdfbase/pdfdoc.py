@@ -1,7 +1,7 @@
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/pdfbase/pdfdoc.py
-__version__=''' $Id: pdfdoc.py 3795 2010-09-30 15:52:16Z rgbecker $ '''
+__version__=''' $Id$ '''
 __doc__="""
 The module pdfdoc.py handles the 'outer structure' of PDF documents, ensuring that
 all objects are properly cross-referenced and indexed to the nearest byte.  The
@@ -14,48 +14,28 @@ The classes within this generally mirror structures in the PDF file
 and are not part of any public interface.  Instead, canvas and font
 classes are made available elsewhere for users to manipulate.
 """
-import string, types, binascii, codecs
+import types, binascii, codecs
+from collections import OrderedDict
 from reportlab.pdfbase import pdfutils
-from reportlab.pdfbase.pdfutils import LINEEND # this constant needed in both
 from reportlab import rl_config
-from reportlab.lib.utils import import_zlib, open_for_read, fp_str, _digester
+from reportlab.lib.utils import import_zlib, open_for_read, makeFileName, isSeq, isBytes, isUnicode, _digester, isStr, bytestr, isPy3, annotateException
+from reportlab.lib.rl_accel import escapePDF, fp_str, asciiBase85Encode, asciiBase85Decode
 from reportlab.pdfbase import pdfmetrics
-try:
-    from hashlib import md5
-except ImportError:
-    from md5 import md5
+from hashlib import md5
 
 from sys import platform
-try:
-    from sys import version_info
-except: # pre-2.0
-    # may be inaccurate but will at least
-    #work in anything which seeks to format
-    # version_info into a string
-    version_info = (1,5,2,'unknown',0)
+from sys import version_info
+from sys import stderr
 
 if platform[:4] == 'java' and version_info[:2] == (2, 1):
     # workaround for list()-bug in Jython 2.1 (should be fixed in 2.2)
     def list(sequence):
         def f(x):
             return x
-        return map(f, sequence)
-
-def utf8str(x):
-    if isinstance(x,unicode):
-        return x.encode('utf8')
-    else:
-        return str(x)
+        return list(map(f, sequence))
 
 class PDFError(Exception):
     pass
-
-# set this flag to get more vertical whitespace (and larger files)
-LongFormat = 1
-##if LongFormat: (doesn't work)
-##    pass
-##else:
-##    LINEEND = "\n" # no wasteful carriage returns!
 
 # __InternalName__ is a special attribute that can only be set by the Document arbitrator
 __InternalName__ = "__InternalName__"
@@ -67,48 +47,50 @@ __RefOnly__ = "__RefOnly__"
 #   if it is more than one line then percentize it...
 __Comment__ = "__Comment__"
 
-# If DoComments is set then add helpful (space wasting) comment lines to PDF files
-DoComments = 1
-if not LongFormat:
-    DoComments = 0
-
 # name for standard font dictionary
 BasicFonts = "BasicFonts"
 
 # name for the pages object
 Pages = "Pages"
 
-### generic utilities
 
-# for % substitutions
-LINEENDDICT = {"LINEEND": LINEEND, "PERCENT": "%"}
 PDF_VERSION_DEFAULT = (1, 3)
 PDF_SUPPORT_VERSION = dict(     #map keyword to min version that supports it
     transparency = (1, 4),
     )
 
-from types import InstanceType
-def format(element, document, toplevel=0, InstanceType=InstanceType):
+if isPy3:
+    def pdfdocEnc(x):
+        return x.encode('extpdfdoc') if isinstance(x,str) else x
+else:
+    def pdfdocEnc(x):
+        return x.encode('extpdfdoc') if isinstance(x,unicode) else x
+
+def format(element, document, toplevel=0):
     """Indirection step for formatting.
        Ensures that document parameters alter behaviour
        of formatting for all elements.
     """
-    if hasattr(element,'__PDFObject__'):
+    if isinstance(element,PDFObject):
         if not toplevel and hasattr(element, __RefOnly__):
             # the object cannot be a component at non top level.
             # make a reference to it and return it's format
             return document.Reference(element).format(document)
         else:
             f = element.format(document)
-            if not rl_config.invariant and DoComments and hasattr(element, __Comment__):
-                f = "%s%s%s%s" % ("% ", element.__Comment__, LINEEND, f)
+            if not rl_config.invariant and rl_config.pdfComments and hasattr(element, __Comment__):
+                f = pdfdocEnc("%% %s\r\n" % element.__Comment__)+f
             return f
     elif type(element) in (float, int):
         #use a controlled number formatting routine
         #instead of str, so Jython/Python etc do not differ
-        return fp_str(element)
+        return pdfdocEnc(fp_str(element))
+    elif isBytes(element):
+        return element
+    elif isUnicode(element):
+        return pdfdocEnc(element)
     else:
-        return str(element)
+        return pdfdocEnc(str(element))
 
 def xObjectName(externalname):
     return "FormXob.%s" % externalname
@@ -131,21 +113,18 @@ class NoEncryption:
         # the representation of self in file if any (should be None or PDFDict)
         return None
 
-class DummyDoc:
+class PDFObject(object):
+    pass
+
+class DummyDoc(PDFObject):
     "used to bypass encryption when required"
-    __PDFObject__ = True
     encrypt = NoEncryption()
 
 ### the global document structure manager
-class PDFDocument:
-    __PDFObject__ = True
-    _ID = None
-    objectcounter = 0
-    inObject = None
+class PDFDocument(PDFObject):
     # set this to define filters
     defaultStreamFilters = None
     encrypt = NoEncryption() # default no encryption
-    pageCounter = 1
     def __init__(self,
                  dummyoutline=0,
                  compression=rl_config.pageCompression,
@@ -153,6 +132,11 @@ class PDFDocument:
                  filename=None,
                  pdfVersion=PDF_VERSION_DEFAULT,
                  ):
+        self._ID = None
+        self.objectcounter = 0
+        self.shadingCounter = 0
+        self.inObject = None
+        self.pageCounter = 1
 
         # allow None value to be passed in to mean 'give system defaults'
         if invariant is None:
@@ -163,12 +147,13 @@ class PDFDocument:
         self._pdfVersion = pdfVersion
         # signature for creating PDF ID
         sig = self.signature = md5()
-        sig.update("a reportlab document")
+        sig.update(b"a reportlab document")
         if not self.invariant:
             cat = _getTimeStamp()
         else:
             cat = 946684800.0
-        sig.update(repr(cat)) # initialize with timestamp digest
+        cat = ascii(cat)
+        sig.update(bytestr(cat)) # initialize with timestamp digest
         # mapping of internal identifier ("Page001") to PDF objectnumber and generation number (34, 0)
         self.idToObjectNumberAndVersion = {}
         # mapping of internal identifier ("Page001") to PDF object (PDFPage instance)
@@ -209,7 +194,7 @@ class PDFDocument:
     def updateSignature(self, thing):
         "add information to the signature"
         if self._ID: return # but not if its used already!
-        self.signature.update(utf8str(thing))
+        self.signature.update(bytestr(thing))
 
     def ID(self):
         "A unique fingerprint for the file (unless in invariant mode)"
@@ -217,29 +202,31 @@ class PDFDocument:
             return self._ID
         digest = self.signature.digest()
         doc = DummyDoc()
-        ID = PDFString(digest,enc='raw')
-        IDs = ID.format(doc)
-        self._ID = "%s %% ReportLab generated PDF document -- digest (http://www.reportlab.com) %s [%s %s] %s" % (
-                LINEEND, LINEEND, IDs, IDs, LINEEND)
+        IDs = PDFString(digest,enc='raw').format(doc)
+        self._ID = (b'\r\n % ReportLab generated PDF document -- digest (http://www.reportlab.com)\r\n ['
+                        +IDs+b' '+IDs+b']\r\n')
         return self._ID
 
     def SaveToFile(self, filename, canvas):
         if hasattr(getattr(filename, "write",None),'__call__'):
             myfile = 0
             f = filename
-            filename = utf8str(getattr(filename,'name',''))
+            filename = makeFileName(getattr(filename,'name',''))
         else :
             myfile = 1
-            filename = utf8str(filename)
+            filename = makeFileName(filename)
             f = open(filename, "wb")
-        f.write(self.GetPDFData(canvas))
+        data = self.GetPDFData(canvas)
+        if isUnicode(data):
+            data = data.encode('latin1')
+        f.write(data)
         if myfile:
             f.close()
             import os
             if os.name=='mac':
                 from reportlab.lib.utils import markfilename
                 markfilename(filename) # do platform specific file junk
-        if getattr(canvas,'_verbosity',None): print 'saved', filename
+        if getattr(canvas,'_verbosity',None): print('saved %s' % (filename,))
 
     def GetPDFData(self, canvas):
         # realize delayed fonts
@@ -260,14 +247,14 @@ class PDFDocument:
         """specify the current object as a page (enables reference binding and other page features)"""
         if self.inObject is not None:
             if self.inObject=="page": return
-            raise ValueError, "can't go in page already in object %s" % self.inObject
+            raise ValueError("can't go in page already in object %s" % self.inObject)
         self.inObject = "page"
 
     def inForm(self):
         """specify that we are in a form xobject (disable page features, etc)"""
         # don't need this check anymore since going in a form pushes old context at canvas level.
         #if self.inObject not in ["form", None]:
-        #    raise ValueError, "can't go in form already in object %s" % self.inObject
+        #    raise ValueError("can't go in form already in object %s" % self.inObject)
         self.inObject = "form"
         # don't need to do anything else, I think...
 
@@ -318,8 +305,27 @@ class PDFDocument:
         internalname = self.annotationName(name)
         return PDFObjectReference(internalname)
 
+    def addShading(self, shading):
+         name = "Sh%d" % self.shadingCounter
+         self.Reference(shading, name)
+         self.shadingCounter += 1
+         return name
+
     def addColor(self,cmyk):
         sname = cmyk.spotName
+        if not sname:
+            if cmyk.cyan==0 and cmyk.magenta==0 and cmyk.yellow==0:
+                sname = 'BLACK'
+            elif cmyk.black==0 and cmyk.magenta==0 and cmyk.yellow==0:
+                sname = 'CYAN'
+            elif cmyk.cyan==0 and cmyk.black==0 and cmyk.yellow==0:
+                sname = 'MAGENTA'
+            elif cmyk.cyan==0 and cmyk.magenta==0 and cmyk.black==0:
+                sname = 'YELLOW'
+            if not sname:
+                raise ValueError("CMYK colour %r used without a spotName" % cmyk)
+            else:
+                cmyk = cmyk.clone(spotName = sname)
         name = PDFName(sname)[1:]
         if name not in self.idToObject:
             sep = PDFSeparationCMYKColor(cmyk).value()  #PDFArray([/Separation /name /DeviceCMYK tint_tf])
@@ -372,9 +378,9 @@ class PDFDocument:
         self.info._dateFormatter = dateFormatter
 
     def getAvailableFonts(self):
-        fontnames = self.fontMapping.keys()
+        fontnames = list(self.fontMapping.keys())
         # the standard 14 are also always available! (even if not initialized yet)
-        import _fontdata
+        from reportlab.pdfbase import _fontdata
         for name in _fontdata.standardFonts:
             if name not in fontnames:
                 fontnames.append(name)
@@ -404,7 +410,8 @@ class PDFDocument:
         idToOf = self.idToOffset
         ### note that new entries may be "appended" DURING FORMATTING
         done = None
-        File = PDFFile(self._pdfVersion) # output collector
+        # __accum__ allows objects to know where they are in the file etc etc
+        self.__accum__ = File = PDFFile(self._pdfVersion) # output collector
         while done is None:
             counter += 1 # do next object...
             if counter in numbertoid:
@@ -416,21 +423,22 @@ class PDFDocument:
                 #encrypt.register(id,
                 IOf = IO.format(self)
                 # add a comment to the PDF output
-                if not rl_config.invariant and DoComments:
+                if not rl_config.invariant and rl_config.pdfComments:
                     try:
                         classname = obj.__class__.__name__
                     except:
-                        classname = repr(obj)
-                    File.add("%% %s: class %s %s" % (repr(id), classname[:50], LINEEND))
+                        classname = ascii(obj)
+                    File.add("%% %s: class %s \r\n" % (ascii(id), classname[:50]))
                 offset = File.add(IOf)
                 idToOf[id] = offset
                 ids.append(id)
             else:
                 done = 1
+        del self.__accum__
         # sanity checks (must happen AFTER formatting)
         lno = len(numbertoid)
         if counter-1!=lno:
-            raise ValueError, "counter %s doesn't match number to id dictionary %s" %(counter, lno)
+            raise ValueError("counter %s doesn't match number to id dictionary %s" %(counter, lno))
         # now add the xref
         xref = PDFCrossReferenceTable()
         xref.addsection(0, ids)
@@ -447,6 +455,8 @@ class PDFDocument:
             )
         trailerf = trailer.format(self)
         File.add(trailerf)
+        for ds in getattr(self,'_digiSigs',[]):
+            ds.sign(File)
         # return string format for pdf file
         return File.format(self)
 
@@ -471,7 +481,7 @@ class PDFDocument:
                 # externally defined form
                 return list(theform.dictionary.dict[boxType].sequence)
             else:
-                raise ValueError, "I don't understand the form instance %s" % repr(name)
+                raise ValueError("I don't understand the form instance %s" % repr(name))
 
     def getXObjectName(self, name):
         """Lets canvas find out what form is called internally.
@@ -489,22 +499,21 @@ class PDFDocument:
         #print "xobjDict D", D
         return PDFDictionary(D)
 
-    def Reference(self, object, name=None, InstanceType=InstanceType):
+    def Reference(self, obj, name=None):
         ### note references may "grow" during the final formatting pass: don't use d.keys()!
         # don't make references to other references, or non instances, unless they are named!
-        #print"object type is ", type(object)
-        iob = hasattr(object,'__PDFObject__')
+        iob = isinstance(obj,PDFObject)
         idToObject = self.idToObject
-        if name is None and (not iob or object.__class__ is PDFObjectReference):
-            return object
-        if hasattr(object, __InternalName__):
+        if name is None and (not iob or obj.__class__ is PDFObjectReference):
+            return obj
+        if hasattr(obj, __InternalName__):
             # already registered
-            intname = object.__InternalName__
+            intname = obj.__InternalName__
             if name is not None and name!=intname:
-                raise ValueError, "attempt to reregister object %s with new name %s" % (
-                    repr(intname), repr(name))
+                raise ValueError("attempt to reregister object %s with new name %s" % (
+                    repr(intname), repr(name)))
             if intname not in idToObject:
-                raise ValueError, "object named but not registered"
+                raise ValueError("object of type %s named as %s, but not registered" % (type(obj),ascii(intname)))
             return PDFObjectReference(intname)
         # otherwise register the new object
         objectcounter = self.objectcounter = self.objectcounter+1
@@ -512,15 +521,15 @@ class PDFDocument:
             name = "R"+repr(objectcounter)
         if name in idToObject:
             other = idToObject[name]
-            if other!=object:
-                raise ValueError, "redefining named object: "+repr(name)
+            if other!=obj:
+                raise ValueError("redefining named object: "+repr(name))
             return PDFObjectReference(name)
         if iob:
-            object.__InternalName__ = name
+            obj.__InternalName__ = name
         #print "name", name, "counter", objectcounter
         self.idToObjectNumberAndVersion[name] = (objectcounter, 0)
         self.numberToId[objectcounter] = name
-        idToObject[name] = object
+        idToObject[name] = obj
         return PDFObjectReference(name)
 
 ### chapter 4 Objects
@@ -528,13 +537,15 @@ PDFtrue = "true"
 PDFfalse = "false"
 PDFnull = "null"
 
-class PDFText:
-    __PDFObject__ = True
+class PDFText(PDFObject):
     def __init__(self, t):
         self.t = t
     def format(self, document):
-        result = binascii.hexlify(document.encrypt.encode(self.t))
-        return "<%s>" % result
+        t = self.t
+        if isUnicode(t):
+            t = t.encode('utf-8')
+        result = binascii.hexlify(document.encrypt.encode(t))
+        return b"<" + result + b">"
     def __str__(self):
         dummydoc = DummyDoc()
         return self.format(dummydoc)
@@ -561,11 +572,10 @@ def _checkPdfdoc(utext):
     try:
         utext.encode('pdfdoc')
         return 1
-    except UnicodeEncodeError, e:
+    except UnicodeEncodeError as e:
         return 0
 
-class PDFString:
-    __PDFObject__ = True
+class PDFString(PDFObject):
     def __init__(self, s, escape=1, enc='auto'):
         '''s can be unicode/utf8 or a PDFString
         if escape is true then the output will be passed through escape
@@ -584,7 +594,7 @@ class PDFString:
     def format(self, document):
         s = self.s
         enc = getattr(self,'enc','auto')
-        if type(s) is str:
+        if (isBytes(s)):
             if enc is 'auto':
                 try:
                     u = s.decode(s.startswith(codecs.BOM_UTF16_BE) and 'utf16' or 'utf8')
@@ -596,10 +606,9 @@ class PDFString:
                     try:
                         s.decode('pdfdoc')
                     except:
-                        import sys
-                        print >>sys.stderr, 'Error in',repr(s)
+                        stderr.write('Error in %s' % (repr(s),))
                         raise
-        elif type(s) is unicode:
+        elif isUnicode(s):
             if enc is 'auto':
                 if _checkPdfdoc(s):
                     s = s.encode('pdfdoc')
@@ -616,18 +625,19 @@ class PDFString:
             escape = 1
         if escape:
             try:
-                es = "(%s)" % pdfutils._escape(s)
+                es = "(%s)" % escapePDF(s)
             except:
                 raise ValueError("cannot escape %s %s" % (s, repr(s)))
             if escape&2:
                 es = es.replace('\\012','\n')
-            if escape&4 and _isbalanced(s):
+            if escape&4 and _isbalanced(es):
                 es = es.replace('\\(','(').replace('\\)',')')
-            return es
+            return pdfdocEnc(es)
         else:
-            return '(%s)' % s
+            return b'(' + s + b')'
+
     def __str__(self):
-        return "(%s)" % pdfutils._escape(self.s)
+        return "(%s)" % escapePDF(self.s)
 
 def PDFName(data,lo=chr(0x21),hi=chr(0x7e)):
     # might need to change this to class for encryption
@@ -639,9 +649,8 @@ def PDFName(data,lo=chr(0x21),hi=chr(0x7e)):
             L[i] = "#"+hex(ord(c))[2:] # forget the 0x thing...
     return "/"+(''.join(L))
 
-class PDFDictionary:
-    __PDFObject__ = True
-    multiline = LongFormat
+class PDFDictionary(PDFObject):
+    multiline = True
     def __init__(self, dict=None):
         """dict should be namestring to value eg "a": 122 NOT pdfname to value NOT "/a":122"""
         if dict is None:
@@ -656,31 +665,38 @@ class PDFDictionary:
         return a in self.dict
     def Reference(self, name, document):
         self.dict[name] = document.Reference(self.dict[name])
-    def format(self, document,IND=LINEEND+' '):
+    def format(self, document,IND=b'\r\n '):
         dict = self.dict
         try:
-            keys = dict.keys()
+            keys = list(dict.keys())
         except:
-            print repr(dict)
+            print(ascii(dict))
             raise
-        keys.sort()
-        L = [(format(PDFName(k),document)+" "+format(dict[k],document)) for k in keys]
-        if self.multiline:
+        if not isinstance(dict,OrderedDict): keys.sort()
+        L = [(format(PDFName(k),document)+b" "+format(dict[k],document)) for k in keys]
+        if self.multiline and rl_config.pdfMultiLine:
             L = IND.join(L)
         else:
             # break up every 6 elements anyway
             t=L.insert
-            for i in xrange(6, len(L), 6):
-                t(i,LINEEND)
-            L = " ".join(L)
-        return "<< %s >>" % L
+            for i in reversed(range(6, len(L), 6)):
+                t(i,b'\r\n ')
+            L = b" ".join(L)
+        return b'<< '+L+b' >>'
 
     def copy(self):
         return PDFDictionary(self.dict)
 
+    def normalize(self):
+        #normalize the names to use RL standard ie Name not /Name
+        D = self.dict
+        K = [k for k in D.keys() if k.startswith('/')]
+        for k in K:
+            D[k[1:]] = D.pop(k)
+
 class checkPDFNames:
     def __init__(self,*names):
-        self.names = map(PDFName,names)
+        self.names = list(map(PDFName,names))
     def __call__(self,value):
         if not value.startswith('/'):
             value=PDFName(value)
@@ -728,12 +744,14 @@ class PDFStreamFilterZCompress:
     def encode(self, text):
         from reportlab.lib.utils import import_zlib
         zlib = import_zlib()
-        if not zlib: raise ImportError, "cannot z-compress zlib unavailable"
+        if not zlib: raise ImportError("cannot z-compress zlib unavailable")
+        if isUnicode(text):
+            text = text.encode('utf8')
         return zlib.compress(text)
     def decode(self, encoded):
         from reportlab.lib.utils import import_zlib
         zlib = import_zlib()
-        if not zlib: raise ImportError, "cannot z-decompress zlib unavailable"
+        if not zlib: raise ImportError("cannot z-decompress zlib unavailable")
         return zlib.decompress(encoded)
 
 # need only one of these, unless we implement parameters later
@@ -742,27 +760,19 @@ PDFZCompress = PDFStreamFilterZCompress()
 class PDFStreamFilterBase85Encode:
     pdfname = "ASCII85Decode"
     def encode(self, text):
-        from pdfutils import _AsciiBase85Encode, _wrap
-        text = _AsciiBase85Encode(text)
+        from reportlab.pdfbase.pdfutils import _wrap
+        text = asciiBase85Encode(text)
         if rl_config.wrapA85:
             text = _wrap(text)
         return text
     def decode(self, text):
-        from pdfutils import _AsciiBase85Decode
-        return _AsciiBase85Decode(text)
+        return asciiBase85Decode(text)
 
 # need only one of these too
 PDFBase85Encode = PDFStreamFilterBase85Encode()
 
-STREAMFMT = ("%(dictionary)s%(LINEEND)s" # dictionary
-             "stream" # stream keyword
-             "%(LINEEND)s" # a line end (could be just a \n)
-             "%(content)s" # the content, with no lineend
-             "endstream%(LINEEND)s" # the endstream keyword
-             )
-class PDFStream:
+class PDFStream(PDFObject):
     '''set dictionary elements explicitly stream.dictionary[name]=value'''
-    __PDFObject__ = True
     ### compression stuff not implemented yet
     __RefOnly__ = 1 # must be at top level
     def __init__(self, dictionary=None, content=None, filters=None):
@@ -778,7 +788,7 @@ class PDFStream:
         content = self.content
         filters = self.filters
         if self.content is None:
-            raise ValueError, "stream content not set"
+            raise ValueError("stream content not set")
         if filters is None:
             filters = document.defaultStreamFilters
         # only apply filters if they haven't been applied elsewhere
@@ -799,23 +809,16 @@ class PDFStream:
         # "stream encoding is done after all filters have been applied"
         content = document.encrypt.encode(content)
         fc = format(content, document)
-        #print "type(content)", type(content), len(content), type(self.dictionary)
-        lc = len(content)
-        #if fc!=content: burp
-        # set dictionary length parameter
-        dictionary["Length"] = lc
+        dictionary["Length"] = len(content)
         fd = format(dictionary, document)
-        sdict = LINEENDDICT.copy()
-        sdict["dictionary"] = fd
-        sdict["content"] = fc
-        return STREAMFMT % sdict
+        return fd+b'\r\nstream\r\n'+fc+b'endstream\r\n'
 
 def teststream(content=None):
     #content = "" # test
     if content is None:
         content = teststreamcontent
-    content = string.strip(content)
-    content = string.replace(content, "\n", LINEEND) + LINEEND
+    content = content.strip()
+    content = content.replace("\n", '\n\r') + '\n\r'
     S = PDFStream(content = content,
                     filters=rl_config.useA85 and [PDFBase85Encode,PDFZCompress] or [PDFZCompress])
     # nothing else needed...
@@ -827,36 +830,33 @@ teststreamcontent = """
 1.00 0.00 1.00 rg
 n 72.00 72.00 432.00 648.00 re B*
 """
-class PDFArray:
-    __PDFObject__ = True
-    multiline = LongFormat
-    _ZLIST = list(9*' ')+[LINEEND]
+class PDFArray(PDFObject):
+    multiline = True
     def __init__(self, sequence):
         self.sequence = list(sequence)
     def References(self, document):
         """make all objects in sequence references"""
-        self.sequence = map(document.Reference, self.sequence)
-    def format(self, document, IND=LINEEND+' '):
+        self.sequence = list(map(document.Reference, self.sequence))
+    def format(self, document, IND=b'\r\n '):
         L = [format(e, document) for e in self.sequence]
-        if self.multiline:
+        if self.multiline and rl_config.pdfMultiLine:
             L = IND.join(L)
         else:
             n=len(L)
             if n>10:
                 # break up every 10 elements anyway
-                m,r = divmod(n,10)
-                L = ''.join([l+z for l,z in zip(L,m*self._ZLIST+list(r*' '))])
-                L = L.strip()
+                t=L.insert
+                for i in reversed(range(10, n, 10)):
+                    t(i,b'\r\n ')
+                L = b' '.join(L)
             else:
-                L = ' '.join(L)
-        return "[ %s ]" % L
+                L = b' '.join(L)
+        return b'[ ' + L + b' ]'
 
 class PDFArrayCompact(PDFArray):
     multiline=False
 
-INDIRECTOBFMT = "%(n)s %(v)s obj%(LINEEND)s%(content)s%(CLINEEND)sendobj%(LINEEND)s"
-class PDFIndirectObject:
-    __PDFObject__ = True
+class PDFIndirectObject(PDFObject):
     __RefOnly__ = 1
     def __init__(self, name, content):
         self.name = name
@@ -866,60 +866,53 @@ class PDFIndirectObject:
         n, v = document.idToObjectNumberAndVersion[name]
         # set encryption parameters
         document.encrypt.register(n, v)
-        fcontent = format(self.content, document, toplevel=1) # yes this is at top level
-        D = LINEENDDICT.copy()
-        D["n"] = n
-        D["v"] = v
-        D["content"] = fcontent
-        D['CLINEEND'] = (LINEEND,'')[fcontent.endswith(LINEEND)]
-        return INDIRECTOBFMT % D
+        fcontent = format(self.content, document, toplevel=1)   # yes this is at top level
+        return (pdfdocEnc("%s %s obj\r\n"%(n,v))
+                +fcontent+ (b'' if fcontent.endswith(b'\r\n') else b'\r\n')
+                +b'endobj\r\n')
 
-class PDFObjectReference:
-    __PDFObject__ = True
+class PDFObjectReference(PDFObject):
     def __init__(self, name):
         self.name = name
     def format(self, document):
         try:
-            return "%s %s R" % document.idToObjectNumberAndVersion[self.name]
+            return pdfdocEnc("%s %s R" % document.idToObjectNumberAndVersion[self.name])
         except:
-            raise KeyError, "forward reference to %s not resolved upon final formatting" % repr(self.name)
+            raise KeyError("forward reference to %s not resolved upon final formatting" % repr(self.name))
 
-### chapter 5
-# Following Ken Lunde's advice and the PDF spec, this includes
-# some high-order bytes.  I chose the characters for Tokyo
-# in Shift-JIS encoding, as these cannot be mistaken for
-# any other encoding, and we'll be able to tell if something
-# has run our PDF files through a dodgy Unicode conversion.
-PDFHeader = (
-"%%PDF-%s.%s"+LINEEND+
-"%%\223\214\213\236 ReportLab Generated PDF document http://www.reportlab.com"+LINEEND)
-
-class PDFFile:
-    __PDFObject__ = True
+class PDFFile(PDFObject):
     ### just accumulates strings: keeps track of current offset
     def __init__(self,pdfVersion=PDF_VERSION_DEFAULT):
         self.strings = []
         self.write = self.strings.append
         self.offset = 0
-        self.add(PDFHeader % pdfVersion)
+        ### chapter 5
+        # Following Ken Lunde's advice and the PDF spec, this includes
+        # some high-order bytes.  I chose the characters for Tokyo
+        # in Shift-JIS encoding, as these cannot be mistaken for
+        # any other encoding, and we'll be able to tell if something
+        # has run our PDF files through a dodgy Unicode conversion.
+        self.add((pdfdocEnc("%%PDF-%s.%s" % pdfVersion) +
+            b'\r\n%\223\214\213\236 ReportLab Generated PDF document http://www.reportlab.com\r\n'
+            ))
 
     def closeOrReset(self):
         pass
 
     def add(self, s):
         """should be constructed as late as possible, return position where placed"""
+        s = pdfdocEnc(s)
         result = self.offset
         self.offset = result+len(s)
         self.write(s)
         return result
+
     def format(self, document):
-        strings = map(str, self.strings) # final conversion, in case of lazy objects
-        return string.join(strings, "")
+        return b''.join(self.strings)
 
 XREFFMT = '%0.10d %0.5d n'
 
-class PDFCrossReferenceSubsection:
-    __PDFObject__ = True
+class PDFCrossReferenceSubsection(PDFObject):
     def __init__(self, firstentrynumber, idsequence):
         self.firstentrynumber = firstentrynumber
         self.idsequence = idsequence
@@ -941,9 +934,9 @@ class PDFCrossReferenceSubsection:
         for id in idsequence:
             (num, version) = idToNV[id]
             if num in taken:
-                raise ValueError, "object number collision %s %s %s" % (num, repr(id), repr(taken[id]))
+                raise ValueError("object number collision %s %s %s" % (num, repr(id), repr(taken[id])))
             if num>lastentrynumber or num<firstentrynumber:
-                raise ValueError, "object number %s not in range %s..%s" % (num, firstentrynumber, lastentrynumber)
+                raise ValueError("object number %s not in range %s..%s" % (num, firstentrynumber, lastentrynumber))
             # compute position in list
             rnum = num-firstentrynumber
             taken[num] = id
@@ -952,19 +945,11 @@ class PDFCrossReferenceSubsection:
         # now add the initial line
         firstline = "%s %s" % (firstentrynumber, nentries)
         entries.insert(0, firstline)
-        # make sure it ends with a LINEEND
+        # make sure it ends with \r\n
         entries.append("")
-        if LINEEND=="\n" or LINEEND=="\r":
-            reflineend = " "+LINEEND # as per spec
-        elif LINEEND=="\r\n":
-            reflineend = LINEEND
-        else:
-            raise ValueError, "bad end of line! %s" % repr(LINEEND)
-        return string.join(entries, LINEEND)
+        return pdfdocEnc('\r\n'.join(entries))
 
-class PDFCrossReferenceTable:
-    __PDFObject__ = True
-
+class PDFCrossReferenceTable(PDFObject):
     def __init__(self):
         self.sections = []
     def addsection(self, firstentry, ids):
@@ -973,26 +958,18 @@ class PDFCrossReferenceTable:
     def format(self, document):
         sections = self.sections
         if not sections:
-            raise ValueError, "no crossref sections"
-        L = ["xref"+LINEEND]
+            raise ValueError("no crossref sections")
+        L = [b"xref\r\n"]
         for s in self.sections:
             fs = format(s, document)
             L.append(fs)
-        return string.join(L, "")
+        return pdfdocEnc(b''.join(L))
 
-TRAILERFMT = ("trailer%(LINEEND)s"
-              "%(dict)s%(LINEEND)s"
-              "startxref%(LINEEND)s"
-              "%(startxref)s%(LINEEND)s"
-              "%(PERCENT)s%(PERCENT)sEOF%(LINEEND)s")
-
-class PDFTrailer:
-    __PDFObject__ = True
-
+class PDFTrailer(PDFObject):
     def __init__(self, startxref, Size=None, Prev=None, Root=None, Info=None, ID=None, Encrypt=None):
         self.startxref = startxref
         if Size is None or Root is None:
-            raise ValueError, "Size and Root keys required"
+            raise ValueError("Size and Root keys required")
         dict = self.dict = PDFDictionary()
         for (n,v) in [("Size", Size), ("Prev", Prev), ("Root", Root),
                       ("Info", Info), ("ID", ID), ("Encrypt", Encrypt)]:
@@ -1000,28 +977,31 @@ class PDFTrailer:
                 dict[n] = v
     def format(self, document):
         fdict = format(self.dict, document)
-        D = LINEENDDICT.copy()
-        D["dict"] = fdict
-        D["startxref"] = self.startxref
-        return TRAILERFMT % D
+        return b''.join([
+                b'trailer\r\n',
+                fdict,
+                b'\r\nstartxref\r\n',
+                pdfdocEnc(str(self.startxref)),
+                b'\r\n%%EOF\r\n',
+                ]
+                )
 
 #### XXXX skipping incremental update,
 #### encryption
 
 #### chapter 6, doc structure
 
-class PDFCatalog:
-    __PDFObject__ = True
+class PDFCatalog(PDFObject):
     __Comment__ = "Document Root"
     __RefOnly__ = 1
     # to override, set as attributes
     __Defaults__ = {"Type": PDFName("Catalog"),
                 "PageMode": PDFName("UseNone"),
+                "Lang": None,
                 }
-    __NoDefault__ = string.split("""
-        Dests Outlines Pages Threads AcroForm Names OpenActions PageMode URI
-        ViewerPreferences PageLabels PageLayout JavaScript StructTreeRoot SpiderInfo"""
-                                 )
+    __NoDefault__ = """
+        Dests Outlines Pages Threads AcroForm Names OpenAction PageMode URI
+        ViewerPreferences PageLabels PageLayout JavaScript StructTreeRoot SpiderInfo""".split()
     __Refs__ = __NoDefault__ # make these all into references, if present
 
     def format(self, document):
@@ -1029,20 +1009,14 @@ class PDFCatalog:
         defaults = self.__Defaults__
         Refs = self.__Refs__
         D = {}
-        for k in defaults.keys():
-            default = defaults[k]
-            v = None
-            if hasattr(self, k) and getattr(self,k) is not None:
-                v = getattr(self, k)
-            elif default is not None:
-                v = default
+        for k,v in defaults.items():
+            v = getattr(self,k,v)
             if v is not None:
                 D[k] = v
         for k in self.__NoDefault__:
-            if hasattr(self, k):
-                v = getattr(self,k)
-                if v is not None:
-                    D[k] = v
+            v = getattr(self,k,None)
+            if v is not None:
+                D[k] = v
         # force objects to be references where required
         for k in Refs:
             if k in D:
@@ -1076,7 +1050,7 @@ class PDFPages(PDFCatalog):
     # note: could implement page attribute inheritance...
     __Defaults__ = {"Type": PDFName("Pages"),
                     }
-    __NoDefault__ = string.split("Kids Count Parent")
+    __NoDefault__ = "Kids Count Parent".split()
     __Refs__ = ["Parent"]
     def __init__(self):
         self.pages = []
@@ -1102,14 +1076,11 @@ class PDFPage(PDFCatalog):
     __Defaults__ = {"Type": PDFName("Page"),
                    # "Parent": PDFObjectReference(Pages),  # no! use document.Pages
                     }
-    __NoDefault__ = string.split(""" Parent
+    __NoDefault__ = """Parent
         MediaBox Resources Contents CropBox Rotate Thumb Annots B Dur Hid Trans AA
         PieceInfo LastModified SeparationInfo ArtBox TrimBox BleedBox ID PZ
-        Trans
-    """)
-    __Refs__ = string.split("""
-        Contents Parent ID
-    """)
+        Trans""".split()
+    __Refs__ = """Contents Parent ID""".split()
     pagewidth = 595
     pageheight = 842
     stream = None
@@ -1117,6 +1088,7 @@ class PDFPage(PDFCatalog):
     compression = 0
     XObjects = None
     _colorsUsed = {}
+    _shadingsUsed = {}
     Trans = None
     # transitionstring?
     # xobjects?
@@ -1129,10 +1101,9 @@ class PDFPage(PDFCatalog):
         self.compression = onoff
     def setStream(self, code):
         if self.Override_default_compilation:
-            raise ValueError, "overridden! must set stream explicitly"
-        from types import ListType
-        if type(code) is ListType:
-            code = string.join(code, LINEEND)+LINEEND
+            raise ValueError("overridden! must set stream explicitly")
+        if isSeq(code):
+            code = '\r\n'.join(code)+'\r\n'
         self.stream = code
 
     def setPageTransition(self, tranDict):
@@ -1147,8 +1118,8 @@ class PDFPage(PDFCatalog):
             self.Annots = None
         else:
             #print self.Annots
-            #raise ValueError, "annotations not reimplemented yet"
-            if not hasattr(self.Annots,'__PDFObject__'):
+            #raise ValueError("annotations not reimplemented yet")
+            if not isinstance(self.Annots,PDFObject):
                 self.Annots = PDFArray(self.Annots)
         if not self.Contents:
             stream = self.stream
@@ -1174,6 +1145,7 @@ class PDFPage(PDFCatalog):
                 resources.XObject = self.XObjects
             if self.ExtGState:
                 resources.ExtGState = self.ExtGState
+            resources.setShading(self._shadingUsed)
             resources.setColorSpace(self._colorsUsed)
 
             self.Resources = resources
@@ -1182,6 +1154,8 @@ class PDFPage(PDFCatalog):
             self.Parent = document.Reference(pages)
 
 #this code contributed by  Christian Jacobs <cljacobsen@gmail.com>
+class DuplicatePageLabelPage(Exception):
+    pass
 class PDFPageLabels(PDFCatalog):
     __comment__ = None
     __RefOnly__ = 0
@@ -1209,7 +1183,11 @@ class PDFPageLabels(PDFCatalog):
         self.labels.append((page, label))
 
     def format(self, document):
-        self.labels.sort()
+        try:
+            self.labels.sort()
+        except DuplicatePageLabelPage:
+            tmp = sorted([x[0] for x in self.labels])
+            annotateException('\n\n!!!!! Duplicate PageLabel seen for pages %r' % list(set([x for x in tmp if tmp.count(x)>1])))
         labels = []
         for page, label in self.labels:
             labels.append(page)
@@ -1286,6 +1264,11 @@ class PDFPageLabel(PDFCatalog):
             self.S = PDFName(style)
         if start: self.St = PDFnumber(start)
         if prefix: self.P = PDFString(prefix)
+
+    def __lt__(self,oth):
+        if rl_config.errorOnDuplicatePageLabelPage:
+            raise DuplicatePageLabelPage()
+        return False
 #ends code contributed by  Christian Jacobs <cljacobsen@gmail.com>
 
 def testpage(document):
@@ -1309,17 +1292,15 @@ DUMMYOUTLINE = """
       /Outlines
 >>"""
 
-class PDFOutlines0:
-    __PDFObject__ = True
+class PDFOutlines0(PDFObject):
     __Comment__ = "TEST OUTLINE!"
-    text = string.replace(DUMMYOUTLINE, "\n", LINEEND)
+    text = DUMMYOUTLINE.replace("\n", '\r\n')
     __RefOnly__ = 1
     def format(self, document):
-        return self.text
+        return pdfdocEnc(self.text)
 
-class OutlineEntryObject:
+class OutlineEntryObject(PDFObject):
     "an entry in an outline"
-    __PDFObject__ = True
     Title = Dest = Parent = Prev = Next = First = Last = Count = None
     def format(self, document):
         D = {}
@@ -1333,7 +1314,7 @@ class OutlineEntryObject:
         PD = PDFDictionary(D)
         return PD.format(document)
 
-class PDFOutlines:
+class PDFOutlines(PDFObject):
     """
     takes a recursive list of outline destinations like::
 
@@ -1351,7 +1332,6 @@ class PDFOutlines:
 
     Higher layers may build this structure incrementally. KISS at base level.
     """
-    __PDFObject__ = True
     # first attempt, many possible features missing.
     #no init for now
     mydestinations = ready = None
@@ -1367,11 +1347,10 @@ class PDFOutlines:
 
     def addOutlineEntry(self, destinationname, level=0, title=None, closed=None):
         """destinationname of None means "close the tree" """
-        from types import IntType, TupleType
         if destinationname is None and level!=0:
-            raise ValueError, "close tree must have level of 0"
-        if type(level) is not IntType: raise ValueError, "level must be integer, got %s" % type(level)
-        if level<0: raise ValueError, "negative levels not allowed"
+            raise ValueError("close tree must have level of 0")
+        if not isinstance(level,int): raise ValueError("level must be integer, got %s" % type(level))
+        if level<0: raise ValueError("negative levels not allowed")
         if title is None: title = destinationname
         currentlevel = self.currentlevel
         stack = self.levelstack
@@ -1379,7 +1358,7 @@ class PDFOutlines:
         # adjust currentlevel and stack to match level
         if level>currentlevel:
             if level>currentlevel+1:
-                raise ValueError, "can't jump from outline level %s to level %s, need intermediates (destinationname=%r, title=%r)" %(currentlevel, level, destinationname, title)
+                raise ValueError("can't jump from outline level %s to level %s, need intermediates (destinationname=%r, title=%r)" %(currentlevel, level, destinationname, title))
             level = currentlevel = currentlevel+1
             stack.append([])
         while level<currentlevel:
@@ -1388,9 +1367,9 @@ class PDFOutlines:
             del stack[-1]
             previous = stack[-1]
             lastinprevious = previous[-1]
-            if type(lastinprevious) is TupleType:
+            if isinstance(lastinprevious,tuple):
                 (name, sectionlist) = lastinprevious
-                raise ValueError, "cannot reset existing sections: " + repr(lastinprevious)
+                raise ValueError("cannot reset existing sections: " + repr(lastinprevious))
             else:
                 name = lastinprevious
                 sectionlist = current
@@ -1428,12 +1407,11 @@ class PDFOutlines:
 
     def translateNames(self, canvas, object):
         "recursively translate tree of names into tree of destinations"
-        from types import StringType, ListType, TupleType
-        Ot = type(object)
         destinationnamestotitles = self.destinationnamestotitles
         destinationstotitles = self.destinationstotitles
         closedict = self.closedict
-        if Ot is StringType:
+        if isStr(object):
+            if not isUnicode(object): object = object.decode('utf8')
             destination = canvas._bookmarkReference(object)
             title = object
             if object in destinationnamestotitles:
@@ -1444,15 +1422,15 @@ class PDFOutlines:
             if object in closedict:
                 closedict[destination] = 1 # mark destination closed
             return {object: canvas._bookmarkReference(object)} # name-->ref
-        if Ot is ListType or Ot is TupleType:
+        if isSeq(object):
             L = []
             for o in object:
                 L.append(self.translateNames(canvas, o))
-            if Ot is TupleType:
+            if isinstance(object,tuple):
                 return tuple(L)
             return L
         # bug contributed by Benjamin Dumke <reportlab@benjamin-dumke.de>
-        raise TypeError("in outline, destination name must be string: got a %s"%Ot)
+        raise TypeError("in outline, destination name must be string: got a %s"%type(object))
 
     def prepare(self, document, canvas):
         """prepare all data structures required for save operation (create related objects)"""
@@ -1475,8 +1453,6 @@ class PDFOutlines:
         self.ready = 1
 
     def maketree(self, document, destinationtree, Parent=None, toplevel=0):
-        from types import ListType, TupleType, DictType
-        tdestinationtree = type(destinationtree)
         if toplevel:
             levelname = "Outline"
             Parent = document.Reference(document.Outlines)
@@ -1484,9 +1460,9 @@ class PDFOutlines:
             self.count = self.count+1
             levelname = "Outline.%s" % self.count
             if Parent is None:
-                raise ValueError, "non-top level outline elt parent must be specified"
-        if tdestinationtree is not ListType and tdestinationtree is not TupleType:
-            raise ValueError, "destinationtree must be list or tuple, got %s"
+                raise ValueError("non-top level outline elt parent must be specified")
+        if not isSeq(destinationtree):
+            raise ValueError("destinationtree must be list or tuple, got %s")
         nelts = len(destinationtree)
         lastindex = nelts-1
         lastelt = firstref = lastref = None
@@ -1507,27 +1483,26 @@ class PDFOutlines:
             lastelt = eltobj # advance eltobj
             lastref = eltref
             elt = destinationtree[index]
-            te = type(elt)
-            if te is DictType:
+            if isinstance(elt,dict):
                 # simple leaf {name: dest}
                 leafdict = elt
-            elif te is TupleType:
+            elif isinstance(elt,tuple):
                 # leaf with subsections: ({name: ref}, subsections) XXXX should clean up (see count(...))
                 try:
                     (leafdict, subsections) = elt
                 except:
-                    raise ValueError, "destination tree elt tuple should have two elts, got %s" % len(elt)
+                    raise ValueError("destination tree elt tuple should have two elts, got %s" % len(elt))
                 eltobj.Count = count(subsections, closedict)
                 (eltobj.First, eltobj.Last) = self.maketree(document, subsections, eltref)
             else:
-                raise ValueError, "destination tree elt should be dict or tuple, got %s" % te
+                raise ValueError("destination tree elt should be dict or tuple, got %s" % type(elt))
             try:
-                [(Title, Dest)] = leafdict.items()
+                [(Title, Dest)] = list(leafdict.items())
             except:
-                raise ValueError, "bad outline leaf dictionary, should have one entry "+utf8str(elt)
+                raise ValueError("bad outline leaf dictionary, should have one entry "+bytestr(elt))
             eltobj.Title = destinationnamestotitles[Title]
             eltobj.Dest = Dest
-            if te is TupleType and Dest in closedict:
+            if isinstance(elt,tuple) and Dest in closedict:
                 # closed subsection, count should be negative
                 eltobj.Count = -eltobj.Count
         return (firstref, lastref)
@@ -1535,15 +1510,13 @@ class PDFOutlines:
 def count(tree, closedict=None):
     """utility for outline: recursively count leaves in a tuple/list tree"""
     from operator import add
-    from types import TupleType, ListType
-    tt = type(tree)
-    if tt is TupleType:
+    if isinstance(tree,tuple):
         # leaf with subsections XXXX should clean up this structural usage
         (leafdict, subsections) = tree
-        [(Title, Dest)] = leafdict.items()
+        [(Title, Dest)] = list(leafdict.items())
         if closedict and Dest in closedict:
             return 1 # closed tree element
-    if tt is TupleType or tt is ListType:
+    if isSeq(tree):
         #return reduce(add, map(count, tree))
         counts = []
         for e in tree:
@@ -1551,11 +1524,10 @@ def count(tree, closedict=None):
         return sum(counts)  #used to be: return reduce(add, counts)
     return 1
 
-class PDFInfo:
+class PDFInfo(PDFObject):
     """PDF documents can have basic information embedded, viewable from
     File | Document Info in Acrobat Reader.  If this is wrong, you get
     Postscript errors while printing, even though it does not print."""
-    __PDFObject__ = True
     producer = "ReportLab PDF Library - www.reportlab.com"
     creator = "ReportLab PDF Library - www.reportlab.com"
     title = "untitled"
@@ -1570,7 +1542,7 @@ class PDFInfo:
     def digest(self, md5object):
         # add self information to signature
         for x in (self.title, self.author, self.subject, self.keywords):
-            md5object.update(utf8str(x))
+            md5object.update(bytestr(x))
 
     def format(self, document):
         D = {}
@@ -1588,14 +1560,13 @@ class PDFInfo:
     def copy(self):
         "shallow copy - useful in pagecatchering"
         thing = self.__klass__()
-        for (k, v) in self.__dict__.items():
+        for k, v in self.__dict__.items():
             setattr(thing, k, v)
         return thing
 # skipping thumbnails, etc
 
-class Annotation:
+class Annotation(PDFObject):
     """superclass for all annotations."""
-    __PDFObject__ = True
     defaults = [("Type", PDFName("Annot"),)]
     required = ("Type", "Rect", "Contents", "Subtype")
     permitted = required+(
@@ -1603,7 +1574,7 @@ class Annotation:
     def cvtdict(self, d, escape=1):
         """transform dict args from python form to pdf string rep as needed"""
         Rect = d["Rect"]
-        if type(Rect) is not types.StringType:
+        if not isStr(Rect):
             d["Rect"] = PDFArray(Rect)
         d["Contents"] = PDFString(d["Contents"],escape)
         return d
@@ -1619,15 +1590,15 @@ class Annotation:
         d.update(kw)
         for name in self.required:
             if name not in d:
-                raise ValueError, "keyword argument %s missing" % name
+                raise ValueError("keyword argument %s missing" % name)
         d = self.cvtdict(d,escape=escape)
         permitted = self.permitted
         for name in d.keys():
             if name not in permitted:
-                raise ValueError, "bad annotation dictionary name %s" % name
+                raise ValueError("bad annotation dictionary name %s" % name)
         return PDFDictionary(d)
     def Dict(self):
-        raise ValueError, "DictString undefined for virtual superclass Annotation, must overload"
+        raise ValueError("DictString undefined for virtual superclass Annotation, must overload")
         # but usually
         #return self.AnnotationDict(self, Rect=(a,b,c,d)) or whatever
     def format(self, document):
@@ -1692,13 +1663,62 @@ class LinkAnnotation(Annotation):
         d["Dest"] = self.Destination
         return self.AnnotationDict(**d)
 
+class HighlightAnnotation(Annotation):
+    """
+    HighlightAnnotation is an annotation that highlights the selected area.
+
+    Rect is the mouseover area that will show the contents.
+
+    QuadPoints is a list of points to highlight, you can have many groups of
+    four QuadPoints to allow highlighting many lines.
+    """
+    permitted = Annotation.permitted + ("QuadPoints", )
+
+    def __init__(self, Rect, Contents, QuadPoints, Color=[0.83, 0.89, 0.95], **kw):
+        self.Rect = Rect
+        self.Contents = Contents
+        self.otherkw = kw
+        self.QuadPoints = QuadPoints
+        self.Color = Color
+
+    def cvtdict(self, d, escape=1):
+        """transform dict args from python form to pdf string rep as needed"""
+        Rect = d["Rect"]
+        Quad = d["QuadPoints"]
+        Color = d["C"]
+        if not isinstance(Rect, str):
+            d["Rect"] = PDFArray(Rect).format(d, IND=b" ")
+        if not isinstance(Quad, str):
+            d["QuadPoints"] = PDFArray(Quad).format(d, IND=b" ")
+        if not isinstance(Color, str):
+            d["C"] = PDFArray(Color).format(d, IND=b" ")
+        d["Contents"] = PDFString(d["Contents"], escape)
+        return d
+
+    def Dict(self):
+        d = {}
+        d.update(self.otherkw)
+        d["Rect"] = self.Rect
+        d["Contents"] = self.Contents
+        d["Subtype"] = "/Highlight"
+        d["QuadPoints"] = self.QuadPoints
+        d["C"] = self.Color
+        return self.AnnotationDict(**d)
+
+
+def rect_to_quad(Rect):
+    """
+    Utility method to convert a Rect to a QuadPoint
+    """
+    return [Rect[0], Rect[1], Rect[2], Rect[1],
+            Rect[0], Rect[3], Rect[2], Rect[3]]
+
 # skipping names tree
 # skipping actions
 # skipping names trees
 # skipping to chapter 7
 
-class PDFRectangle:
-    __PDFObject__ = True
+class PDFRectangle(PDFObject):
     def __init__(self, llx, lly, urx, ury):
         self.llx, self.lly, self.ulx, self.ury = llx, lly, urx, ury
     def format(self, document):
@@ -1713,12 +1733,11 @@ def _getTimeStamp():
         _NOWT = time.time()
     return _NOWT
 
-class PDFDate:
-    __PDFObject__ = True
+class PDFDate(PDFObject):
     # gmt offset now suppported properly
     def __init__(self, invariant=rl_config.invariant, dateFormatter=None):
         if invariant:
-            now = (2000,01,01,00,00,00,0)
+            now = (2000,1,1,0,0,0,0)
             self.dhh = 0
             self.dmm = 0
         else:
@@ -1737,10 +1756,10 @@ class PDFDate:
                         % (yyyy,mm,dd,hh,m,s,self.dhh,self.dmm))
         return format(PDFString(dfmt(*self.date)), doc)
 
-class Destination:
+class Destination(PDFObject):
     """
 
-    not a pdfobject!  This is a placeholder that can delegates
+    not a PDFObject!  This is a placeholder that can delegates
     to a pdf object only after it has been defined by the methods
     below.
 
@@ -1754,16 +1773,15 @@ class Destination:
         d.setPage(p)
         (at present setPageRef is called on generation of the page).
     """
-    __PDFObject__ = True
     representation = format = page = None
     def __init__(self,name):
         self.name = name
         self.fmt = self.page = None
     def format(self, document):
         f = self.fmt
-        if f is None: raise ValueError, "format not resolved %s" % self.name
+        if f is None: raise ValueError("format not resolved, probably missing URL scheme or undefined destination target for '%s'" % self.name)
         p = self.page
-        if p is None: raise ValueError, "Page reference unbound %s" % self.name
+        if p is None: raise ValueError("Page not bound, probably missing URL scheme or undefined destination target for '%s'" % self.name)
         f.page = p
         return f.format(document)
     def xyz(self, left, top, zoom):  # see pdfspec mar 11 99 pp184+
@@ -1786,8 +1804,7 @@ class Destination:
         self.page = page
         #self.fmt.page = page # may not yet be defined!
 
-class PDFDestinationXYZ:
-    __PDFObject__ = True
+class PDFDestinationXYZ(PDFObject):
     typename = "XYZ"
     def __init__(self, page, left, top, zoom):
         self.page = page
@@ -1799,8 +1816,7 @@ class PDFDestinationXYZ:
         A = PDFArray( [ pageref, PDFName(self.typename), self.left, self.top, self.zoom ] )
         return format(A, document)
 
-class PDFDestinationFit:
-    __PDFObject__ = True
+class PDFDestinationFit(PDFObject):
     typename = "Fit"
     def __init__(self, page):
         self.page = page
@@ -1812,8 +1828,7 @@ class PDFDestinationFit:
 class PDFDestinationFitB(PDFDestinationFit):
     typename = "FitB"
 
-class PDFDestinationFitH:
-    __PDFObject__ = True
+class PDFDestinationFitH(PDFObject):
     typename = "FitH"
     def __init__(self, page, top):
         self.page = page; self.top=top
@@ -1825,8 +1840,7 @@ class PDFDestinationFitH:
 class PDFDestinationFitBH(PDFDestinationFitH):
     typename = "FitBH"
 
-class PDFDestinationFitV:
-    __PDFObject__ = True
+class PDFDestinationFitV(PDFObject):
     typename = "FitV"
     def __init__(self, page, left):
         self.page = page; self.left=left
@@ -1838,8 +1852,7 @@ class PDFDestinationFitV:
 class PDFDestinationFitBV(PDFDestinationFitV):
     typename = "FitBV"
 
-class PDFDestinationFitR:
-    __PDFObject__ = True
+class PDFDestinationFitR(PDFObject):
     typename = "FitR"
     def __init__(self, page, left, bottom, right, top):
         self.page = page; self.left=left; self.bottom=bottom; self.right=right; self.top=top
@@ -1852,9 +1865,8 @@ class PDFDestinationFitR:
 
 # skipping filespecs
 
-class PDFResourceDictionary:
+class PDFResourceDictionary(PDFObject):
     """each element *could* be reset to a reference if desired"""
-    __PDFObject__ = True
     def __init__(self):
         self.ColorSpace = {}
         self.XObject = {}
@@ -1866,7 +1878,7 @@ class PDFResourceDictionary:
         self.Shading = {}
         # ?by default define the basicprocs
         self.basicProcs()
-    stdprocs = map(PDFName, string.split("PDF Text ImageB ImageC ImageI"))
+    stdprocs = [PDFName(s) for s in "PDF Text ImageB ImageC ImageI".split()]
     dict_attributes = ("ColorSpace", "XObject", "ExtGState", "Font", "Pattern", "Properties", "Shading")
 
     def allProcs(self):
@@ -1880,15 +1892,18 @@ class PDFResourceDictionary:
         self.Font = PDFObjectReference(BasicFonts)
 
     def setColorSpace(self,colorsUsed):
-        for c,s in colorsUsed.iteritems():
+        for c,s in colorsUsed.items():
             self.ColorSpace[s] = PDFObjectReference(c)
+
+    def setShading(self,shadingUsed):
+        for c,s in shadingUsed.items():
+            self.Shading[s] = PDFObjectReference(c)
 
     def format(self, document):
         D = {}
-        from types import ListType, DictType
         for dname in self.dict_attributes:
             v = getattr(self, dname)
-            if type(v) is DictType:
+            if isinstance(v,dict):
                 if v:
                     dv = PDFDictionary(v)
                     D[dname] = dv
@@ -1896,7 +1911,7 @@ class PDFResourceDictionary:
                 D[dname] = v
         v = self.ProcSet
         dname = "ProcSet"
-        if type(v) is ListType:
+        if isSeq(v):
             if v:
                 dv = PDFArray(v)
                 D[dname] = dv
@@ -1911,16 +1926,15 @@ class PDFResourceDictionary:
 #   to construct when given a user-facing Font object
 #
 ##############################################################################
-class PDFType1Font:
+class PDFType1Font(PDFObject):
     """no init: set attributes explicitly"""
-    __PDFObject__ = True
     __RefOnly__ = 1
     # note! /Name appears to be an undocumented attribute....
-    name_attributes = string.split("Type Subtype BaseFont Name")
+    name_attributes = "Type Subtype BaseFont Name".split()
     Type = "Font"
     Subtype = "Type1"
     # these attributes are assumed to already be of the right type
-    local_attributes = string.split("FirstChar LastChar Widths Encoding ToUnicode FontDescriptor")
+    local_attributes = "FirstChar LastChar Widths Encoding ToUnicode FontDescriptor".split()
     def format(self, document):
         D = {}
         for name in self.name_attributes:
@@ -1940,34 +1954,30 @@ class PDFType1Font:
 
 class PDFTrueTypeFont(PDFType1Font):
     Subtype = "TrueType"
-    #local_attributes = string.split("FirstChar LastChar Widths Encoding ToUnicode FontDescriptor") #same
+    #local_attributes = "FirstChar LastChar Widths Encoding ToUnicode FontDescriptor".split() #same
 
 ##class PDFMMType1Font(PDFType1Font):
 ##    Subtype = "MMType1"
 ##
 ##class PDFType3Font(PDFType1Font):
 ##    Subtype = "Type3"
-##    local_attributes = string.split(
-##        "FirstChar LastChar Widths CharProcs FontBBox FontMatrix Resources Encoding")
+##    local_attributes = "FirstChar LastChar Widths CharProcs FontBBox FontMatrix Resources Encoding".split()
 ##
 ##class PDFType0Font(PDFType1Font):
 ##    Subtype = "Type0"
-##    local_attributes = string.split(
-##        "DescendantFonts Encoding")
+##    local_attributes = "DescendantFonts Encoding".split(
 ##
 ##class PDFCIDFontType0(PDFType1Font):
 ##    Subtype = "CIDFontType0"
-##    local_attributes = string.split(
-##        "CIDSystemInfo FontDescriptor DW W DW2 W2 Registry Ordering Supplement")
+##    local_attributes = "CIDSystemInfo FontDescriptor DW W DW2 W2 Registry Ordering Supplement".split()
 ##
 ##class PDFCIDFontType0(PDFType1Font):
 ##    Subtype = "CIDFontType2"
-##    local_attributes = string.split(
-##        "BaseFont CIDToGIDMap CIDSystemInfo FontDescriptor DW W DW2 W2")
+##    local_attributes = "BaseFont CIDToGIDMap CIDSystemInfo FontDescriptor DW W DW2 W2".split()
 ##
 ##class PDFEncoding(PDFType1Font):
 ##    Type = "Encoding"
-##    name_attributes = string.split("Type BaseEncoding")
+##    name_attributes = "Type BaseEncoding".split()
 ##    # these attributes are assumed to already be of the right type
 ##    local_attributes = ["Differences"]
 ##
@@ -1977,11 +1987,10 @@ class PDFTrueTypeFont(PDFType1Font):
 
 # skipping CMaps
 
-class PDFFormXObject:
+class PDFFormXObject(PDFObject):
     # like page requires .info set by some higher level (doc)
     # XXXX any resource used in a form must be propagated up to the page that (recursively) uses
     #   the form!! (not implemented yet).
-    __PDFObject__ = True
     XObjects = Annots = BBox = Matrix = Contents = stream = Resources = None
     hasImages = 1 # probably should change
     compression = 0
@@ -1990,9 +1999,9 @@ class PDFFormXObject:
         self.lowerx = lowerx; self.lowery=lowery; self.upperx=upperx; self.uppery=uppery
 
     def setStreamList(self, data):
-        if type(data) is types.ListType:
-            data = string.join(data, LINEEND)
-        self.stream = data
+        if isSeq(data):
+            data = '\r\n'.join(data)
+        self.stream = pdfdocEnc(data)
 
     def BBoxList(self):
         "get the declared bounding box for the form as a list"
@@ -2008,7 +2017,7 @@ class PDFFormXObject:
             self.Annots = None
         else:
             #these must be transferred to the page when the form is used
-            raise ValueError, "annotations not reimplemented yet"
+            raise ValueError("annotations don't work in PDFFormXObjects yet")
         if not self.Contents:
             stream = self.stream
             if not stream:
@@ -2042,9 +2051,8 @@ class PDFFormXObject:
         sdict["Resources"] = self.Resources
         return self.Contents.format(document)
 
-class PDFPostScriptXObject:
+class PDFPostScriptXObject(PDFObject):
     "For embedding PD (e.g. tray commands) in PDF"
-    __PDFObject__ = True
     def __init__(self, content=None):
         self.content = content
 
@@ -2058,13 +2066,12 @@ class PDFPostScriptXObject:
         return S.format(document)
 
 _mode2CS={'RGB':'DeviceRGB', 'L':'DeviceGray', 'CMYK':'DeviceCMYK'}
-class PDFImageXObject:
+class PDFImageXObject(PDFObject):
     # first attempts at a hard-coded one
     # in the file, Image XObjects are stream objects.  We already
     # have a PDFStream object with 3 attributes:  dictionary, content
     # and filters.  So the job of this thing is to construct the
     # right PDFStream instance and ask it to format itself.
-    __PDFObject__ = True
     def __init__(self, name, source=None, mask=None):
         self.name = name
         self.width = 24
@@ -2087,25 +2094,28 @@ class PDFImageXObject:
         else:
             # it is a filename
             import os
-            ext = string.lower(os.path.splitext(source)[1])
+            ext = os.path.splitext(source)[1].lower()
             src = open_for_read(source)
-            if not(ext in ('.jpg', '.jpeg') and self.loadImageFromJPEG(src)):
-                if rl_config.useA85:
-                    self.loadImageFromA85(src)
-                else:
-                    self.loadImageFromRaw(src)
+            try:
+                if not(ext in ('.jpg', '.jpeg') and self.loadImageFromJPEG(src)):
+                    if rl_config.useA85:
+                        self.loadImageFromA85(src)
+                    else:
+                        self.loadImageFromRaw(src)
+            finally:
+                src.close()
 
     def loadImageFromA85(self,source):
         IMG=[]
-        imagedata = map(string.strip,pdfutils.makeA85Image(source,IMG=IMG))
-        words = string.split(imagedata[1])
-        self.width, self.height = map(string.atoi,(words[1],words[3]))
+        imagedata = [s.strip() for s in pdfutils.makeA85Image(source,IMG=IMG)]
+        words = imagedata[1].split()
+        self.width, self.height = (int(words[1]),int(words[3]))
         self.colorSpace = {'/RGB':'DeviceRGB', '/G':'DeviceGray', '/CMYK':'DeviceCMYK'}[words[7]]
         self.bitsPerComponent = 8
         self._filters = 'ASCII85Decode','FlateDecode' #'A85','Fl'
         if IMG: self._checkTransparency(IMG[0])
         elif self.mask=='auto': self.mask = None
-        self.streamContent = string.join(imagedata[3:-1],'')
+        self.streamContent = ''.join(imagedata[3:-1])
 
     def loadImageFromJPEG(self,imageFile):
         try:
@@ -2126,7 +2136,7 @@ class PDFImageXObject:
             self._dotrans = 1
         self.streamContent = imageFile.read()
         if rl_config.useA85:
-            self.streamContent = pdfutils._AsciiBase85Encode(self.streamContent)
+            self.streamContent = asciiBase85Encode(self.streamContent)
             self._filters = 'ASCII85Decode','DCTDecode' #'A85','DCT'
         else:
             self._filters = 'DCTDecode', #'DCT'
@@ -2136,14 +2146,15 @@ class PDFImageXObject:
     def loadImageFromRaw(self,source):
         IMG=[]
         imagedata = pdfutils.makeRawImage(source,IMG=IMG)
-        words = string.split(imagedata[1])
-        self.width, self.height = map(string.atoi,(words[1],words[3]))
+        words = imagedata[1].split()
+        self.width = int(words[1])
+        self.height = int(words[3])
         self.colorSpace = {'/RGB':'DeviceRGB', '/G':'DeviceGray', '/CMYK':'DeviceCMYK'}[words[7]]
         self.bitsPerComponent = 8
         self._filters = 'FlateDecode', #'Fl'
         if IMG: self._checkTransparency(IMG[0])
         elif self.mask=='auto': self.mask = None
-        self.streamContent = string.join(imagedata[3:-1],'')
+        self.streamContent = ''.join(imagedata[3:-1])
 
     def _checkTransparency(self,im):
         if self.mask=='auto':
@@ -2174,7 +2185,7 @@ class PDFImageXObject:
             #assert len(raw) == self.width*self.height, "Wrong amount of data for image expected %sx%s=%s got %s" % (self.width,self.height,self.width*self.height,len(raw))
             self.streamContent = zlib.compress(raw)
             if rl_config.useA85:
-                self.streamContent = pdfutils._AsciiBase85Encode(self.streamContent)
+                self.streamContent = asciiBase85Encode(self.streamContent)
                 self._filters = 'ASCII85Decode','FlateDecode' #'A85','Fl'
             else:
                 self._filters = 'FlateDecode', #'Fl'
@@ -2249,5 +2260,144 @@ class PDFSeparationCMYKColor:
                         )
                     ))
 
+class PDFFunction(PDFObject):
+    """superclass for all function types."""
+    defaults = []
+    required = ("FunctionType", "Domain")
+    permitted = required+("Range",)
+    def FunctionDict(self, **kw):
+        d = {}
+        for (name,val) in self.defaults:
+            d[name] = val
+        d.update(kw)
+        for name in self.required:
+            if name not in d:
+                raise ValueError("keyword argument %s missing" % name)
+        permitted = self.permitted
+        for name in d.keys():
+            if name not in permitted:
+                raise ValueError("bad annotation dictionary name %s" % name)
+        return PDFDictionary(d)
+
+    def Dict(self, document):
+        raise ValueError("Dict undefined for virtual superclass PDFShading, must overload")
+        # but usually
+        #return self.FunctionDict(self, ...)
+
+    def format(self, document):
+        D = self.Dict(document)
+        return D.format(document)
+
+class PDFExponentialFunction(PDFFunction):
+    defaults = PDFFunction.defaults + [("Domain", PDFArrayCompact((0.0, 1.0)))]
+    required = PDFFunction.required + ("N",)
+    permitted = PDFFunction.permitted + ("C0", "C1", "N")
+    def __init__(self, C0, C1, N, **kw):
+        self.C0 = C0
+        self.C1 = C1
+        self.N = N
+        self.otherkw = kw
+    def Dict(self, document):
+        d = {}
+        d.update(self.otherkw)
+        d["FunctionType"] = 2
+        d["C0"] = PDFArrayCompact(self.C0)
+        d["C1"] = PDFArrayCompact(self.C1)
+        d["N"] = self.N
+        return self.FunctionDict(**d)
+
+class PDFStitchingFunction(PDFFunction):
+    required = PDFFunction.required + ("Functions", "Bounds", "Encode")
+    permitted = PDFFunction.permitted + ("Functions", "Bounds", "Encode")
+    def __init__(self, Functions, Bounds, Encode, **kw):
+        self.Functions = Functions
+        self.Bounds = Bounds
+        self.Encode = Encode
+        self.otherkw = kw
+    def Dict(self, document):
+        d = {}
+        d.update(self.otherkw)
+        d["FunctionType"] = 3
+        d["Functions"] = PDFArray([document.Reference(x) for x in self.Functions])
+        d["Bounds"] = PDFArray(self.Bounds)
+        d["Encode"] = PDFArray(self.Encode)
+        return self.FunctionDict(**d)
+
+class PDFShading(PDFObject):
+    """superclass for all shading types."""
+    required = ("ShadingType", "ColorSpace")
+    permitted = required+("Background", "BBox", "AntiAlias")
+    def ShadingDict(self, **kw):
+        d = {}
+        d.update(kw)
+        for name in self.required:
+            if name not in d:
+                raise ValueError("keyword argument %s missing" % name)
+        permitted = self.permitted
+        for name in d.keys():
+            if name not in permitted:
+                raise ValueError("bad annotation dictionary name %s" % name)
+        return PDFDictionary(d)
+
+    def Dict(self, document):
+        raise ValueError("Dict undefined for virtual superclass PDFShading, must overload")
+        # but usually
+        #return self.ShadingDict(self, ...)
+
+    def format(self, document):
+        D = self.Dict(document)
+        return D.format(document)
+
+class PDFFunctionShading(PDFShading):
+    required = PDFShading.required + ("Function",)
+    permitted = PDFShading.permitted + ("Domain", "Matrix", "Function")
+    def __init__(self, Function, ColorSpace, **kw):
+        self.Function = Function
+        self.ColorSpace = ColorSpace
+        self.otherkw = kw
+    def Dict(self, document):
+        d = {}
+        d.update(self.otherkw)
+        d["ShadingType"] = 1
+        d["ColorSpace"] = PDFName(self.ColorSpace)
+        d["Function"] = document.Reference(self.Function)
+        return self.ShadingDict(**d)
+
+class PDFAxialShading(PDFShading):
+    required = PDFShading.required + ("Coords", "Function")
+    permitted = PDFShading.permitted + (
+            "Coords", "Domain", "Function", "Extend")
+    def __init__(self, x0, y0, x1, y1, Function, ColorSpace, **kw):
+        self.Coords = (x0, y0, x1, y1)
+        self.Function = Function
+        self.ColorSpace = ColorSpace
+        self.otherkw = kw
+    def Dict(self, document):
+        d = {}
+        d.update(self.otherkw)
+        d["ShadingType"] = 2
+        d["ColorSpace"] = PDFName(self.ColorSpace)
+        d["Coords"] = PDFArrayCompact(self.Coords)
+        d["Function"] = document.Reference(self.Function)
+        return self.ShadingDict(**d)
+
+class PDFRadialShading(PDFShading):
+    required = PDFShading.required + ("Coords", "Function")
+    permitted = PDFShading.permitted + (
+            "Coords", "Domain", "Function", "Extend")
+    def __init__(self, x0, y0, r0, x1, y1, r1, Function, ColorSpace, **kw):
+        self.Coords = (x0, y0, r0, x1, y1, r1)
+        self.Function = Function
+        self.ColorSpace = ColorSpace
+        self.otherkw = kw
+    def Dict(self, document):
+        d = {}
+        d.update(self.otherkw)
+        d["ShadingType"] = 3
+        d["ColorSpace"] = PDFName(self.ColorSpace)
+        d["Coords"] = PDFArrayCompact(self.Coords)
+        d["Function"] = document.Reference(self.Function)
+        return self.ShadingDict(**d)
+
 if __name__=="__main__":
-    print "There is no script interpretation for pdfdoc."
+    print("There is no script interpretation for pdfdoc.")

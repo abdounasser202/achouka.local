@@ -1,7 +1,7 @@
 #!/bin/env python
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
-__version__=''' $Id: corp.py 3786 2010-09-29 09:51:54Z rgbecker $ '''
+__version__=''' $Id$ '''
 __doc__="""Generate ReportLab logo in a variety of sizes and formats.
 
 
@@ -78,12 +78,12 @@ class RL_CorpLogo(Widget):
                         ] or []
         if _ocolors:
             g.add(definePath(OP,strokeColor=_ocolors[0],strokeWidth=strokeWidth,fillColor=_ocolors[1], dx=dx, dy=dy))
-            print '_ocolors',_ocolors
+            print('_ocolors',_ocolors)
         else:
             P += OP
         if self.showPage and _pagecolors:
             g.add(definePath(PP,strokeColor=_pagecolors[0],strokeWidth=strokeWidth,fillColor=_pagecolors[1], dx=dx, dy=dy))
-            print '_pagecolors',_pagecolors
+            print('_pagecolors',_pagecolors)
         else:
             P += PP
         g.add(definePath(P,strokeColor=strokeColor,strokeWidth=strokeWidth,fillColor=fillColor, dx=dx, dy=dy))

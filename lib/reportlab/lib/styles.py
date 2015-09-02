@@ -1,7 +1,7 @@
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/lib/styles.py
-__version__=''' $Id: styles.py 3767 2010-09-07 10:35:23Z rgbecker $ '''
+__version__=''' $Id$ '''
 __doc__='''Classes for ParagraphStyle and similar things.
 
 A style is a collection of attributes, but with some extra features
@@ -18,13 +18,14 @@ __all__=(
         'PropertySet',
         'ParagraphStyle',
         'LineStyle',
+        'ListStyle',
         'StyleSheet1',
         'getSampleStyleSheet',
         )
 from reportlab.lib.colors import white, black
 from reportlab.lib.enums import TA_LEFT, TA_CENTER
 from reportlab.lib.fonts import tt2ps
-from reportlab.rl_config import canvas_basefontname as _baseFontName
+from reportlab.rl_config import canvas_basefontname as _baseFontName, baseUnderlineProportion as _baseUnderlineProportion
 _baseFontNameB = tt2ps(_baseFontName,1,0)
 _baseFontNameI = tt2ps(_baseFontName,0,1)
 _baseFontNameBI = tt2ps(_baseFontName,1,1)
@@ -46,7 +47,7 @@ class PropertySet:
         assert 'name' not in self.defaults, "Class Defaults may not contain a 'name' attribute"
         assert 'parent' not in self.defaults, "Class Defaults may not contain a 'parent' attribute"
         if parent:
-            assert parent.__class__ == self.__class__, "Parent style must have same class as new style"
+            assert parent.__class__ == self.__class__, "Parent style %s must have same class as new style %s" % (parent.__class__.__name__,self.__class__.__name__)
 
         #step two
         self.name = name
@@ -57,9 +58,11 @@ class PropertySet:
         # very strict that only keys in class defaults are
         # allowed, so they cannot inherit
         self.refresh()
+        self._setKwds(**kw)
 
+    def _setKwds(self,**kw):
         #step three - copy keywords if any
-        for (key, value) in kw.items():
+        for key, value in kw.items():
              self.__dict__[key] = value
 
     def __repr__(self):
@@ -70,20 +73,28 @@ class PropertySet:
         use if you have been hacking the styles.  This is
         used by __init__"""
         if self.parent:
-            for (key, value) in self.parent.__dict__.items():
+            for key, value in self.parent.__dict__.items():
                 if (key not in ['name','parent']):
                     self.__dict__[key] = value
 
     def listAttrs(self, indent=''):
-        print indent + 'name =', self.name
-        print indent + 'parent =', self.parent
-        keylist = self.__dict__.keys()
+        print(indent + 'name =', self.name)
+        print(indent + 'parent =', self.parent)
+        keylist = list(self.__dict__.keys())
         keylist.sort()
         keylist.remove('name')
         keylist.remove('parent')
         for key in keylist:
             value = self.__dict__.get(key, None)
-            print indent + '%s = %s' % (key, value)
+            print(indent + '%s = %s' % (key, value))
+
+    def clone(self, name, parent=None, **kwds):
+        r = self.__class__(name,parent)
+        r.__dict__ = self.__dict__.copy()
+        r.name = name
+        r.parent = parent is None and self or parent
+        r._setKwds(**kwds)
+        return r
 
 class ParagraphStyle(PropertySet):
     defaults = {
@@ -99,9 +110,13 @@ class ParagraphStyle(PropertySet):
         'bulletFontName':_baseFontName,
         'bulletFontSize':10,
         'bulletIndent':0,
+        #'bulletColor':black,
         'textColor': black,
         'backColor':None,
-        'wordWrap':None,
+        'wordWrap':None,        #None means do nothing special
+                                #CJK use Chinese Line breaking
+                                #LTR RTL use left to right / right to left
+                                #with support from pyfribi2 if available
         'borderWidth': 0,
         'borderPadding': 0,
         'borderColor': None,
@@ -109,6 +124,12 @@ class ParagraphStyle(PropertySet):
         'allowWidows': 1,
         'allowOrphans': 0,
         'textTransform':None,   #uppercase lowercase (captitalize not yet) or None or absent
+        'endDots':None,         #dots on the last line of left/right justified paras
+                                #string or object with text and optional fontName, fontSize, textColor & backColor
+                                #dy
+        'splitLongWords':1,     #make best efforts to split long words
+        'underlineProportion': _baseUnderlineProportion,    #set to non-zero to get proportional
+        'bulletAnchor': 'start',    #where the bullet is anchored ie start, middle, end or numeric
         }
 
 class LineStyle(PropertySet):
@@ -121,6 +142,22 @@ class LineStyle(PropertySet):
         the lines."""
         canvas.setLineWidth(1)
         #etc. etc.
+
+class ListStyle(PropertySet):
+    defaults = dict(
+                leftIndent=18,
+                rightIndent=0,
+                bulletAlign='left',
+                bulletType='1',
+                bulletColor=black,
+                bulletFontName='Helvetica',
+                bulletFontSize=12,
+                bulletOffsetY=0,
+                bulletDedent='auto',
+                bulletDir='ltr',
+                bulletFormat=None,
+                start=None,         #starting value for a list
+                )
 
 _stylesheet1_undefined = object()
 
@@ -190,16 +227,16 @@ class StyleSheet1:
             self.byAlias[alias] = style
 
     def list(self):
-        styles = self.byName.items()
+        styles = list(self.byName.items())
         styles.sort()
         alii = {}
-        for (alias, style) in self.byAlias.items():
+        for (alias, style) in list(self.byAlias.items()):
             alii[style] = alias
         for (name, style) in styles:
             alias = alii.get(style, None)
-            print name, alias
+            print(name, alias)
             style.listAttrs('    ')
-            print
+            print()
 
 def testStyles():
     pNormal = ParagraphStyle('Normal',None)
@@ -208,7 +245,7 @@ def testStyles():
     pNormal.leading = 14.4
 
     pNormal.listAttrs()
-    print
+    print()
     pPre = ParagraphStyle('Literal', pNormal)
     pPre.fontName = 'Courier'
     pPre.listAttrs()

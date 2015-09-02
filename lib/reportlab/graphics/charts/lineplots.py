@@ -1,8 +1,8 @@
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/charts/lineplots.py
 
-__version__=''' $Id: lineplots.py 3735 2010-07-01 12:24:52Z rgbecker $ '''
+__version__=''' $Id$ '''
 __doc__="""This module defines a very preliminary Line Plot example."""
 
 import string, time
@@ -32,6 +32,12 @@ class LinePlotProperties(PropHolder):
         name = AttrMapValue(isStringOrNone, desc='Name of the line.'),
         inFill = AttrMapValue(isBoolean, desc='If true flood fill to x axis',advancedUsage=1),
         )
+
+class InFillValue(int):
+    def __new__(cls,v,yValue=None):
+        self = int.__new__(cls,v)
+        self.yValue = yValue
+        return self
 
 class Shader(_SetKeyWordArgs):
     _attrMap = AttrMap(BASE=PlotArea,
@@ -71,7 +77,7 @@ class ShadedPolyFiller(Filler,ShadedPolygon):
 class PolyFiller(Filler,Polygon):
     pass
 
-from linecharts import AbstractLineChart
+from reportlab.graphics.charts.linecharts import AbstractLineChart
 class LinePlot(AbstractLineChart):
     """Line plot with multiple lines.
 
@@ -184,14 +190,14 @@ class LinePlot(AbstractLineChart):
         """
 
         self._seriesCount = len(self.data)
-        self._rowLength = max(map(len,self.data))
+        self._rowLength = max(list(map(len,self.data)))
 
         self._positions = []
         for rowNo in range(len(self.data)):
             line = []
             for colNo in range(len(self.data[rowNo])):
                 datum = self.data[rowNo][colNo] # x,y value
-                if type(datum[0]) == type(''):
+                if isinstance(datum[0],str):
                     x = self.xValueAxis.scale(mktime(mkTimeTuple(datum[0])))
                 else:
                     x = self.xValueAxis.scale(datum[0])
@@ -207,15 +213,18 @@ class LinePlot(AbstractLineChart):
 
         if labelFmt is None:
             labelText = None
-        elif type(labelFmt) is StringType:
+        elif isinstance(labelFmt,str):
             if labelFmt == 'values':
                 labelText = self.lineLabelArray[rowNo][colNo]
             else:
                 labelText = labelFmt % labelValue
         elif hasattr(labelFmt,'__call__'):
-            labelText = labelFmt(labelValue)
+            if not hasattr(labelFmt,'__labelFmtEX__'):
+                labelText = labelFmt(labelValue)
+            else:
+                labelText = labelFmt(self,rowNo,colNo,x,y)
         else:
-            raise ValueError("Unknown formatter type %s, expected string or function"%labelFmt)
+            raise ValueError("Unknown formatter type %s, expected string or function"% labelFmt)
 
         if labelText:
             label = self.lineLabels[(rowNo, colNo)]
@@ -237,23 +246,27 @@ class LinePlot(AbstractLineChart):
 
     def makeLines(self):
         g = Group()
+        yA = self.yValueAxis
+        xA = self.xValueAxis
         bubblePlot = getattr(self,'_bubblePlot',None)
         if bubblePlot:
-            yA = self.yValueAxis
-            xA = self.xValueAxis
             bubbleR = min(yA._bubbleRadius,xA._bubbleRadius)
             bubbleMax = xA._bubbleMax
 
         labelFmt = self.lineLabelFormat
 
-        P = range(len(self._positions))
+        P = list(range(len(self._positions)))
         if self.reversePlotOrder: P.reverse()
         inFill = getattr(self,'_inFill',None)
         styleCount = len(self.lines)
         if inFill or [rowNo for rowNo in P if getattr(self.lines[rowNo%styleCount],'inFill',False)]:
-            inFillY = self.xValueAxis._y
-            inFillX0 = self.yValueAxis._x
-            inFillX1 = inFillX0 + self.xValueAxis._length
+            inFillY = getattr(inFill,'yValue',None)
+            if inFillY is None:
+                inFillY = xA._y
+            else:
+                inFillY = yA.scale(inFillY)
+            inFillX0 = yA._x
+            inFillX1 = inFillX0 + xA._length
             inFillG = getattr(self,'_inFillG',g)
         lG = getattr(self,'_lineG',g)
         # Iterate over data rows.
@@ -298,10 +311,18 @@ class LinePlot(AbstractLineChart):
                 uSymbol = None
 
             if uSymbol:
-                j = -1
                 if bubblePlot: drow = self.data[rowNo]
-                for xy in row:
-                    j += 1
+                for j,xy in enumerate(row):
+                    symbol = uSymbol2Symbol(uSymbol,xy[0],xy[1],rowColor)
+                    if symbol:
+                        if bubblePlot:
+                            symbol.size = bubbleR*(drow[j][2]/bubbleMax)**0.5
+                        g.add(symbol)
+            else:
+                if bubblePlot: drow = self.data[rowNo]
+                for j,xy in enumerate(row):
+                    usymbol = getattr(self.lines[rowNo,j],'symbol',None)
+                    if not usymbol: continue
                     symbol = uSymbol2Symbol(uSymbol,xy[0],xy[1],rowColor)
                     if symbol:
                         if bubblePlot:
@@ -348,13 +369,27 @@ class LinePlot(AbstractLineChart):
             if self.behindAxes:
                 self._lineG = Group()
                 g.add(self._lineG)
+        xA._joinToAxis()
+        yA._joinToAxis()
+        xAex = xA.visibleAxis and [xA._y] or []
+        yAex = yA.visibleAxis and [yA._x] or []
+        skipGrid = getattr(xA,'skipGrid','none')
+        if skipGrid!=None:
+            if skipGrid in ('both','top'):
+                yAex.append(xA._x+xA._length)
+            if skipGrid in ('both','bottom'):
+                yAex.append(xA._x)
+        skipGrid = getattr(yA,'skipGrid','none')
+        if skipGrid!=None:
+            if skipGrid in ('both','top'):
+                xAex.append(yA._y+yA._length)
+            if skipGrid in ('both','bottom'):
+                xAex.append(yA._y)
         if self.gridFirst:
-            xA.makeGrid(g,parent=self,dim=yA.getGridDims)
-            yA.makeGrid(g,parent=self,dim=xA.getGridDims)
+            xA.makeGrid(g,parent=self,dim=yA.getGridDims,exclude=yAex)
+            yA.makeGrid(g,parent=self,dim=xA.getGridDims,exclude=xAex)
         g.add(xA.draw())
         g.add(yA.draw())
-        xAex = xA.visibleAxis and (xA._y,) or ()
-        yAex = yA.visibleAxis and (yA._x,) or ()
         if not self.gridFirst:
             xAdgl = getattr(xA,'drawGridLast',False)
             yAdgl = getattr(yA,'drawGridLast',False)
@@ -380,9 +415,9 @@ class LinePlot(AbstractLineChart):
             x = xScale(xv)
             y = yScale(yv)
             g = Group()
-            xA = xScale.im_self #the x axis
+            xA = xScale.__self__ #the x axis
             g.add(Line(xA._x,y,xA._x+xA._length,y,strokeColor=strokeColor,strokeWidth=strokeWidth))
-            yA = yScale.im_self #the y axis
+            yA = yScale.__self__ #the y axis
             g.add(Line(x,yA._y,x,yA._y+yA._length,strokeColor=strokeColor,strokeWidth=strokeWidth))
             return g
         annotation.beforeLines = beforeLines
@@ -436,7 +471,7 @@ class LinePlot3D(LinePlot):
         labelFmt = self.lineLabelFormat
         positions = self._positions
 
-        P = range(len(positions))
+        P = list(range(len(positions)))
         if self.reversePlotOrder: P.reverse()
         inFill = getattr(self,'_inFill',None)
         assert not inFill, "inFill not supported for 3d yet"
@@ -449,15 +484,15 @@ class LinePlot3D(LinePlot):
         _zadjust = self._zadjust
         theta_x = self.theta_x
         theta_y = self.theta_y
-        from linecharts import _FakeGroup
+        from reportlab.graphics.charts.linecharts import _FakeGroup
         F = _FakeGroup()
 
-        from utils3d import _make_3d_line_info, find_intersections
+        from reportlab.graphics.charts.utils3d import _make_3d_line_info, find_intersections
         if self.xValueAxis.style!='parallel_3d':
             tileWidth = getattr(self,'_3d_tilewidth',1)
             if getattr(self,'_find_intersections',None):
                 from copy import copy
-                fpositions = map(copy,positions)
+                fpositions = list(map(copy,positions))
                 I = find_intersections(fpositions,small=tileWidth)
                 ic = None
                 for i,j,x,y in I:
@@ -497,7 +532,7 @@ class LinePlot3D(LinePlot):
                 if n:
                     frow = fpositions[rowNo]
                     x0, y0 = frow[0]
-                    for colNo in xrange(1,len(frow)):
+                    for colNo in range(1,len(frow)):
                         x1, y1 = frow[colNo]
                         _make_3d_line_info( F, x0, x1, y0, y1, z0, z1,
                                 theta_x, theta_y,
@@ -521,7 +556,7 @@ class LinePlot3D(LinePlot):
                     if symbol: F.add((1,z0,z0,x1,y1,symbol))
 
             # Draw data labels.
-            for colNo in xrange(n):
+            for colNo in range(n):
                 x1, y1 = row[colNo]
                 x1, y1 = _zadjust(x1,y1,z0)
                 L = self._innerDrawLabel(rowNo, colNo, x1, y1)
@@ -597,8 +632,18 @@ _monthlyIndexData = [[(19971202, 100.0),
   (20000531, 112.6),
   (20000630, 114.6)]]
 
-class GridLinePlot(LinePlot):
+class SimpleTimeSeriesPlot(LinePlot):
     """A customized version of LinePlot.
+    It uses NormalDateXValueAxis() and AdjYValueAxis() for the X and Y axes.
+    """
+    def __init__(self):
+        LinePlot.__init__(self)
+        self.xValueAxis = NormalDateXValueAxis()
+        self.yValueAxis = YValueAxis()
+        self.data = _monthlyIndexData
+
+class GridLinePlot(SimpleTimeSeriesPlot):
+    """A customized version of SimpleTimeSeriesSPlot.
     It uses NormalDateXValueAxis() and AdjYValueAxis() for the X and Y axes.
     The chart has a default grid background with thin horizontal lines
     aligned with the tickmarks (and labels). You can change the back-
@@ -614,9 +659,7 @@ class GridLinePlot(LinePlot):
 
     def __init__(self):
         from reportlab.lib import colors
-        LinePlot.__init__(self)
-        self.xValueAxis = NormalDateXValueAxis()
-        self.yValueAxis = AdjYValueAxis()
+        SimpleTimeSeriesPlot.__init__(self)
         self.scaleFactor = None
         self.background = Grid()
         self.background.orientation = 'horizontal'
@@ -624,13 +667,12 @@ class GridLinePlot(LinePlot):
         self.background.useLines = 1
         self.background.strokeWidth = 0.5
         self.background.strokeColor = colors.black
-        self.data = _monthlyIndexData
 
     def demo(self,drawing=None):
         from reportlab.lib import colors
         if not drawing:
             drawing = Drawing(400, 200)
-        lp = AdjLinePlot()
+        lp = GridLinePlot()
         lp.x = 50
         lp.y = 50
         lp.height = 125
@@ -684,13 +726,13 @@ class GridLinePlot(LinePlot):
         back = self.background
         if isinstance(back, Grid):
             if back.orientation == 'vertical' and xva._tickValues:
-                xpos = map(xva.scale, [xva._valueMin] + xva._tickValues)
+                xpos = list(map(xva.scale, [xva._valueMin] + xva._tickValues))
                 steps = []
                 for i in range(len(xpos)-1):
                     steps.append(xpos[i+1] - xpos[i])
                 back.deltaSteps = steps
             elif back.orientation == 'horizontal' and yva._tickValues:
-                ypos = map(yva.scale, [yva._valueMin] + yva._tickValues)
+                ypos = list(map(yva.scale, [yva._valueMin] + yva._tickValues))
                 steps = []
                 for i in range(len(ypos)-1):
                     steps.append(ypos[i+1] - ypos[i])
@@ -708,25 +750,25 @@ class GridLinePlot(LinePlot):
 
             # some room left for optimization...
             if back.grid0.orientation == 'vertical' and xva._tickValues:
-                xpos = map(xva.scale, [xva._valueMin] + xva._tickValues)
+                xpos = list(map(xva.scale, [xva._valueMin] + xva._tickValues))
                 steps = []
                 for i in range(len(xpos)-1):
                     steps.append(xpos[i+1] - xpos[i])
                 back.grid0.deltaSteps = steps
             elif back.grid0.orientation == 'horizontal' and yva._tickValues:
-                ypos = map(yva.scale, [yva._valueMin] + yva._tickValues)
+                ypos = list(map(yva.scale, [yva._valueMin] + yva._tickValues))
                 steps = []
                 for i in range(len(ypos)-1):
                     steps.append(ypos[i+1] - ypos[i])
                 back.grid0.deltaSteps = steps
             if back.grid1.orientation == 'vertical' and xva._tickValues:
-                xpos = map(xva.scale, [xva._valueMin] + xva._tickValues)
+                xpos = list(map(xva.scale, [xva._valueMin] + xva._tickValues))
                 steps = []
                 for i in range(len(xpos)-1):
                     steps.append(xpos[i+1] - xpos[i])
                 back.grid1.deltaSteps = steps
             elif back.grid1.orientation == 'horizontal' and yva._tickValues:
-                ypos = map(yva.scale, [yva._valueMin] + yva._tickValues)
+                ypos = list(map(yva.scale, [yva._valueMin] + yva._tickValues))
                 steps = []
                 for i in range(len(ypos)-1):
                     steps.append(ypos[i+1] - ypos[i])
@@ -763,9 +805,9 @@ class AreaLinePlot(LinePlot):
             m = len(odata[0])
             S = n*[0]
             self.data = []
-            for i in xrange(1,m):
+            for i in range(1,m):
                 D = []
-                for j in xrange(n):
+                for j in range(n):
                     S[j] = S[j] + odata[j][i]
                     D.append((odata[j][0],S[j]))
                 self.data.append(D)
@@ -789,9 +831,9 @@ class SplitLinePlot(AreaLinePlot):
 
 def _maxWidth(T, fontName, fontSize):
     '''return max stringWidth for the list of strings T'''
-    if type(T) not in (type(()),type([])): T = (T,)
-    T = filter(None,T)
-    return T and max(map(lambda t,sW=stringWidth,fN=fontName, fS=fontSize: sW(t,fN,fS),T)) or 0
+    if not isinstance(T,(tuple,list)): T = (T,)
+    T = [_f for _f in T if _f]
+    return T and max(list(map(lambda t,sW=stringWidth,fN=fontName, fS=fontSize: sW(t,fN,fS),T))) or 0
 
 class ScatterPlot(LinePlot):
     """A scatter plot widget"""
@@ -801,7 +843,6 @@ class ScatterPlot(LinePlot):
                     height = AttrMapValue(isNumber, desc="Height of the area inside the axes"),
                     outerBorderOn = AttrMapValue(isBoolean, desc="Is there an outer border (continuation of axes)"),
                     outerBorderColor = AttrMapValue(isColorOrNone, desc="Color of outer border (if any)"),
-                    background = AttrMapValue(isColorOrNone, desc="Background color (if any)"),
                     labelOffset = AttrMapValue(isNumber, desc="Space between label and Axis (or other labels)",advancedUsage=1),
                     axisTickLengths = AttrMapValue(isNumber, desc="Lenth of the ticks on both axes"),
                     axisStrokeWidth = AttrMapValue(isNumber, desc="Stroke width for both axes"),
@@ -853,7 +894,6 @@ class ScatterPlot(LinePlot):
 
         #values for lineplot
         self.joinedLines = 0
-        self.fillColor = self.background
 
         self.leftPadding=5
         self.rightPadding=10
@@ -1056,7 +1096,7 @@ def sample1c():
 def preprocessData(series):
     "Convert date strings into seconds and multiply values by 100."
 
-    return map(lambda x: (str2seconds(x[0]), x[1]*100), series)
+    return [(str2seconds(x[0]), x[1]*100) for x in series]
 
 
 def sample2():

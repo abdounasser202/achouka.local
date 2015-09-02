@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/widgets/grids.py
-__version__=''' $Id: table.py 3559 2009-09-22 11:27:25Z meitham $ '''
+__version__=''' $Id$ '''
 
 from reportlab.graphics.widgetbase import Widget
 from reportlab.graphics.charts.textlabels import Label
@@ -63,9 +63,8 @@ class TableWidget(Widget):
 
 
         for k, v in kw.items():
-            if k in self.__class__._attrMap.keys():
+            if k in list(self.__class__._attrMap.keys()):
                 setattr(self, k, v)
-                print 'setting %s = %s'%(k, v)
             else:
                 raise ValueError('invalid argument supplied for class %s'%self.__class__)
 
@@ -104,7 +103,7 @@ class TableWidget(Widget):
         #print "(row_step,col_step)=(%s, %s)"%(row_step,col_step)
         # draw the grid
         if self.horizontalDividerStrokeColor:
-            for i in xrange(rows): # make horizontal lines
+            for i in range(rows): # make horizontal lines
                 x1 = self.x
                 x2 = self.x + self.width
                 y = self.y + row_step*i
@@ -115,7 +114,7 @@ class TableWidget(Widget):
                 line.strokeColor = self.horizontalDividerStrokeColor
                 g.add(line)
         if self.verticalDividerStrokeColor:
-            for i in xrange(cols): # make vertical lines
+            for i in range(cols): # make vertical lines
                 x = self.x+col_step*i
                 y1 = self.y
                 y2 = self.y + self.height

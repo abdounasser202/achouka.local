@@ -1,7 +1,7 @@
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history www.reportlab.co.uk/rl-cgi/viewcvs.cgi/rlextra/graphics/Csrc/renderPM/renderP.py
-__version__=''' $Id: renderPM.py 3704 2010-04-15 13:41:32Z rgbecker $ '''
+__version__=''' $Id$ '''
 __doc__="""Render drawing objects in common bitmap formats
 
 Usage::
@@ -16,20 +16,20 @@ from reportlab.graphics.shapes import *
 from reportlab.graphics.renderbase import StateTracker, getStateDelta, renderScaledDrawing
 from reportlab.pdfbase.pdfmetrics import getFont, unicode2T1
 from math import sin, cos, pi, ceil
-from reportlab.lib.utils import getStringIO, open_and_read
+from reportlab.lib.utils import getStringIO, getBytesIO, open_and_read, isUnicode
 from reportlab import rl_config
 
 class RenderPMError(Exception):
     pass
 
-import string, os, sys
+import os, sys
 
 try:
-    import _renderPM
-except ImportError, errMsg:
-    raise ImportError, "No module named _renderPM\n" + \
+    from reportlab.graphics import _renderPM
+except ImportError as errMsg:
+    raise ImportError("No module named _renderPM\n" + \
         (str(errMsg)!='No module named _renderPM' and "it may be the wrong version or badly installed!" or
-                                    "see https://www.reportlab.com/software/opensource/rl-addons/")
+                                    "see https://www.reportlab.com/software/opensource/rl-addons/"))
 
 def _getImage():
     try:
@@ -78,7 +78,13 @@ class _PMRenderer(Renderer):
         self._canvas.lineCap = s['strokeLineCap']
         self._canvas.lineJoin = s['strokeLineJoin']
         da = s['strokeDashArray']
-        da = da and (0,da) or None
+        if not da:
+            da = None
+        else:
+            if not isinstance(da,(list,tuple)):
+                da = da,
+            if len(da)!=2 or not isinstance(da[1],(list,tuple)):
+                da = 0, da  #assume phase of 0
         self._canvas.dashArray = da
         alpha = s['fillOpacity']
         if alpha is not None:
@@ -117,19 +123,22 @@ class _PMRenderer(Renderer):
         self._canvas.line(line.x1,line.y1,line.x2,line.y2)
 
     def drawImage(self, image):
-        if image.path and os.path.exists(image.path):
-            if type(image.path) is type(''):
-                im = _getImage().open(image.path).convert('RGB')
-            else:
-                im = image.path.convert('RGB')
-            srcW, srcH = im.size
-            dstW, dstH = image.width, image.height
-            if dstW is None: dstW = srcW
-            if dstH is None: dstH = srcH
-            self._canvas._aapixbuf(
-                    image.x, image.y, dstW, dstH,
-                    im.tostring(), srcW, srcH, 3,
-                    )
+        path = image.path
+        if isinstance(path,str):
+            if not (path and os.path.isfile(path)): return
+            im = _getImage().open(path).convert('RGB')
+        elif hasattr(path,'convert'):
+            im = path.convert('RGB')
+        else:
+            return
+        srcW, srcH = im.size
+        dstW, dstH = image.width, image.height
+        if dstW is None: dstW = srcW
+        if dstH is None: dstH = srcH
+        self._canvas._aapixbuf(
+                image.x, image.y, dstW, dstH,
+                (im.tobytes if hasattr(im,'tobytes') else im.tostring)(), srcW, srcH, 3,
+                )
 
     def drawCircle(self, circle):
         c = self._canvas
@@ -177,7 +186,7 @@ class _PMRenderer(Renderer):
                 elif text_anchor=='numeric':
                     x -= numericXShift(text_anchor,text,textLen,fontName,fontSize,stringObj.encoding)
                 else:
-                    raise ValueError, 'bad value for textAnchor '+str(text_anchor)
+                    raise ValueError('bad value for textAnchor '+str(text_anchor))
             canv.drawString(x,y,text,_fontInfo=(fontName,fontSize))
 
     def drawPath(self, path):
@@ -207,18 +216,15 @@ class _PMRenderer(Renderer):
 def _setFont(gs,fontName,fontSize):
     try:
         gs.setFont(fontName,fontSize)
-    except _renderPM.Error, errMsg:
-        if errMsg.args[0]!="Can't find font!": raise
+    except ValueError as e:
+        if not e.args[0].endswith("Can't find font!"): raise
         #here's where we try to add a font to the canvas
         try:
             f = getFont(fontName)
-            if _renderPM._version<='0.98':  #added reader arg in 0.99
-                _renderPM.makeT1Font(fontName,f.face.findT1File(),f.encoding.vector)
-            else:
-                _renderPM.makeT1Font(fontName,f.face.findT1File(),f.encoding.vector,open_and_read)
+            _renderPM.makeT1Font(fontName,f.face.findT1File(),f.encoding.vector,open_and_read)
         except:
-            s1, s2 = map(str,sys.exc_info()[:2])
-            raise RenderPMError, "Can't setFont(%s) missing the T1 files?\nOriginally %s: %s" % (fontName,s1,s2)
+            s1, s2 = list(map(str,sys.exc_info()[:2]))
+            raise RenderPMError("Can't setFont(%s) missing the T1 files?\nOriginally %s: %s" % (fontName,s1,s2))
         gs.setFont(fontName,fontSize)
 
 def _convert2pilp(im):
@@ -235,9 +241,10 @@ def _saveAsPICT(im,fn,fmt,transparent=None):
     im = _convert2pilp(im)
     cols, rows = im.size
     #s = _renderPM.pil2pict(cols,rows,im.tostring(),im.im.getpalette(),transparent is not None and Color2Hex(transparent) or -1)
-    s = _renderPM.pil2pict(cols,rows,im.tostring(),im.im.getpalette())
+    s = _renderPM.pil2pict(cols,rows,(im.tobytes if hasattr(im,'tobytes') else im.tostring)(),im.im.getpalette())
     if not hasattr(fn,'write'):
-        open(os.path.splitext(fn)[0]+'.'+string.lower(fmt),'wb').write(s)
+        with open(os.path.splitext(fn)[0]+'.'+fmt.lower(),'wb') as f:
+            f.write(s)
         if os.name=='mac':
             from reportlab.lib.utils import markfilename
             markfilename(fn,ext='PICT')
@@ -275,14 +282,14 @@ class PMCanvas:
 
     def toPIL(self):
         im = _getImage().new('RGB', size=(self._gs.width, self._gs.height))
-        im.fromstring(self._gs.pixBuf)
+        getattr(im,'frombytes',getattr(im,'fromstring'))(self._gs.pixBuf)
         return im
 
     def saveToFile(self,fn,fmt=None):
         im = self.toPIL()
         if fmt is None:
-            if type(fn) is not StringType:
-                raise ValueError, "Invalid type '%s' for fn when fmt is None" % type(fn)
+            if not isinstance(fn,str):
+                raise ValueError("Invalid value '%s' for fn when fmt is None" % ascii(fn))
             fmt = os.path.splitext(fn)[1]
             if fmt.startswith('.'): fmt = fmt[1:]
         configPIL = self.configPIL or {}
@@ -290,7 +297,7 @@ class PMCanvas:
         preConvertCB=configPIL.pop('preConvertCB')
         if preConvertCB:
             im = preConvertCB(im)
-        fmt = string.upper(fmt)
+        fmt = fmt.upper()
         if fmt in ('GIF',):
             im = _convert2pilp(im)
         elif fmt in ('TIFF','TIFFP','TIFFL','TIF','TIFF1'):
@@ -319,7 +326,7 @@ class PMCanvas:
         elif fmt in ('GIF',):
             pass
         else:
-            raise RenderPMError,"Unknown image kind %s" % fmt
+            raise RenderPMError("Unknown image kind %s" % fmt)
         if fmt=='TIFF':
             tc = configPIL.get('transparent',None)
             if tc:
@@ -327,9 +334,9 @@ class PMCanvas:
                 T = 768*[0]
                 for o, c in zip((0,256,512), tc.bitmap_rgb()):
                     T[o+c] = 255
-                #if type(fn) is type(''): ImageChops.invert(im.point(T).convert('L').point(255*[0]+[255])).save(fn+'_mask.gif','GIF')
+                #if isinstance(fn,str): ImageChops.invert(im.point(T).convert('L').point(255*[0]+[255])).save(fn+'_mask.gif','GIF')
                 im = Image.merge('RGBA', im.split()+(ImageChops.invert(im.point(T).convert('L').point(255*[0]+[255])),))
-                #if type(fn) is type(''): im.save(fn+'_masked.gif','GIF')
+                #if isinstance(fn,str): im.save(fn+'_masked.gif','GIF')
             for a,d in ('resolution',self._dpi),('resolution unit','inch'):
                 configPIL[a] = configPIL.get(a,d)
         configPIL.setdefault('chops_invert',0)
@@ -346,7 +353,7 @@ class PMCanvas:
             markfilename(fn,ext=fmt)
 
     def saveToString(self,fmt='GIF'):
-        s = getStringIO()
+        s = getBytesIO()
         self.saveToFile(s,fmt=fmt)
         return s.getvalue()
 
@@ -480,29 +487,27 @@ class PMCanvas:
             gfont = None
         font = getFont(fontName)
         if font._dynamicFont:
-            if isinstance(text,unicode): text = text.encode('utf8')
             gs.drawString(x,y,text)
         else:
             fc = font
-            if not isinstance(text,unicode):
+            if not isUnicode(text):
                 try:
                     text = text.decode('utf8')
-                except UnicodeDecodeError,e:
+                except UnicodeDecodeError as e:
                     i,j = e.args[2:4]
                     raise UnicodeDecodeError(*(e.args[:4]+('%s\n%s-->%s<--%s' % (e.args[4],text[i-10:i],text[i:j],text[j:j+10]),)))
 
             FT = unicode2T1(text,[font]+font.substitutionFonts)
             n = len(FT)
             nm1 = n-1
-            wscale = 0.001*fontSize
-            for i in xrange(n):
+            for i in range(n):
                 f, t = FT[i]
                 if f!=fc:
                     _setFont(gs,f.fontName,fontSize)
                     fc = f
                 gs.drawString(x,y,t)
                 if i!=nm1:
-                    x += wscale*sum(map(f.widths.__getitem__,map(ord,t)))
+                    x += f.stringWidth(t.decode(f.encName),fontSize)
             if font!=fc:
                 _setFont(gs,fontName,fontSize)
 
@@ -652,13 +657,13 @@ def drawToFile(d,fn,fmt='GIF', dpi=72, bg=0xffffff, configPIL=None, showBoundary
     c.saveToFile(fn,fmt)
 
 def drawToString(d,fmt='GIF', dpi=72, bg=0xffffff, configPIL=None, showBoundary=rl_config._unset_):
-    s = getStringIO()
+    s = getBytesIO()
     drawToFile(d,s,fmt=fmt, dpi=dpi, bg=bg, configPIL=configPIL)
     return s.getvalue()
 
 save = drawToFile
 
-def test():
+def test(outDir='pmout', shout=False):
     def ext(x):
         if x=='tiff': x='tif'
         return x
@@ -666,10 +671,11 @@ def test():
     #make a page of links in HTML to assist viewing.
     import os
     from reportlab.graphics import testshapes
+    from reportlab.rl_config import verbose
     getAllTestDrawings = testshapes.getAllTestDrawings
     drawings = []
-    if not os.path.isdir('pmout'):
-        os.mkdir('pmout')
+    if not os.path.isdir(outDir):
+        os.mkdir(outDir)
     htmlTop = """<html><head><title>renderPM output results</title></head>
     <body>
     <h1>renderPM results of output</h1>
@@ -688,6 +694,17 @@ def test():
             argv.remove(a)
         E = (','.join([a[6:] for a in E])).split(',')
 
+    errs = []
+    import traceback
+    from xml.sax.saxutils import escape
+    def handleError(name,fmt):
+        msg = 'Problem drawing %s fmt=%s file'%(name,fmt)
+        if shout or verbose>2: print(msg)
+        errs.append('<br/><h2 style="color:red">%s</h2>' % msg)
+        buf = getStringIO()
+        traceback.print_exc(file=buf)
+        errs.append('<pre>%s</pre>' % escape(buf.getvalue()))
+
     #print in a loop, with their doc strings
     for (drawing, docstring, name) in getAllTestDrawings(doTTF=hasattr(_renderPM,'ft_get_face')):
         i = names[name] = names.setdefault(name,0)+1
@@ -700,17 +717,17 @@ def test():
 
         for k in E:
             if k in ['gif','png','jpg','pct']:
-                html.append('<p>%s format</p>\n' % string.upper(k))
+                html.append('<p>%s format</p>\n' % k.upper())
             try:
                 filename = '%s.%s' % (fnRoot, ext(k))
-                fullpath = os.path.join('pmout', filename)
+                fullpath = os.path.join(outDir, filename)
                 if os.path.isfile(fullpath):
                     os.remove(fullpath)
                 if k=='pct':
                     from reportlab.lib.colors import white
                     drawToFile(drawing,fullpath,fmt=k,configPIL={'transparent':white})
                 elif k in ['py','svg']:
-                    drawing.save(formats=['py','svg'],outDir='pmout',fnRoot=fnRoot)
+                    drawing.save(formats=['py','svg'],outDir=outDir,fnRoot=fnRoot)
                 else:
                     drawToFile(drawing,fullpath,fmt=k)
                 if k in ['gif','png','jpg']:
@@ -719,19 +736,28 @@ def test():
                     html.append('<a href="%s">python source</a><br>\n' % filename)
                 elif k=='svg':
                     html.append('<a href="%s">SVG</a><br>\n' % filename)
-                print 'wrote',fullpath
+                if shout or verbose>2: print('wrote %s'%ascii(fullpath))
             except AttributeError:
-                print 'Problem drawing %s file'%k
-                raise
+                handleError(name,k)
         if os.environ.get('RL_NOEPSPREVIEW','0')=='1': drawing.__dict__['preview'] = 0
-        drawing.save(formats=['eps','pdf'],outDir='pmout',fnRoot=fnRoot)
+        for k in ('eps', 'pdf'):
+            try:
+                drawing.save(formats=[k],outDir=outDir,fnRoot=fnRoot)
+            except:
+                handleError(name,k)
+
+    if errs:
+        html[0] = html[0].replace('</h1>',' <a href="#errors" style="color: red">(errors)</a></h1>')
+        html.append('<a name="errors"/>')
+        html.extend(errs)
     html.append(htmlBottom)
-    htmlFileName = os.path.join('pmout', 'index.html')
-    open(htmlFileName, 'w').writelines(html)
+    htmlFileName = os.path.join(outDir, 'pm-index.html')
+    with open(htmlFileName, 'w') as f:
+        f.writelines(html)
     if sys.platform=='mac':
         from reportlab.lib.utils import markfilename
         markfilename(htmlFileName,ext='HTML')
-    print 'wrote %s' % htmlFileName
+    if shout or verbose>2: print('wrote %s' % htmlFileName)
 
 if __name__=='__main__':
-    test()
+    test(shout=True)

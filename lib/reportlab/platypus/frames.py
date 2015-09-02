@@ -1,8 +1,8 @@
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/platypus/frames.py
 
-__version__=''' $Id: frames.py 3449 2009-03-03 17:38:41Z rgbecker $ '''
+__version__=''' $Id$ '''
 
 __doc__="""A frame is a container for content on a page.
 """
@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger('reportlab.platypus')
 
 _geomAttr=('x1', 'y1', 'width', 'height', 'leftPadding', 'bottomPadding', 'rightPadding', 'topPadding')
-from reportlab import rl_config
+from reportlab import rl_config, isPy3
 _FUZZ=rl_config._FUZZ
 
 class ShowBoundaryValue:
@@ -19,8 +19,13 @@ class ShowBoundaryValue:
         self.color = color
         self.width = width
 
-    def __nonzero__(self):
-        return self.color is not None and self.width>=0
+    if isPy3:
+        def __bool__(self):
+            return self.color is not None and self.width>=0
+    else:
+        def __nonzero__(self):
+            return self.color is not None and self.width>=0
+
 
 class Frame:
     '''
@@ -96,7 +101,7 @@ class Frame:
             for ga in _geomAttr:
                 ga = '_'+ga
                 self.__dict__['_savedGeom'][ga] = self.__dict__[ga]
-        for k,v in kwds.iteritems():
+        for k,v in kwds.items():
             setattr(self,k,v)
 
     def _restoreGeom(self):
@@ -150,12 +155,15 @@ class Frame:
             p = self._y1p
             s = 0
             aW = self._getAvailableWidth()
+            zeroSize = getattr(flowable,'_ZEROSIZE',False)
             if not self._atTop:
                 s =flowable.getSpaceBefore()
                 if self._oASpace:
+                    if getattr(flowable,'_SPACETRANSFER',False) or zeroSize:
+                        s = self._prevASpace
                     s = max(s-self._prevASpace,0)
             h = y - p - s
-            if h>0:
+            if h>0 or zeroSize:
                 w, h = flowable.wrap(aW, h)
             else:
                 return 0
@@ -171,12 +179,28 @@ class Frame:
                 return 0
             else:
                 #now we can draw it, and update the current point.
+                s = flowable.getSpaceAfter()
+                fbg = getattr(self,'_frameBGs',None)
+                if fbg:
+                    fbgl, fbgr, fbgc = fbg[-1]
+                    fbw = self._width-fbgl-fbgr
+                    fbh = y + h + s
+                    fby = max(p,y-s)
+                    fbh = max(0,fbh-fby)
+                    if abs(fbw)>_FUZZ and abs(fbh)>_FUZZ:
+                        canv.saveState()
+                        canv.setFillColor(fbgc)
+                        canv.rect(self._x1+fbgl,fby,fbw,fbh,stroke=0,fill=1)
+                        canv.restoreState()
+
                 flowable.drawOn(canv, self._x + self._leftExtraIndent, y, _sW=aW-w)
                 flowable.canv=canv
                 if self._debug: logger.debug('drew %s' % flowable.identity())
-                s = flowable.getSpaceAfter()
                 y -= s
-                if self._oASpace: self._prevASpace = s
+                if self._oASpace:
+                    if getattr(flowable,'_SPACETRANSFER',False):
+                        s = self._prevASpace
+                    self._prevASpace = s
                 if y!=self._y: self._atTop = 0
                 self._y = y
                 return 1
@@ -197,16 +221,23 @@ class Frame:
             s = flowable.getSpaceBefore()
             if self._oASpace:
                 s = max(s-self._prevASpace,0)
-        flowable.canv = canv    #some flowables might need this
-        r = flowable.split(self._aW, y-p-s)
-        del flowable.canv
+        flowable._frame = self                  #some flowables might need these
+        flowable.canv = canv        
+        try:
+            r = flowable.split(self._aW, y-p-s)
+        finally:
+            #sometimes canv/_frame aren't still on the flowable
+            for a in ('canv', '_frame'):
+                if hasattr(flowable,a):
+                    delattr(flowable,a)
         return r
+
 
     def drawBoundary(self,canv):
         "draw the frame boundary as a rectangle (primarily for debugging)."
-        from reportlab.lib.colors import Color, CMYKColor, toColor
+        from reportlab.lib.colors import Color, toColor
         sb = self.showBoundary
-        ss = type(sb) in (type(''),type(()),type([])) or isinstance(sb,Color)
+        ss = isinstance(sb,(str,tuple,list)) or isinstance(sb,Color)
         w = -1
         if ss:
             c = toColor(sb,self)

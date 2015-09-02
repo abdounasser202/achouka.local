@@ -36,14 +36,14 @@ __doc__='''Popular barcodes available as reusable widgets'''
 def getCodes():
     """Returns a dict mapping code names to widgets"""
 
-    from widgets import BarcodeI2of5, BarcodeCode128, BarcodeStandard93,\
+    from reportlab.graphics.barcode.widgets import BarcodeI2of5, BarcodeCode128, BarcodeStandard93,\
                         BarcodeExtended93, BarcodeStandard39, BarcodeExtended39,\
                         BarcodeMSI, BarcodeCodabar, BarcodeCode11, BarcodeFIM,\
                         BarcodePOSTNET, BarcodeUSPS_4State
 
     #newer codes will typically get their own module
-    from eanbc import Ean13BarcodeWidget, Ean8BarcodeWidget
-    from qr import QrCodeWidget
+    from reportlab.graphics.barcode.eanbc import Ean13BarcodeWidget, Ean8BarcodeWidget, UPCA
+    from reportlab.graphics.barcode.qr import QrCodeWidget
 
 
     #the module exports a dictionary of names to widgets, to make it easy for
@@ -64,6 +64,7 @@ def getCodes():
                 BarcodeUSPS_4State,
                 Ean13BarcodeWidget,
                 Ean8BarcodeWidget,
+                UPCA,
                 QrCodeWidget,
                 ):
         codeName = widget.codeName
@@ -86,7 +87,7 @@ def createBarcodeDrawing(codeName, **options):
     height = options.pop('height',None)
     isoScale = options.pop('isoScale',0)
     kw = {}
-    for k,v in options.iteritems():
+    for k,v in options.items():
         if k.startswith('_') or k in bcc._attrMap: kw[k] = v
     bc = bcc(**kw)
 
@@ -124,8 +125,12 @@ def createBarcodeDrawing(codeName, **options):
     d.add(bc, "_bc")
     return d
 
-def createBarcodeImageInMemory(codeName, **options):
+def createBarcodeImageInMemory(codeName,**options):
     """This creates and returns barcode as an image in memory.
-    """    
+    Takes same arguments as createBarcodeDrawing and also an
+    optional format keyword which can be anything acceptable
+    to Drawing.asString eg gif, pdf, tiff, py ......
+    """
+    format = options.pop('format','png')
     d = createBarcodeDrawing(codeName, **options)
     return d.asString(format)

@@ -1,5 +1,5 @@
 #!/bin/env python
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/testdrawings.py
 __version__=''' $Id $ '''
@@ -293,4 +293,4 @@ def getDrawing2():
 
 
 if __name__=='__main__':
-    print __doc__
+    print(__doc__)

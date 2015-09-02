@@ -1,5 +1,5 @@
 #!/bin/env python
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/testshapes.py
 
@@ -19,6 +19,7 @@ import os, sys
 
 from reportlab.lib import colors
 from reportlab.lib.units import cm
+from reportlab.lib.utils import asNative
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import Flowable
@@ -60,7 +61,15 @@ def _setup():
                         F.append(name)
                     except:
                         pass
-_setup()
+    return F
+
+def resetFonts():
+    for f in _setup():
+        if f not in _FONTS:
+            _FONTS.append(f)
+from reportlab.rl_config import register_reset
+register_reset(resetFonts)
+resetFonts()
 
 #########################################################
 #
@@ -104,7 +113,7 @@ def getDrawing01():
     D = Drawing(400, 200)
     D.add(Rect(50, 50, 300, 100, fillColor=colors.yellow))
     D.add(String(180,100, 'Hello World', fillColor=colors.red))
-    D.add(String(180,86, 'Special characters \xc2\xa2\xc2\xa9\xc2\xae\xc2\xa3\xce\xb1\xce\xb2', fillColor=colors.red))
+    D.add(String(180,86, b'Special characters \xc2\xa2\xc2\xa9\xc2\xae\xc2\xa3\xce\xb1\xce\xb2', fillColor=colors.red))
 
     return D
 
@@ -376,7 +385,7 @@ def getDrawing10():
 
     return D
 
-from widgets.signsandsymbols import SmileyFace
+from reportlab.graphics.widgets.signsandsymbols import SmileyFace
 def getDrawing11():
     '''test of anchoring'''
     def makeSmiley(x, y, size, color):
@@ -431,7 +440,7 @@ def getDrawing13():
         maxx = 0
         for fontName in F:
             y -= th
-            text = fontName+": I should be totally horizontal and enclosed in a box and end in alphabetagamma \xc2\xa2\xc2\xa9\xc2\xae\xc2\xa3\xca\xa5\xd0\x96\xd6\x83\xd7\x90\xd9\x82\xe0\xa6\x95\xce\xb1\xce\xb2\xce\xb3"
+            text = fontName+asNative(b': I should be totally horizontal and enclosed in a box and end in alphabetagamma \xc2\xa2\xc2\xa9\xc2\xae\xc2\xa3\xca\xa5\xd0\x96\xd6\x83\xd7\x90\xd9\x82\xe0\xa6\x95\xce\xb1\xce\xb2\xce\xb3')
             textWidth = stringWidth(text, fontName, fontSize)
             maxx = max(maxx,textWidth+20)
             D.add(
@@ -439,8 +448,8 @@ def getDrawing13():
                     String(10, y, text, fontName=fontName, fontSize = fontSize)))
             y -= 5
         return maxx, h-y+gap, D
-    maxx, maxy, D = drawit(F)
-    if maxx>400 or maxy>200: _,_,D = drawit(F,maxx,maxy)
+    maxx, maxy, D = drawit(_FONTS)
+    if maxx>400 or maxy>200: _,_,D = drawit(_FONTS,maxx,maxy)
     return D
 
 ##def getDrawing14():
@@ -473,7 +482,7 @@ def getAllFunctionDrawingNames(doTTF=1):
     funcNames = []
 
     # Here we get the names from the global name space.
-    symbols = globals().keys()
+    symbols = list(globals().keys())
     symbols.sort()
     for funcName in symbols:
         if funcName[0:10] == 'getDrawing':
@@ -526,7 +535,7 @@ def writePDF(drawings):
         i = i + 1
 
     c.save()
-    print 'wrote %s ' % pdfPath
+    print('wrote %s ' % pdfPath)
 
 
 class ShapesTestCase(unittest.TestCase):

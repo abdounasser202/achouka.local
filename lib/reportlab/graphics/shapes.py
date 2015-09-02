@@ -1,23 +1,23 @@
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/shapes.py
 
-__version__=''' $Id: shapes.py 3751 2010-07-30 09:28:28Z rgbecker $ '''
+__version__=''' $Id$ '''
 __doc__='''Core of the graphics library - defines Drawing and Shapes'''
 
-import string, os, sys
-from math import pi, cos, sin, tan
-from types import FloatType, IntType, ListType, TupleType, StringType, InstanceType
+import os, sys
+from math import pi, cos, sin, tan, sqrt
 from pprint import pprint
 
 from reportlab.platypus import Flowable
-from reportlab.rl_config import shapeChecking, verbose, defaultGraphicsFontName as _baseGFontName, _unset_
+from reportlab.rl_config import shapeChecking, verbose, defaultGraphicsFontName as _baseGFontName, _unset_, decimalSymbol
 from reportlab.lib import logger
 from reportlab.lib import colors
 from reportlab.lib.validators import *
+from reportlab.lib.utils import isSeq, asBytes
 isOpacity = NoneOr(isNumberInRange(0,1))
 from reportlab.lib.attrmap import *
-from reportlab.lib.utils import fp_str
+from reportlab.lib.rl_accel import fp_str
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.lib.fonts import tt2ps
 _baseGFontNameB = tt2ps(_baseGFontName,1,0)
@@ -120,10 +120,12 @@ def transformPoint(A,v):
     return (A[0]*v[0]+A[2]*v[1]+A[4],A[1]*v[0]+A[3]*v[1]+A[5])
 
 def transformPoints(matrix, V):
-    return map(transformPoint, V)
+    r = [transformPoint(matrix,v) for v in V]
+    if isinstance(V,tuple): r = tuple(r)
+    return r
 
 def zTransformPoints(matrix, V):
-    return map(lambda x,matrix=matrix: zTransformPoint(matrix,x), V)
+    return list(map(lambda x,matrix=matrix: zTransformPoint(matrix,x), V))
 
 def _textBoxLimits(text, font, fontSize, leading, textAnchor, boxAnchor):
     w = 0
@@ -165,8 +167,8 @@ def _rotatedBoxLimits( x, y, w, h, angle):
     return the corner points and the min max points in the original space
     '''
     C = zTransformPoints(rotate(angle),((x,y),(x+w,y),(x+w,y+h),(x,y+h)))
-    X = map(lambda x: x[0], C)
-    Y = map(lambda x: x[1], C)
+    X = [x[0] for x in C]
+    Y = [x[1] for x in C]
     return min(X), max(X), min(Y), max(Y), C
 
 
@@ -195,7 +197,7 @@ class _SetKeyWordArgs:
 
 def getRectsBounds(rectList):
     # filter out any None objects, e.g. empty groups
-    L = filter(lambda x: x is not None, rectList)
+    L = [x for x in rectList if x is not None]
     if not L: return None
 
     xMin, yMin, xMax, yMax = L[0]
@@ -210,19 +212,72 @@ def getRectsBounds(rectList):
             yMax = y2
     return (xMin, yMin, xMax, yMax)
 
+def _getBezierExtrema(y0,y1,y2,y3):
+    '''
+    this is used to find if a curveTo path operator has extrema in its range
+    The curveTo operator is defined by the points y0, y1, y2, y3
+
+        B(t):=(1-t)^3*y0+3*(1-t)^2*t*y1+3*(1-t)*t^2*y2+t^3*y3
+            :=t^3*(y3-3*y2+3*y1-y0)+t^2*(3*y2-6*y1+3*y0)+t*(3*y1-3*y0)+y0
+    and is a cubic bezier curve.
+
+    The differential is a quadratic
+        t^2*(3*y3-9*y2+9*y1-3*y0)+t*(6*y2-12*y1+6*y0)+3*y1-3*y0
+
+    The extrema must be at real roots, r, of the above which lie in 0<=r<=1
+
+    The quadratic coefficients are
+        a=3*y3-9*y2+9*y1-3*y0 b=6*y2-12*y1+6*y0 c=3*y1-3*y0
+    or
+        a=y3-3*y2+3*y1-y0 b=2*y2-4*y1+2*y0 c=y1-y0  (remove common factor of 3)
+    or
+        a=y3-3*(y2-y1)-y0 b=2*(y2-2*y1+y0) c=y1-y0
+
+    The returned value is [y0,x1,x2,y3] where if found x1, x2 are any extremals that were found;
+    there can be 0, 1 or 2 extremals
+    '''
+    a=y3-3*(y2-y1)-y0
+    b=2*(y2-2*y1+y0)
+    c=y1-y0
+    Y = [y0] #the set of points
+
+    #standard method to find roots of quadratic
+    d = b*b - 4*a*c
+    if d>=0:
+        d = sqrt(d)
+        if b<0: d = -d
+        q = -0.5*(b+d)
+        R = []
+        try:
+            R.append(q/a)
+        except:
+            pass
+        try:
+            R.append(c/q)
+        except:
+            pass
+        b *= 1.5
+        c *= 3
+        for t in R:
+            if 0<=t<=1:
+                #real root in range evaluate spline there and add to X
+                Y.append(t*(t*(t*a+b)+c)+y0)
+    Y.append(y3)
+    return Y
+
 def getPathBounds(points):
     n = len(points)
     f = lambda i,p = points: p[i]
-    xs = map(f,xrange(0,n,2))
-    ys = map(f,xrange(1,n,2))
+    xs = list(map(f,range(0,n,2)))
+    ys = list(map(f,range(1,n,2)))
     return (min(xs), min(ys), max(xs), max(ys))
 
 def getPointsBounds(pointList):
     "Helper function for list of points"
     first = pointList[0]
-    if type(first) in (ListType, TupleType):
-        xs = map(lambda xy: xy[0],pointList)
-        ys = map(lambda xy: xy[1],pointList)
+    if isSeq(first):
+        xs = [xy[0] for xy in pointList]
+        ys = [xy[1] for xy in pointList]
         return (min(xs), min(ys), max(xs), max(ys))
     else:
         return getPathBounds(pointList)
@@ -245,7 +300,7 @@ class Shape(_SetKeyWordArgs,_DrawTimeResizeable):
         """Return a clone of this shape."""
 
         # implement this in the descendants as they need the right init methods.
-        raise NotImplementedError, "No copy method implemented for %s" % self.__class__.__name__
+        raise NotImplementedError("No copy method implemented for %s" % self.__class__.__name__)
 
     def getProperties(self,recur=1):
         """Interface to make it easy to extract automatic
@@ -272,12 +327,12 @@ class Shape(_SetKeyWordArgs,_DrawTimeResizeable):
         may provide a prefix - mostly helps to generate code
         samples for documentation."""
 
-        propList = self.getProperties().items()
+        propList = list(self.getProperties().items())
         propList.sort()
         if prefix:
             prefix = prefix + '.'
         for (name, value) in propList:
-            print '%s%s = %s' % (prefix, name, value)
+            print('%s%s = %s' % (prefix, name, value))
 
     def verify(self):
         """If the programmer has provided the optional
@@ -291,7 +346,7 @@ class Shape(_SetKeyWordArgs,_DrawTimeResizeable):
             for key in self.__dict__.keys():
                 if key[0] != '_':
                     assert key in self._attrMap, "Unexpected attribute %s found in %s" % (key, self)
-            for (attr, metavalue) in self._attrMap.items():
+            for attr, metavalue in self._attrMap.items():
                 assert hasattr(self, attr), "Missing attribute %s from %s" % (attr, self)
                 value = getattr(self, attr)
                 assert metavalue.validate(value), "Invalid value %s for attribute %s in class %s" % (value, attr, self.__class__.__name__)
@@ -343,7 +398,7 @@ class Group(Shape):
     def _addNamedNode(self,name,node):
         'if name is not None add an attribute pointing to node and add to the attrMap'
         if name:
-            if name not in self._attrMap.keys():
+            if name not in list(self._attrMap.keys()):
                 self._attrMap[name] = AttrMapValue(isValidChild)
             setattr(self, name, node)
 
@@ -420,8 +475,8 @@ class Group(Shape):
     def _copyNamedContents(self,obj,aKeys=None,noCopy=('contents',)):
         from copy import copy
         self_contents = self.contents
-        if not aKeys: aKeys = self._attrMap.keys()
-        for (k, v) in self.__dict__.items():
+        if not aKeys: aKeys = list(self._attrMap.keys())
+        for k, v in self.__dict__.items():
             if v in self_contents:
                 pos = self_contents.index(v)
                 setattr(obj, k, obj.contents[pos])
@@ -511,36 +566,33 @@ def _addObjImport(obj,I,n=None):
 
 def _repr(self,I=None):
     '''return a repr style string with named fixed args first, then keywords'''
-    if type(self) is InstanceType:
-        if self is EmptyClipPath:
-            _addObjImport(self,I,'EmptyClipPath')
-            return 'EmptyClipPath'
-        if I: _addObjImport(self,I)
-        if isinstance(self,Shape):
-            from inspect import getargs
-            args, varargs, varkw = getargs(self.__init__.im_func.func_code)
-            P = self.getProperties()
-            s = self.__class__.__name__+'('
-            for n in args[1:]:
-                v = P[n]
-                del P[n]
-                s = s + '%s,' % _repr(v,I)
-            for n,v in P.items():
-                v = P[n]
-                s = s + '%s=%s,' % (n, _repr(v,I))
-            return s[:-1]+')'
-        else:
-            return repr(self)
-    elif type(self) is FloatType:
+    if isinstance(self,float):
         return fp_str(self)
-    elif type(self) in (ListType,TupleType):
+    elif isSeq(self):
         s = ''
         for v in self:
             s = s + '%s,' % _repr(v,I)
-        if type(self) is ListType:
+        if isinstance(self,list):
             return '[%s]' % s[:-1]
         else:
             return '(%s%s)' % (s[:-1],len(self)==1 and ',' or '')
+    elif self is EmptyClipPath:
+        if I: _addObjImport(self,I,'EmptyClipPath')
+        return 'EmptyClipPath'
+    elif isinstance(self,Shape):
+        if I: _addObjImport(self,I)
+        from inspect import getargs
+        args, varargs, varkw = getargs(self.__init__.__func__.__code__)
+        P = self.getProperties()
+        s = self.__class__.__name__+'('
+        for n in args[1:]:
+            v = P[n]
+            del P[n]
+            s = s + '%s,' % _repr(v,I)
+        for n,v in P.items():
+            v = P[n]
+            s = s + '%s=%s,' % (n, _repr(v,I))
+        return s[:-1]+')'
     else:
         return repr(self)
 
@@ -591,7 +643,12 @@ class Drawing(Group, Flowable):
         renderScale = AttrMapValue(isNumber,desc="Global scaling for rendering"),
         )
 
-    _attrMap = AttrMap(BASE=Group)
+    _attrMap = AttrMap(BASE=Group,
+            formats = AttrMapValue(SequenceOf(
+                OneOf('pdf','gif','png','tif','jpg','tiff','pct','pict',
+                        'bmp','tiffp','tiffl','tiff1','eps','svg','ps','py'),
+                lo=1,emptyOK=0), desc='One or more plot modes'),
+            )
     _attrMap.update(_xtraAttrMap)
 
     def __init__(self, width=400, height=200, *nodes, **keywords):
@@ -609,7 +666,7 @@ class Drawing(Group, Flowable):
         n = 'ExplodedDrawing_' + self.__class__.__name__
         s = '#Autogenerated by ReportLab guiedit do not edit\n'
         for m, o in I.items():
-            s = s + 'from %s import %s\n' % (m,string.replace(str(o)[1:-1],"'",""))
+            s = s + 'from %s import %s\n' % (m,str(o)[1:-1].replace("'",""))
         s = s + '\nclass %s(_DrawingEditorMixin,Drawing):\n' % n
         s = s + '\tdef __init__(self,width=%s,height=%s,*args,**kw):\n' % (self.width,self.height)
         s = s + '\t\tDrawing.__init__(self,width,height,*args,**kw)\n'
@@ -621,7 +678,7 @@ class Drawing(Group, Flowable):
         """This is used by the Platypus framework to let the document
         draw itself in a story.  It is specific to PDF and should not
         be used directly."""
-        import renderPDF
+        from reportlab.graphics import renderPDF
         renderPDF.draw(self, self.canv, 0, 0, showBoundary=showBoundary)
 
     def wrap(self, availWidth, availHeight):
@@ -672,7 +729,7 @@ class Drawing(Group, Flowable):
             else:
                 try:
                     fnRoot = fnRoot % chartId
-                except TypeError, err:
+                except TypeError as err:
                     #the exact error message changed from 2.2 to 2.3 so we need to
                     #check a substring
                     if str(err).find('not all arguments converted') < 0: raise
@@ -687,7 +744,7 @@ class Drawing(Group, Flowable):
         if not os.path.isdir(outDir): os.makedirs(outDir)
         fnroot = os.path.normpath(os.path.join(outDir,fnRoot))
         plotMode = os.path.splitext(fnroot)
-        if string.lower(plotMode[1][1:]) in self._saveModes:
+        if plotMode[1][1:].lower() in self._saveModes:
             fnroot = plotMode[0]
 
         plotMode = [x.lower() for x in (formats or getattr(self,'formats',['pdf']))]
@@ -697,7 +754,7 @@ class Drawing(Group, Flowable):
         if 'pdf' in plotMode:
             from reportlab.graphics import renderPDF
             filename = fnroot+'.pdf'
-            if verbose: print genFmt % ('PDF',filename)
+            if verbose: print(genFmt % ('PDF',filename))
             renderPDF.drawToFile(self, filename, title, showBoundary=getattr(self,'showBorder',rl_config.showBoundary),**_extraKW(self,'_renderPDF_',**kw))
             ext = ext +  '/.pdf'
             if sys.platform=='mac':
@@ -709,7 +766,7 @@ class Drawing(Group, Flowable):
             if bmFmt in plotMode:
                 from reportlab.graphics import renderPM
                 filename = '%s.%s' % (fnroot,bmFmt)
-                if verbose: print genFmt % (bmFmt,filename)
+                if verbose: print(genFmt % (bmFmt,filename))
                 dtc = getattr(self,'_drawTimeCollector',None)
                 if dtc:
                     dtcfmts = getattr(dtc,'formats',[bmFmt])
@@ -719,7 +776,7 @@ class Drawing(Group, Flowable):
                         dtc = None
                 renderPM.drawToFile(self, filename,fmt=bmFmt,showBoundary=getattr(self,'showBorder',rl_config.showBoundary),**_extraKW(self,'_renderPM_',**kw))
                 ext = ext + '/.' + bmFmt
-                if dtc: dtc.save(fnroot)
+                if dtc: dtc.save(filename)
 
         if 'eps' in plotMode:
             try:
@@ -727,7 +784,7 @@ class Drawing(Group, Flowable):
             except ImportError:
                 from reportlab.graphics import renderPS
             filename = fnroot+'.eps'
-            if verbose: print genFmt % ('EPS',filename)
+            if verbose: print(genFmt % ('EPS',filename))
             renderPS.drawToFile(self,
                                 filename,
                                 title = fnroot,
@@ -742,7 +799,7 @@ class Drawing(Group, Flowable):
         if 'svg' in plotMode:
             from reportlab.graphics import renderSVG
             filename = fnroot+'.svg'
-            if verbose: print genFmt % ('SVG',filename)
+            if verbose: print(genFmt % ('SVG',filename))
             renderSVG.drawToFile(self,
                                 filename,
                                 showBoundary=getattr(self,'showBorder',rl_config.showBoundary),**_extraKW(self,'_renderSVG_',**kw))
@@ -751,14 +808,15 @@ class Drawing(Group, Flowable):
         if 'ps' in plotMode:
             from reportlab.graphics import renderPS
             filename = fnroot+'.ps'
-            if verbose: print genFmt % ('EPS',filename)
+            if verbose: print(genFmt % ('EPS',filename))
             renderPS.drawToFile(self, filename, showBoundary=getattr(self,'showBorder',rl_config.showBoundary),**_extraKW(self,'_renderPS_',**kw))
             ext = ext +  '/.ps'
 
         if 'py' in plotMode:
             filename = fnroot+'.py'
-            if verbose: print genFmt % ('py',filename)
-            open(filename,'w').write(self._renderPy())
+            if verbose: print(genFmt % ('py',filename))
+            with open(filename,'wb') as f:
+                f.write(asBytes(self._renderPy().replace('\n',os.linesep)))
             ext = ext +  '/.py'
 
         logger.warnOnce.enabled, logger.infoOnce.enabled = _saved
@@ -832,7 +890,7 @@ class _DrawingEditorMixin:
         elif name:
             setattr(obj,name,value)
         else:
-            raise ValueError, "Can't add, need name"
+            raise ValueError("Can't add, need name")
 
 class LineShape(Shape):
     # base for types of lines
@@ -898,7 +956,7 @@ class SolidShape(LineShape):
 
 
 # path operator  constants
-_MOVETO, _LINETO, _CURVETO, _CLOSEPATH = range(4)
+_MOVETO, _LINETO, _CURVETO, _CLOSEPATH = list(range(4))
 _PATH_OP_ARG_COUNT = (2, 2, 6, 0)  # [moveTo, lineTo, curveTo, closePath]
 _PATH_OP_NAMES=['moveTo','lineTo','curveTo','closePath']
 
@@ -918,7 +976,7 @@ def _renderPath(path, drawFuncs):
         if op == _CLOSEPATH:
             hadClosePath = hadClosePath + 1
         if op == _MOVETO:
-            hadMoveTo = hadMoveTo + 1
+            hadMoveTo += 1
     return hadMoveTo == hadClosePath
 
 class Path(SolidShape):
@@ -962,7 +1020,32 @@ class Path(SolidShape):
         self.operators.append(_CLOSEPATH)
 
     def getBounds(self):
-        return getPathBounds(self.points)
+        points = self.points
+        try:    #in case this complex algorithm is not yet ready :)
+            X = []
+            aX = X.append
+            eX = X.extend
+            Y=[]
+            aY = Y.append
+            eY = Y.extend
+            i = 0
+            for op in self.operators:
+                nArgs = _PATH_OP_ARG_COUNT[op]
+                j = i + nArgs
+                if nArgs==2:
+                    #either moveTo or lineT0
+                    aX(points[i])
+                    aY(points[i+1])
+                elif nArgs==6:
+                    #curveTo
+                    x1,x2,x3 = points[i:j:2]
+                    eX(_getBezierExtrema(X[-1],x1,x2,x3))
+                    y1,y2,y3 = points[i+1:j:2]
+                    eY(_getBezierExtrema(Y[-1],y1,y2,y3))
+                i = j
+            return min(X),min(Y),max(X),max(Y)
+        except:
+            return getPathBounds(points)
 
 EmptyClipPath=Path()    #special path
 
@@ -987,7 +1070,7 @@ def getArcPoints(centerx, centery, radius, startangledegrees, endangledegrees, y
         n = 1
         radiansdelta = 0
 
-    for angle in xrange(n):
+    for angle in range(n):
         angle = startangle+angle*radiansdelta
         a((centerx+radius*cos(angle),centery+yradius*sin(angle)))
 
@@ -1007,21 +1090,21 @@ def definePath(pathSegs=[],isClipPath=0, dx=0, dy=0, **kw):
     O = []
     P = []
     for seg in pathSegs:
-        if type(seg) not in [ListType,TupleType]:
+        if not isSeq(seg):
             opName = seg
             args = []
         else:
             opName = seg[0]
             args = seg[1:]
         if opName not in _PATH_OP_NAMES:
-            raise ValueError, 'bad operator name %s' % opName
+            raise ValueError('bad operator name %s' % opName)
         op = _PATH_OP_NAMES.index(opName)
         if len(args)!=_PATH_OP_ARG_COUNT[op]:
-            raise ValueError, '%s bad arguments %s' % (opName,str(args))
+            raise ValueError('%s bad arguments %s' % (opName,str(args)))
         O.append(op)
         P.extend(list(args))
     for d,o in (dx,0), (dy,1):
-        for i in xrange(o,len(P),2):
+        for i in range(o,len(P),2):
             P[i] = P[i]+d
     return Path(P,O,isClipPath,**kw)
 
@@ -1141,11 +1224,13 @@ class Wedge(SolidShape):
         yradius = AttrMapValue(isNumberOrNone),
         radius1 = AttrMapValue(isNumberOrNone),
         yradius1 = AttrMapValue(isNumberOrNone),
+        annular = AttrMapValue(isBoolean,desc='treat as annular ring'),
         )
 
     degreedelta = 1 # jump every 1 degrees
 
-    def __init__(self, centerx, centery, radius, startangledegrees, endangledegrees, yradius=None, **kw):
+    def __init__(self, centerx, centery, radius, startangledegrees, endangledegrees, yradius=None,
+            annular=False, **kw):
         SolidShape.__init__(self, kw)
         while endangledegrees<startangledegrees:
             endangledegrees = endangledegrees+360
@@ -1153,6 +1238,7 @@ class Wedge(SolidShape):
         self.centerx, self.centery, self.radius, self.startangledegrees, self.endangledegrees = \
             centerx, centery, radius, startangledegrees, endangledegrees
         self.yradius = yradius
+        self.annular = annular
 
     def _xtraRadii(self):
         yradius = getattr(self, 'yradius', None)
@@ -1207,7 +1293,19 @@ class Wedge(SolidShape):
             for c,s in CA:
                 a(centerx+radius1*c)
                 a(centery+yradius1*s)
-        return Polygon(points)
+        if self.annular:
+            P = Path()
+            P.moveTo(points[0],points[1])
+            for x in xrange(2,2*n,2):
+                P.lineTo(points[x],points[x+1])
+            P.closePath()
+            P.moveTo(points[2*n],points[2*n+1])
+            for x in xrange(2*n+2,4*n,2):
+                P.lineTo(points[x],points[x+1])
+            P.closePath()
+            return P
+        else:
+            return Polygon(points)
 
     def copy(self):
         new = self.__class__(self.centerx,
@@ -1256,7 +1354,7 @@ class PolyLine(LineShape):
         points = points or []
         lenPoints = len(points)
         if lenPoints:
-            if type(points[0]) in (ListType,TupleType):
+            if isSeq(points[0]):
                 L = []
                 for (x,y) in points:
                     L.append(x)
@@ -1274,7 +1372,7 @@ class PolyLine(LineShape):
     def getBounds(self):
         return getPointsBounds(self.points)
 
-def numericXShift(tA,text,w,fontName,fontSize,encoding=None,pivotCharacter='.'):
+def numericXShift(tA,text,w,fontName,fontSize,encoding=None,pivotCharacter=decimalSymbol):
     dp = getattr(tA,'_dp',pivotCharacter)
     i = text.rfind(dp)
     if i>=0:
@@ -1345,24 +1443,24 @@ class UserNode(_DrawTimeResizeable):
         added to drawings; they must create a shape (typically a group)
         so that the renderer can draw the custom node."""
 
-        raise NotImplementedError, "this method must be redefined by the user/programmer"
+        raise NotImplementedError("this method must be redefined by the user/programmer")
 
 
 def test():
     r = Rect(10,10,200,50)
     import pprint
     pp = pprint.pprint
-    print 'a Rectangle:'
+    w = sys.stdout.write
+    w('a Rectangle: ')
     pp(r.getProperties())
-    print
-    print 'verifying...',
+    w('\nverifying...')
     r.verify()
-    print 'OK'
+    w(' OK\n')
     #print 'setting rect.z = "spam"'
     #r.z = 'spam'
-    print 'deleting rect.width'
+    w('deleting rect.width ')
     del r.width
-    print 'verifying...',
+    w('verifying...')
     r.verify()
 
 
