@@ -147,7 +147,7 @@
             if (dateUser >= dateMax && dateUser <= dateMin){
                 if (departure != ''){
                             $.ajax({
-                                url: '{{ url_for('search_customer_pos', child="1", parent_ticket=ticket_id) }}) }}?child=1',
+                                url: '{{ url_for('search_customer_pos', child="1", parent_ticket=ticket_id) }}',
                                 data: $('#SearchCustomer_child').serialize(),
                                 type: 'POST',
                                 success: function(data) {
