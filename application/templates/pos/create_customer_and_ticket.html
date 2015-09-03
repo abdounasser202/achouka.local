@@ -156,20 +156,38 @@
                                         </div>
                                   </div>
                           {% endfor %}
+                          <div class="col-lg-12 hidden">
+                                <div class="radio">
+                                    <div class="">
+                                        <div class="col-lg-1">
+                                            <label>
+                                                <input type="radio" name="type_name" value="" class="CheckBox-Select" {% if checked %} checked {% endif %}>
+                                            </label>
+                                        </div>
+                                        <div class="col-lg-10">
+                                          <select name="type_name_select" id="CheckBox-Select" class="form-control"  disabled="disabled">
+                                              <option value="">No Special</option>
+                                          </select>
+                                        </div>
+                                    </div>
+                                </div>
+                          </div>
                       {% endif %}
                   </div>
 
                   <hr/>
                     <div class="row">
+                        {% set num_class = 1 %}
                         {% for class in class_ticket %}
                                   <div class="col-lg-6">
                                         <div class="radio">
                                           <label>
-                                            <input type="radio" name="class_name" class="ClassTicket" value="{{ class.key.id() }}" {% if class.default or form.class_name.data|int == class.key.id() %} checked {% endif %}>
+                                            <input type="radio" name="class_name" class="ClassTicket" value="{{ class.key.id() }}" {% if class.default or form.class_name.data|int == class.key.id() or num_class == 1 %} checked {% endif %}>
                                             {{ class.name }}
                                           </label>
                                         </div>
                                   </div>
+                            {% set num_class = num_class + 1 %}
                         {% endfor %}
                     </div>
                   <hr/>
@@ -434,20 +452,20 @@
             contentType: 'application/json;charset=UTF-8',
             dataType: "json",
             success: function(data) {
-                if(data['statut'] == 'OK'){
+                if(data['statut'] === 'OK'){
                     $('#TicketPrice').text(data['price']);
                     $('#TicketCurrency').text(data['currency']);
                 }else{
                     $('#TicketPrice').text(data['value']);
                     $('#TicketCurrency').text('');
                 }
-                if(data['haveticket'] == 'true'){
-                    $('#alert').html('');
-                    $('#alert').addClass('hidden');
+                if(data['haveticket'] === "true"){
+                    $("#alert").html('');
+                    $("#alert").addClass('hidden');
                     $('#submit').removeAttr('disabled');
                 }else{
-                    $('#alert').removeClass('hidden');
-                    $('#alert').text('You don\'t have this ticket type. Request purchase from manager');
+                    $("#alert").removeClass('hidden');
+                    $("#alert").text('You don\'t have this ticket type. Request purchase from manager');
                     $('#submit').attr({disabled:'disabled'});
                 }
 

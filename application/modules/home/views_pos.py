@@ -157,6 +157,7 @@ def search_customer_pos():
     child = False
     if request.args.get('child'):
         child = True
+        parent_ticket = request.args.get('parent_ticket')
 
     current_departure = None
     if request.form['current_departure']:
@@ -731,7 +732,7 @@ def Search_Ticket_Type():
         TicketTypeModel.type_name == typeticket.key,
         TicketTypeModel.class_name == classticket.key,
         TicketTypeModel.journey_name == journeyticket.key,
-        TicketTypeModel.travel == departure.destination.get().key,
+        TicketTypeModel.travel == departure.destination,
         TicketTypeModel.active == True
     ).get()
 
@@ -743,7 +744,7 @@ def Search_Ticket_Type():
             TicketModel.type_name == typeticket.key,
             TicketModel.journey_name == journeyticket.key,
             TicketModel.agency == agency_user.key,
-            TicketModel.travel_ticket == departure.destination.get().key,
+            TicketModel.travel_ticket == departure.destination,
             TicketModel.selling == False
         ).count()
 
