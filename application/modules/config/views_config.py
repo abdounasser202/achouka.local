@@ -874,8 +874,9 @@ def get_doublons_ticket_return_api(url, tocken, segment, date):
                 category_ticket = TicketTypeNameModel.get_by_id(data_get['type_name'])
                 data_save.type_name = category_ticket.key
 
-                journey_ticket = JourneyTypeModel.get_by_id(data_get['journey_name'])
-                data_save.journey_name = journey_ticket.key
+                if data_get['journey_name']:
+                    journey_ticket = JourneyTypeModel.get_by_id(data_get['journey_name'])
+                    data_save.journey_name = journey_ticket.key
 
                 classes_ticket = ClassTypeModel.get_by_id(data_get['class_name'])
                 data_save.class_name = classes_ticket.key

@@ -377,7 +377,6 @@ def search_customer_to_board(departure_id):
 
     ticket_sold = TicketPoly.query(
         TicketPoly.selling == True,
-        TicketPoly.statusValid == False,
         TicketPoly.generate_boarding == True,
         TicketPoly.is_boarding == False,
         TicketPoly.departure == departure_get.key
