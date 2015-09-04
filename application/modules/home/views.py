@@ -336,26 +336,31 @@ def Dashboard():
         time_zones = pytz.timezone('Africa/Douala')
         date_auto_nows = datetime.datetime.now(time_zones).strftime("%Y-%m-%d %H:%M:%S")
 
+        today = function.datetime_convert(date_auto_nows)
         heure = function.datetime_convert(date_auto_nows).time()
 
         from ..departure.models_departure import DepartureModel
 
         departure = DepartureModel.query(
-            DepartureModel.departure_date == datetime.date.today(),
-            DepartureModel.schedule >= heure
+            DepartureModel.departure_date >= datetime.date.today()
         ).order(
-            -DepartureModel.departure_date,
+            DepartureModel.departure_date,
             DepartureModel.schedule,
             DepartureModel.time_delay
         )
 
         for dep in departure:
-            if dep.destination.get().destination_start == agency_user.destination:
+            departure_time = function.add_time(dep.schedule, dep.time_delay)
+            departure_datetime = datetime.datetime(dep.departure_date.year, dep.departure_date.month, dep.departure_date.day, departure_time.hour, departure_time.minute, departure_time.second)
+            if dep.destination.get().destination_start == agency_user.destination and departure_datetime > today:
                 current_departure = dep
                 break
 
         for dep in departure:
-            if dep.destination.get().destination_check == agency_user.destination:
+            departure_time = function.add_time(dep.schedule, dep.time_delay)
+            departure_datetime = datetime.datetime(dep.departure_date.year, dep.departure_date.month, dep.departure_date.day, departure_time.hour, departure_time.minute, departure_time.second)
+
+            if dep.destination.get().destination_check == agency_user.destination and departure_datetime > today:
                 current_departure_check = dep
                 break
 
@@ -363,7 +368,7 @@ def Dashboard():
             DepartureModel.departure_date == datetime.date.today(),
             DepartureModel.schedule < heure
         ).order(
-            -DepartureModel.departure_date,
+            DepartureModel.departure_date,
             DepartureModel.schedule,
             DepartureModel.time_delay
         )

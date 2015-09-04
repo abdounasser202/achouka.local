@@ -11,7 +11,7 @@
                       {% if current_user.have_agency() and not ticket.type_name.get().is_child and ticket.statusValid and ticket.departure.get().destination.get().destination_start == current_user.agency.get().destination and ticket.departure == departure_get %}
                           <a class="btn btn-warning" id="CreateChildTicket" disabled="disabled" data-toggle="modal" data-target="#myModal2" data-backdrop="static">Child Ticket</a>
                       {% endif %}
-                      {% if current_user.have_agency() and ticket.is_return and ticket.statusValid and ticket.departure.get().destination.get().destination_check == current_user.agency.get().destination and ticket.is_boarding and ticket.departure == departure_get %}
+                      {% if current_user.have_agency() and ticket.is_return and ticket.statusValid and ticket.departure.get().destination.get().destination_check == current_user.agency.get().destination and ticket.is_boarding %}
                             <a href="" class="btn btn-danger" id="CreateUpgradeTicket" disabled="disabled" data-toggle="modal" data-target="#myModal" data-backdrop="static">Upgrade Ticket</a>
 
                             <a href="" class="btn btn-info" id="CreateReturnTicket" disabled="disabled">Return Ticket</a>

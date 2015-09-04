@@ -42,7 +42,7 @@ def synchronization():
     if date:
         customer_api_put(url_config.url_server, token, "/customer/put/", date)
         ticket_sale_put_api(url_config.url_server, token, "/ticket_local_sale_put/put/", date)
-        ticket_sale_put_api(url_config.url_server, token, "/ticket_local_sale_put/put/", date, transaction=False)
+        # ticket_sale_put_api(url_config.url_server, token, "/ticket_local_sale_put/put/", date, transaction=False)
 
     # Insertion des tickets alloues
     ticket_allocated_api(url_config.url_server, token, "/tickets_allocated/get/", date)
@@ -912,9 +912,27 @@ def get_doublons_ticket_return_api(url, tocken, segment, date):
                     duplicate_ticket.parent_return = save
 
                     duplicate_ticket.put()
+            else:
+
+                category_ticket = TicketTypeNameModel.get_by_id(data_get['type_name'])
+                classes_ticket = ClassTypeModel.get_by_id(data_get['class_name'])
+                customer_ticket = CustomerModel.get_by_id(data_get['customer'])
+
+                for child in data_get['child_return']:
+                    duplicate_ticket = TicketModel(id=child['ticket_allocated_id'])
+                    duplicate_ticket.type_name = category_ticket.key
+                    duplicate_ticket.class_name = classes_ticket.key
+                    duplicate_ticket.is_ticket = True
+                    duplicate_ticket.is_count = False
+
+                    duplicate_ticket.customer = customer_ticket.key
+
+                    duplicate_ticket.parent_return = old_data.key
+
+                    duplicate_ticket.put()
 
 
-def ticket_sale_put_api(url, tocken, segment, date, synchro=True, transaction=True):
+def ticket_sale_put_api(url, tocken, segment, date, synchro=True):
 
     from ..ticket.models_ticket import TicketModel, AgencyModel
     import urllib
@@ -928,19 +946,10 @@ def ticket_sale_put_api(url, tocken, segment, date, synchro=True, transaction=Tr
     data = {}
     data['ticket_sale'] = []
 
-    if transaction:
-        data['transaction'] = 1
-        ticket_sale = TicketModel.query(
-            TicketModel.date_reservation >= date,
-            TicketModel.selling == True,
-            TicketModel.is_boarding == False
-        )
-    else:
-        data['transaction'] = 0
-        ticket_sale = TicketModel.query(
-            TicketModel.date_update >= date,
-            TicketModel.selling == True
-        )
+    ticket_sale = TicketModel.query(
+        TicketModel.date_update >= date,
+        TicketModel.selling == True
+    )
 
     active_local_agency = AgencyModel.query(
         AgencyModel.local_status == True
@@ -955,6 +964,11 @@ def ticket_sale_put_api(url, tocken, segment, date, synchro=True, transaction=Tr
     result = urlfetch.fetch(url=url, payload=data_format, method=urlfetch.POST, headers={'Content-Type': 'application/x-www-form-urlencoded'})
     result = result.content
     result = json.loads(result)
+
+    for ticket in ticket_sale:
+        ticket.date_update = ticket.date_update
+        ticket.sent = True
+        ticket.put()
 
     if result['status'] and result['status'] == 404:
         flash(result['message'], "warning")

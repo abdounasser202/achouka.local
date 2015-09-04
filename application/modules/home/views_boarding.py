@@ -26,7 +26,7 @@ def Boarding():
     departure = DepartureModel.query(
         DepartureModel.departure_date >= datetime.date.today()
     ).order(
-        -DepartureModel.departure_date,
+        DepartureModel.departure_date,
         DepartureModel.schedule,
         DepartureModel.time_delay
     )
@@ -44,7 +44,7 @@ def Boarding():
     else:
         for dep in departure:
             departure_time = function.add_time(dep.schedule, dep.time_delay)
-            departure_datetime = datetime.datetime(departure.departure_date.year, departure.departure_date.month, departure.departure_date.day, departure.departure_date.year, departure_time.hour, departure_time.minute, departure_time.second)
+            departure_datetime = datetime.datetime(dep.departure_date.year, dep.departure_date.month, dep.departure_date.day, departure_time.hour, departure_time.minute, departure_time.second)
             if departure_datetime > today:
                 current_departure = dep
                 break

@@ -253,6 +253,14 @@ indexes:
   - name: travel
   - name: type_name
 
+- kind: TicketTypeModel
+  properties:
+  - name: active
+  - name: class_name
+  - name: travel
+  - name: type_name
+  - name: journey_name
+
 - kind: TransactionModel
   properties:
   - name: agency

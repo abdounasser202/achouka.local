@@ -25,7 +25,7 @@
                 {% if current_user.has_roles(('super_admin','employee_POS')) %}
                     <li {% if menu == 'pos' %} class="active" {% endif %}><a href="{{ url_for('Pos') }}">POS <span class="sr-only">(current)</span></a></li>
                 {% endif %}
-                {% if current_user.has_roles(('super_admin','employee_Boarding')) %}
+                {% if current_user.has_roles('employee_Boarding') and not current_user.has_roles(('admin', 'super_admin'))  %}
                     <li {% if menu == 'boarding' %} class="active" {% endif %}><a href="{{ url_for('Boarding') }}">Boarding <span class="sr-only">(current)</span></a></li>
                 {% endif %}
                 {% if current_user.has_roles(('super_admin','manager_agency')) %}

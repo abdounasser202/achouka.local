@@ -98,19 +98,6 @@ class TicketModel(TicketPoly):
             upgrade = True
         to_dict['child_upgrade'] = upgrade
 
-        from ..transaction.models_transaction import ExpensePaymentTransactionModel
-
-        transactions = ExpensePaymentTransactionModel.query(
-            ExpensePaymentTransactionModel.ticket == self.key,
-            ExpensePaymentTransactionModel.is_difference == True
-        )
-        to_dict['transaction'] = []
-        for transaction in transactions:
-            trans = {}
-            trans['amount'] = transaction.transaction.get().amount
-            trans['is_payment'] = transaction.transaction.get().is_payment
-            trans['reason'] = transaction.transaction.get().reason
-            to_dict['transaction'].append(trans)
 
         question_answer = TicketQuestion.query(
             TicketQuestion.ticket_id == self.key
@@ -123,8 +110,30 @@ class TicketModel(TicketPoly):
             quest['response'] = question.respnse
             to_dict['ticket_question'].append(quest)
 
+        to_dict['transaction_different'] = 0
+        if self.transaction_different():
+            to_dict['transaction_different'] = self.transaction_different()
+
         return to_dict
 
+    def transaction_different(self):
+        from ..ticket_type.models_ticket_type import TicketTypeModel
+
+        price_ticket_type = TicketTypeModel.query(
+                TicketTypeModel.class_name == self.class_name,
+                TicketTypeModel.journey_name == self.journey_name,
+                TicketTypeModel.type_name == self.type_name,
+                TicketTypeModel.travel == self.travel_ticket
+        ).get()
+
+        amount_different = 0
+        if price_ticket_type.price > self.sellpriceAg:
+            amount_different = price_ticket_type.price - self.sellpriceAg
+
+        if price_ticket_type.price < self.sellpriceAg:
+            amount_different = self.sellpriceAg - price_ticket_type.price
+
+        return amount_different
 
 class TicketQuestion(ndb.Model):
     question_id = ndb.KeyProperty(kind=QuestionModel)

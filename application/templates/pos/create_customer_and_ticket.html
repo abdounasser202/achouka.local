@@ -289,7 +289,7 @@
                 </div>
             <div class="col-lg-12">
                 <br/>
-                <a href="{{ url_for('create_customer_and_ticket_pos', customer_id=customer_id, departure_id=departure_id, parent_ticket=parent_ticket) }}" class="btn btn-success pull-right" data-loading-text="Confirmation..." id="submit" data-backdrop="static" disabled="disabled">Sell Ticket</a>
+                <a href="{{ url_for('create_customer_and_ticket_pos', customer_id=customer_id, departure_id=departure_id, parent_ticket=parent_ticket) }}{% if child %}&child=1{% endif %}" class="btn btn-success pull-right" data-loading-text="Confirmation..." id="submit" data-backdrop="static" disabled="disabled">Sell Ticket</a>
             </div>
             </div>
         </div>
