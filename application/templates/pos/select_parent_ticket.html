@@ -1,0 +1,45 @@
+<div class="modal-header bg-warning">
+    <h4 class="modal-title">Find ticket</h4>
+</div>
+<div class="modal-body">
+    <div class="panel">
+              <div class="panel-body">
+                  <h4 class="text-center" style="margin-top: 0;">Ticket of adult who is in this journey</h4>
+                  <hr/>
+                <form class="form-horizontal" id="SearchTickets">
+                  <div class="form-group">
+
+                      <div class="col-lg-10">
+                            <input type="text" name="number_tickets" class="form-control input-lg" id="number_tickets" placeholder="Enter ticket number">
+                      </div>
+                      <div class="col-lg-2">
+                          <button type="submit" class="btn btn-lg" id="SubmitTickets">Find</button>
+                      </div>
+                      </div>
+
+                </form>
+                <div id="TableCustomer"></div>
+              </div>
+      </div>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+</div>
+
+
+<script>
+    $('#number_tickets').inputmask("9999999999999999", { placeholder:"****************"});
+
+    // Traitement de la recherche de ticket
+    $('#SubmitTickets').click(function(e){
+        e.preventDefault();
+        $.ajax({
+            url: "{{ url_for("find_parent_ticket_return", ticket_id=ticket_id, departure_id=departure_id) }}",
+            data: $('#SearchTickets').serialize(),
+            type: 'POST',
+            success: function(data) {
+                $('#TableCustomer').empty().html(data);
+            }
+        });
+    });
+</script>

@@ -14,7 +14,7 @@
                       {% if current_user.have_agency() and ticket.is_return and ticket.statusValid and ticket.departure.get().destination.get().destination_check == current_user.agency.get().destination and ticket.is_boarding %}
                             <a href="" class="btn btn-danger" id="CreateUpgradeTicket" disabled="disabled" data-toggle="modal" data-target="#myModal" data-backdrop="static">Upgrade Ticket</a>
 
-                            <a href="" class="btn btn-info" id="CreateReturnTicket" disabled="disabled">Return Ticket</a>
+                            <a href="" class="btn btn-info"  disabled="disabled" {% if ticket.type_name.get().is_child %} id="CreateReturnTicketChild" data-toggle="modal" data-target="#myModal" data-backdrop="static" {% else %} id="CreateReturnTicket" {% endif %}>Return Ticket</a>
                       {% endif %}
                       <a class="btn" id="CloseSearchTicket">close</a>
                   </div>
@@ -174,6 +174,7 @@
 
         if ($('#current_departure_start').text() == {{ ticket.departure.get().destination.get().destination_check.get().key.id() }}  && $('#current_departure_check').text() == {{ ticket.departure.get().destination.get().destination_start.get().key.id() }}){
            $('#CreateReturnTicket').removeAttr('disabled');
+           $('#CreateReturnTicketChild').removeAttr('disabled');
            $('#CreateUpgradeTicket').removeAttr('disabled');
         }
         if ($('#current_departure_start').text() == {{ ticket.departure.get().destination.get().destination_start.get().key.id() }}  && $('#current_departure_check').text() == {{ ticket.departure.get().destination.get().destination_check.get().key.id() }}){
@@ -182,7 +183,11 @@
     }
 
     var val_id = $('#CurrentDeparture').val();
-    $('#CreateReturnTicket').attr({'href': "{{url_for('create_customer_and_ticket_return', ticket_id=ticket.key.id())}}"+"/"+val_id});
+    {% if ticket.type_name.get().is_child %}
+        $('#CreateReturnTicketChild').attr({'href': "{{url_for('select_parent_ticket', ticket_id=ticket.key.id())}}"+"/"+val_id});
+    {% else %}
+        $('#CreateReturnTicket').attr({'href': "{{url_for('create_customer_and_ticket_return', ticket_id=ticket.key.id())}}"+"/"+val_id});
+    {% endif %}
     $('#CreateUpgradeTicket').attr({'href': "{{url_for('create_customer_and_ticket_upgrade', ticket_id=ticket.key.id())}}"+"/"+val_id});
     $('#CreateChildTicket').attr({'href': "{{url_for('create_customer_child_ticket', ticket_id=ticket.key.id())}}"+"/"+val_id});
 

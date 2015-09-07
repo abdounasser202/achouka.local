@@ -237,13 +237,50 @@ def Ticket_found(ticket_id):
     return render_template('/pos/ticket_found.html', **locals())
 
 
+@app.route('/find_parent_ticket_return/<int:ticket_id>/<int:departure_id>', methods=['POST'])
+@app.route('/find_parent_ticket_return', methods=['POST'])
+def find_parent_ticket_return(ticket_id=None, departure_id=None):
+    from ..departure.models_departure import DepartureModel
+
+    departure_get = DepartureModel.get_by_id(departure_id)
+
+    number_ticket = request.form['number_tickets']
+
+    time_zones = pytz.timezone('Africa/Douala')
+    date_auto_nows = datetime.datetime.now(time_zones).strftime("%Y-%m-%d %H:%M:%S")
+
+    today = function.datetime_convert(date_auto_nows).date()
+
+    number_ticket = ''.join(number_ticket.split('*'))
+
+    ticket_sold = TicketModel.query(
+        TicketModel.selling == True,
+        TicketModel.departure == departure_get.key
+    )
+
+    list_ticket_sold = []
+    for ticket in ticket_sold:
+        find_ticket_sold = function.find(str(ticket.key.id())+" ", str(number_ticket))
+        diff_year = today.year - function.date_convert(ticket.customer.get().birthday).year
+        if find_ticket_sold and int(diff_year) > date_age['max']:
+            list_ticket_sold. append(ticket.key.id())
+
+    return render_template('/pos/search_ticket_parent.html', **locals())
+
+
+@app.route('/select_parent_ticket/<int:ticket_id>/<int:departure_id>')
+@app.route('/select_parent_ticket/<int:ticket_id>')
+def select_parent_ticket(ticket_id, departure_id):
+
+    return render_template('/pos/select_parent_ticket.html', **locals())
+
+
 @app.route('/create_customer_and_ticket_return/<int:ticket_id>/<int:departure_id>', methods=['GET', 'POST'])
 @app.route('/create_customer_and_ticket_return/<int:ticket_id>', methods=['GET', 'POST'])
 @login_required
 @roles_required(('employee_POS', 'super_admin'))
 def create_customer_and_ticket_return(ticket_id, departure_id=None):
 
-    from ..ticket_type.models_ticket_type import TicketTypeModel
     from ..departure.models_departure import DepartureModel
     from ..user.models_user import UserModel
 
@@ -350,7 +387,7 @@ def create_customer_and_ticket_return(ticket_id, departure_id=None):
             customer_save = customer.put()
 
         child_ticket = TicketModel.query(
-            TicketModel.parent_return == Ticket_Return.key.id()
+            TicketModel.parent_return == Ticket_Return.key
         ).get()
 
         child_ticket.selling = True
@@ -364,6 +401,10 @@ def create_customer_and_ticket_return(ticket_id, departure_id=None):
         child_ticket.agency = agency_current_user.key
 
         child_ticket.departure = departure_current.key
+
+        if request.args.get("parent_ticket"):
+            ticket_parent = TicketModel.get_by_id(int(request.args.get("parent_ticket")))
+            child_ticket.parent_child = ticket_parent.key
 
         ticket_update = child_ticket.put()
 
@@ -1009,7 +1050,7 @@ def create_upgrade_ticket(departure_id, ticket_id, ticket_type_same_id, ticket_t
             customer_save = customer.put()
 
         child_ticket = TicketModel.query(
-            TicketModel.parent_return == Ticket_Return.key.id()
+            TicketModel.parent_return == Ticket_Return.key
         ).get()
 
         child_ticket.type_name = ticket_type_choice_get.type_name
