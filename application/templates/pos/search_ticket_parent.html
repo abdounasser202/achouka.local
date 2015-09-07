@@ -12,7 +12,7 @@
       {% for ticket in ticket_sold %}
           {% if ticket.key.id() in list_ticket_sold %}
               <tr>
-                  <td><a href="{{ url_for('create_customer_and_ticket_return', ticket_id=ticket_id, departure_id=departure_id, parent_ticket=ticket.key.id()) }}" class="link_ticket">{{ ticket.key.id() }}</a></td>
+                  <td><a href="{% if not upgrade %}{{ url_for('create_customer_and_ticket_return', ticket_id=ticket_id, departure_id=departure_id, parent_ticket=ticket.key.id()) }} {% else %} {{url_for('create_customer_and_ticket_upgrade', ticket_id=ticket_id, departure_id=departure_id, parent_ticket=ticket.key.id(), upgrade=upgrade)}} {% endif %}" class="link_ticket">{{ ticket.key.id() }}</a></td>
                   <td>{{ ticket.customer.get().first_name }} {{ ticket.customer.get().last_name }}</td>
                   <td>{{ ticket.customer.get().birthday|format_date("%d-%m-%Y") }}</td>
                   <td>
@@ -33,20 +33,33 @@
   </tbody>
 </table>
 <script>
-    $('.link_ticket').click(function(e){
-        e.preventDefault();
-        var url = $(this).attr('href');
-        $.ajax({
-                url: url,
+    {% if not upgrade %}
+        $('.link_ticket').click(function(e){
+            e.preventDefault();
+            var url = $(this).attr('href');
+            $.ajax({
+                    url: url,
+                    type: 'GET',
+                    success: function(data) {
+                        $('#myModal').modal('hide');
+                        $('body').removeClass('modal-open');
+                        $('.modal-backdrop').remove();
+                        $('#info_ticket').addClass('hidden').html('');
+                        $('#ScreenIndexPos').hide();
+                        $('#ScreenCreateTicket').removeClass('hidden').html(data);
+                    }
+            });
+        });
+    {% else %}
+        $('.link_ticket').click(function(e){
+            e.preventDefault();
+            $.ajax({
+                url: $(this).attr('href'),
                 type: 'GET',
                 success: function(data) {
-                    $('#myModal').modal('hide');
-                    $('body').removeClass('modal-open');
-                    $('.modal-backdrop').remove();
-                    $('#info_ticket').addClass('hidden').html('');
-                    $('#ScreenIndexPos').hide();
-                    $('#ScreenCreateTicket').removeClass('hidden').html(data);
+                    $('.modal-content').html(data);
                 }
+            });
         });
-    });
+    {% endif %}
 </script>

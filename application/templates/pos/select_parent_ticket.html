@@ -34,7 +34,7 @@
     $('#SubmitTickets').click(function(e){
         e.preventDefault();
         $.ajax({
-            url: "{{ url_for("find_parent_ticket_return", ticket_id=ticket_id, departure_id=departure_id) }}",
+            url: "{{ url_for("find_parent_ticket_return", ticket_id=ticket_id, departure_id=departure_id, upgrade=upgrade) }}",
             data: $('#SearchTickets').serialize(),
             type: 'POST',
             success: function(data) {

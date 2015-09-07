@@ -25,13 +25,26 @@
     </table>
 </div>
 <div class="modal-footer">
+    {% if upgrade %}
+        <a href="{{ url_for('select_parent_ticket', ticket_id=ticket_id, departure_id=departure_id, upgrade=upgrade) }}" class="btn btn-danger" id="return">Return</a>
+    {% endif %}
     <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
     <button type="button" class="btn btn-info disabled" id="submit">Continued</button>
 </div>
 
 <script>
+    {% if upgrade %}
+        $('a#return').click(function(e) {
+          e.preventDefault();
+          var url = $(this).attr('href');
+          $.get(url, function(data) {
+              $('.modal-content').html(data);
+          });
+        });
+    {% endif %}
+
     $('.line').on('click', function(){
-        var id = "/"+$(this).attr('id');
+        var id = "/"+$(this).attr('id'){% if upgrade or parent_ticket %}+"?parent_ticket={{ parent_ticket }}&upgrade={{ upgrade }}"{% endif %};
         var url = "{{ url_for('create_customer_and_ticket_upgrade_2', departure_id=departure_id, ticket_id=ticket_id) }}"+id;
 
         $('.pred').removeClass('info');

@@ -22,7 +22,14 @@
                 </div>
                 <div class="form-group {% if form.birthday.errors %} has-error {% endif %} has-feedback">
                     <label>{{ form.birthday.label }} :</label>
-                    {{ form.birthday(class_='form-control', id="datepickerbirth")|safe }}
+
+                    {% if request.args.get("parent_ticket") %}
+                        {{ form.birthday(class_='form-control', id="datepickerbirth", disabled="disabled")|safe }}
+                        <input type="hidden" name="birthday" value="{{ form.birthday.data|format_date("%d/%m/%Y") }}"/>
+                    {% else %}
+                        {{ form.birthday(class_='form-control', id="datepickerbirth")|safe }}
+                    {% endif %}
+
                     {% for message in form.birthday.errors %}
                         <span class="help-block text-danger">{{ message }}</span>
                       {% endfor %}
@@ -200,7 +207,7 @@
                 </div>
             <div class="col-lg-12">
                 <br/>
-                <a href="{{ url_for('create_upgrade_ticket', departure_id=departure_id, ticket_id=ticket_id, ticket_type_same_id=ticket_type_same_id, ticket_type_id=ticket_type_id) }}" class="btn btn-success pull-right" data-loading-text="Confirmation..." id="submit" data-backdrop="static">Sell Ticket</a>
+                <a href="{{ url_for('create_upgrade_ticket', departure_id=departure_id, ticket_id=ticket_id, ticket_type_same_id=ticket_type_same_id, ticket_type_id=ticket_type_id, parent_ticket=request.args.get("parent_ticket")) }}" class="btn btn-success pull-right" data-loading-text="Confirmation..." id="submit" data-backdrop="static">Sell Ticket</a>
             </div>
             </div>
         </div>
