@@ -64,8 +64,9 @@ class TicketModel(TicketPoly):
 
         to_dict['ticket_id'] = self.key.id()
         to_dict['date_reservation'] = str(self.date_reservation)
-        to_dict['sellprice'] = self.sellprice
-        to_dict['sellpriceCurrency'] = self.sellpriceCurrency.id()
+        if self.sellpriceCurrency:
+            to_dict['sellprice'] = self.sellprice
+            to_dict['sellpriceCurrency'] = self.sellpriceCurrency.id()
 
         to_dict['customer'] = self.customer.id()
         to_dict['departure'] = self.departure.id()
