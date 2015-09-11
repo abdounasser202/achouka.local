@@ -55,12 +55,12 @@ def last_name_validator(form, field):
 
 
 class FormCustomer(wtf.Form):
-    first_name = wtf.StringField(label='Fist name', validators=[validators.Required(), first_name_validator])
+    first_name = wtf.StringField(label='First name', validators=[validators.Required(), first_name_validator])
     last_name = wtf.StringField(label='Last name', validators=[validators.Required(), last_name_validator])
     birthday = wtf.DateField(label='Birthday', validators=[validators.Required()], format="%d/%m/%Y")
     passport_number = wtf.StringField(label="Passport number")
     nic_number = wtf.StringField(label="NIC number")
-    profession = wtf.StringField(label='Profession')
+    profession = wtf.StringField(label='Occupation')
     nationality = wtf.StringField(label='Nationality')
     email = wtf.StringField(label='Email', validators=[unique_email_validator, validators.Email()])
     dial_code = wtf.StringField(label='Country code', validators=[verify_dial_code])
@@ -68,18 +68,18 @@ class FormCustomer(wtf.Form):
 
 
 class FormCustomerSearch(wtf.Form):
-    first_name = wtf.StringField(label='Fist name', validators=[validators.Required(), first_name_validator])
+    first_name = wtf.StringField(label='First name', validators=[validators.Required(), first_name_validator])
     last_name = wtf.StringField(label='Last name', validators=[validators.Required()])
     birthday = wtf.DateField(label='Birthday', validators=[validators.Required()], format="%d/%m/%Y")
 
 
 class FormCustomerPOS(wtf.Form):
-    first_name = wtf.StringField(label='Fist name', validators=[validators.Required(), first_name_validator])
+    first_name = wtf.StringField(label='First name', validators=[validators.Required(), first_name_validator])
     last_name = wtf.StringField(label='Last name', validators=[validators.Required(), last_name_validator])
     birthday = wtf.DateField(label='Birthday', validators=[validators.Required()], format="%d/%m/%Y")
     passport_number = wtf.StringField(label="Passport number")
     nic_number = wtf.StringField(label="NIC number")
-    profession = wtf.StringField(label='Profession')
+    profession = wtf.StringField(label='Occupation')
     nationality = wtf.StringField(label='Nationality')
     email = wtf.StringField(label='Email', validators=[unique_email_validator, validators.Email()])
     phone = wtf.StringField(label='Mobile Phone Number', validators=[verify_format_number])

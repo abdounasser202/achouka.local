@@ -654,7 +654,7 @@ def departure_api(url, tocken, segment, date=None):
             SynchroModel.agency_synchro == active_agency.key
         ).order(-SynchroModel.date).get()
 
-        date_synchro.time_departure = datetime.datetime.now().time()
+        date_synchro.time_departure = function.time_convert(datetime.datetime.now().time())
         date_synchro.put()
 
 
@@ -863,7 +863,7 @@ def customer_api(url, tocken, segment, date=None):
             SynchroModel.agency_synchro == active_agency.key
         ).order(-SynchroModel.date).get()
 
-        date_synchro.time_customer = datetime.datetime.now().time()
+        date_synchro.time_customer = function.time_convert(datetime.datetime.now().time())
         date_synchro.put()
 
 
@@ -903,7 +903,7 @@ def customer_api_put(url, tocken, segment, date):
             SynchroModel.agency_synchro == active_agency.key
         ).order(-SynchroModel.date).get()
 
-        date_synchro.time_customer_put = datetime.datetime.now().time()
+        date_synchro.time_customer_put = function.time_convert(datetime.datetime.now().time())
         date_synchro.put()
 
 
@@ -1052,7 +1052,7 @@ def get_doublons_ticket_return_api(url, tocken, segment, date):
             SynchroModel.agency_synchro == active_agency.key
         ).order(-SynchroModel.date).get()
 
-        date_synchro.time_return_and_doublons_foreign = datetime.datetime.now().time()
+        date_synchro.time_return_and_doublons_foreign = function.time_convert(datetime.datetime.now().time())
         date_synchro.put()
 
 
@@ -1104,7 +1104,7 @@ def ticket_sale_put_api(url, tocken, segment, date):
         SynchroModel.agency_synchro == active_agency.key
     ).order(-SynchroModel.date).get()
 
-    date_synchro.time_ticket_sale_put = datetime.datetime.now().time()
+    date_synchro.time_ticket_sale_put = function.time_convert(datetime.datetime.now().time())
     date_synchro.put()
 
 
@@ -1206,7 +1206,7 @@ def get_ticket_sale_online(url, tocken, segment, date):
             SynchroModel.agency_synchro == active_agency.key
         ).order(-SynchroModel.date).get()
 
-        date_synchro.time_ticket_sale_online = datetime.datetime.now().time()
+        date_synchro.time_ticket_sale_online = function.time_convert(datetime.datetime.now().time())
         date_synchro.put()
 
 
