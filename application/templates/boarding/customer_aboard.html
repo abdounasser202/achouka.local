@@ -4,9 +4,9 @@
         <h4 style="margin-top: 0;"><small>{{ departure_get.destination.get().destination_start.get().name }} - {{ departure_get.destination.get().destination_check.get().name }} ({{ departure_get.schedule|add_time(departure_get.time_delay)|format_date('%H:%M') }})</small></h4>
       <form class="form-horizontal clearfix" id="FormTicketNumberGenerated">
           <div class="form-group">
-            <label class="col-sm-3 control-label">Passenger onboard :</label>
+            <label class="col-sm-3 control-label">Add passenger onboard :</label>
             <div class="col-sm-6">
-                <input type="text" class="form-control" placeholder="Enter ticket number" name="number_ticket_generated" id="number_ticket_generated" autocomplete="false" >
+                <input type="text" class="form-control" placeholder="Enter boarding pass number" name="number_ticket_generated" id="number_ticket_generated" autocomplete="false" >
 
             </div>
               <div class="col-sm-3">

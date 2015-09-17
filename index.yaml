@@ -206,6 +206,13 @@ indexes:
   properties:
   - name: class
   - name: selling
+  - name: statusValid
+  - name: date_update
+
+- kind: TicketPoly
+  properties:
+  - name: class
+  - name: selling
   - name: ticket_seller
   - name: class_name
   - name: journey_name

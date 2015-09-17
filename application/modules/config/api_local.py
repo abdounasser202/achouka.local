@@ -173,7 +173,7 @@ def send_customer_api(url, segment):
 
 
     data_format = urllib.urlencode(data)
-    url = url+segment+token_active.token_agency
+    url = url+"/"+segment+token_active.token_agency
     urlfetch.fetch(url=url, payload=data_format, method=urlfetch.POST, headers={'Content-Type': 'application/x-www-form-urlencoded'})
 
     date_synchro.time_customer_put = datetime.datetime.now().time()
@@ -222,7 +222,7 @@ def send_ticket_sale_api(url, segment):
 
 
     data_format = urllib.urlencode(data)
-    url = url+segment+token_active.token_agency
+    url = url+"/"+segment+token_active.token_agency
     urlfetch.fetch(url=url, payload=data_format, method=urlfetch.POST, headers={'Content-Type': 'application/x-www-form-urlencoded'})
 
     ticket_sale = TicketModel.query(
@@ -245,7 +245,7 @@ def send_ticket_sale_api(url, segment):
 
 
     data_format = urllib.urlencode(data)
-    url = url+segment+token_active.token_agency
+    url = url+"/"+segment+token_active.token_agency
     urlfetch.fetch(url=url, payload=data_format, method=urlfetch.POST, headers={'Content-Type': 'application/x-www-form-urlencoded'})
 
 
@@ -307,7 +307,7 @@ def get_ticket_sale_online_api(url, segment):
     from ..ticket.models_ticket import TicketModel, CurrencyModel, CustomerModel, TicketTypeNameModel, JourneyTypeModel,\
         ClassTypeModel, TravelModel, AgencyModel, DepartureModel, UserModel
 
-    url = ""+url+segment+token_active.token_agency+"?last_update="+str(date)
+    url = ""+url+"/"+segment+token_active.token_agency+"?last_update="+str(date)
     result = urlfetch.fetch(url)
     result = result.content
     result = json.loads(result)
@@ -418,7 +418,7 @@ def get_doublons_ticket_return_api(url, segment):
     from ..ticket.models_ticket import TicketModel, CurrencyModel, CustomerModel,\
         TicketTypeNameModel, JourneyTypeModel, ClassTypeModel, TravelModel, DepartureModel
 
-    url = ""+url+segment+token_active.token_agency+"?last_update="+str(date)
+    url = ""+url+"/"+segment+token_active.token_agency+"?last_update="+str(date)
     result = urlfetch.fetch(url)
     result = result.content
     result = json.loads(result)

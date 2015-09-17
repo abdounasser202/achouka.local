@@ -52,6 +52,10 @@
                                           {% else %}
                                                 Not valid
                                           {% endif %}
+
+                                          {% if  ticket.is_upgrade %}
+                                                (<span class="text-danger"><i>Upgrade Ticket</i></span>)
+                                          {% else %}
                                       </td>
                                   </tr>
                               </table>
@@ -68,7 +72,13 @@
                                   </tr>
                                   <tr>
                                       <td><strong>journey</strong></td>
-                                      <td>{{ ticket.journey_name.get().name }}</td>
+                                      <td>
+                                          {% if ticket.journey_name %}
+                                            {{ ticket.journey_name.get().name }}
+                                          {% else %}
+                                             Return ticket
+                                          {% endif %}
+                                      </td>
                                   </tr>
                                   <tr>
                                       <td><strong>Class</strong></td>
@@ -141,6 +151,107 @@
                       </div>
               </div>
           </div>
+          {% if ticket.upgrade_parent %}
+              <div class="row">
+                      <div class="col-lg-12">
+                          <div class="panel panel-default">
+                              <div class="panel-body">
+                                  <table class="table">
+                                      <thead>
+                                      <tr>
+                                          <th colspan="2">
+                                                    Previous ticket
+                                          </th>
+                                      </tr>
+                                      </thead>
+                                      <tbody>
+                                      <tr>
+                                          <td><strong>Number ticket</strong></td>
+                                          <td>{{ ticket.upgrade_parent.get().id() }}</td>
+                                      </tr>
+                                      <tr>
+                                          <td><strong>Price of ticket</strong></td>
+                                          <td>{{ ticket.upgrade_parent.get().sellprice }}</td>
+                                      </tr>
+                                      <tr>
+                                          <td><strong>Reservation date</strong></td>
+                                          <td>{{ ticket.upgrade_parent.get().date_reservation }}</td>
+                                      </tr>
+                                      </tbody>
+                                  </table>
+                              </div>
+                          </div>
+                      </div>
+              </div>
+          {% endif %}
+
+          {% if ticket.parent_return %}
+              <div class="row">
+                      <div class="col-lg-12">
+                          <div class="panel panel-default">
+                              <div class="panel-body">
+                                  <table class="table">
+                                      <thead>
+                                      <tr>
+                                          <th colspan="2">
+                                                    First journey
+                                          </th>
+                                      </tr>
+                                      </thead>
+                                      <tbody>
+                                      <tr>
+                                          <td><strong>Number ticket</strong></td>
+                                          <td>{{ ticket.parent_return.get().id() }}</td>
+                                      </tr>
+                                      <tr>
+                                          <td><strong>Price of ticket</strong></td>
+                                          <td>{{ ticket.parent_return.get().sellprice }}</td>
+                                      </tr>
+                                      <tr>
+                                          <td><strong>Reservation date</strong></td>
+                                          <td>{{ ticket.parent_return.get().date_reservation }}</td>
+                                      </tr>
+                                      </tbody>
+                                  </table>
+                              </div>
+                          </div>
+                      </div>
+              </div>
+          {% endif %}
+
+          {% if ticket.parent_child %}
+              <div class="row">
+                      <div class="col-lg-12">
+                          <div class="panel panel-default">
+                              <div class="panel-body">
+                                  <table class="table">
+                                      <thead>
+                                      <tr>
+                                          <th colspan="2">
+                                                    Gardian ticket
+                                          </th>
+                                      </tr>
+                                      </thead>
+                                      <tbody>
+                                      <tr>
+                                          <td><strong>Number ticket</strong></td>
+                                          <td>{{ ticket.parent_child.get().id() }}</td>
+                                      </tr>
+                                      <tr>
+                                          <td><strong>Price of ticket</strong></td>
+                                          <td>{{ ticket.parent_child.get().sellprice }}</td>
+                                      </tr>
+                                      <tr>
+                                          <td><strong>Reservation date</strong></td>
+                                          <td>{{ ticket.parent_child.get().date_reservation }}</td>
+                                      </tr>
+                                      </tbody>
+                                  </table>
+                              </div>
+                          </div>
+                      </div>
+              </div>
+          {% endif %}
 
           </div>
         </div>

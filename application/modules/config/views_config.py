@@ -34,34 +34,34 @@ def synchronization():
         date = date_synchro.date
 
         if not date_synchro.time_departure:
-            date_combine_departure = datetime.datetime.combine(date, date_synchro.time_all)
+            date_combine_departure = function.time_convert(date_synchro.time_all)
         else:
-            date_combine_departure = datetime.datetime.combine(date, date_synchro.time_departure)
+            date_combine_departure = function.time_convert(date_synchro.time_departure)
 
         if not date_synchro.time_customer:
-            date_combine_customer = datetime.datetime.combine(date, date_synchro.time_all)
+            date_combine_customer = function.time_convert(date_synchro.time_all)
         else:
-            date_combine_customer = datetime.datetime.combine(date, date_synchro.time_customer)
+            date_combine_customer = function.time_convert(date_synchro.time_customer)
 
         if not date_synchro.time_customer_put:
-            date_customer_put = date_synchro.time_all
+            date_customer_put = function.time_convert(date_synchro.time_all)
         else:
-            date_customer_put = date_synchro.time_customer_put
+            date_customer_put = function.time_convert(date_synchro.time_customer_put)
 
         if not date_synchro.time_ticket_sale_put:
-            date_ticket_sale = date_synchro.time_all
+            date_ticket_sale = function.time_convert(date_synchro.time_all)
         else:
-            date_ticket_sale = date_synchro.time_ticket_sale_put
+            date_ticket_sale = function.time_convert(date_synchro.time_ticket_sale_put)
 
         if not date_synchro.time_ticket_sale_online:
-            date_sale_online = date_synchro.time_all
+            date_sale_online = function.time_convert(date_synchro.time_all)
         else:
-            date_sale_online = date_synchro.time_ticket_sale_online
+            date_sale_online = function.time_convert(date_synchro.time_ticket_sale_online)
 
         if not date_synchro.time_return_and_doublons_foreign:
-            date_return_doublons = date_synchro.time_all
+            date_return_doublons = function.time_convert(date_synchro.time_all)
         else:
-            date_return_doublons = date_synchro.time_return_and_doublons_foreign
+            date_return_doublons = function.time_convert(date_synchro.time_return_and_doublons_foreign)
 
     else:
         date = None
@@ -82,22 +82,22 @@ def synchronization():
     profil_api(url_config.url_server, token, "/profil/get/", date)
     user_api(url_config.url_server, token, "/user/get/", date)
 
-    departure_api(url_config.url_server, token, "/departure/get/", date_combine_departure)
+    departure_api(url_config.url_server, token, "/departure/get/", date, date_combine_departure)
 
     data_class = class_api(url_config.url_server, token, "/class/get/", date)
     data_journey = journey_api(url_config.url_server, token, "/journey/get/", date)
     data_category = category_api(url_config.url_server, token, "/category/get/", date)
     tickettype_api(url_config.url_server, token, "/tickets/get/", date)
-
-    customer_api(url_config.url_server, token, "/customer/get/", date_combine_customer)
-
+    #
+    customer_api(url_config.url_server, token, "/customer/get/", date, date_combine_customer)
+    #
     if date:
-        customer_api_put(url_config.url_server, token, "/customer/put/", date_customer_put)
-        ticket_sale_put_api(url_config.url_server, token, "/ticket_local_sale_put/put/", date_ticket_sale)
+        customer_api_put(url_config.url_server, token, "/customer/put/", date, date_customer_put)
+        ticket_sale_put_api(url_config.url_server, token, "/ticket_local_sale_put/put/", date, date_ticket_sale)
 
     # Insertion des tickets alloues
     ticket_allocated_api(url_config.url_server, token, "/tickets_allocated/get/", date)
-    get_ticket_sale_online(url_config.url_server, token, "/get_ticket_online/get/", date_sale_online)
+    get_ticket_sale_online(url_config.url_server, token, "/get_ticket_online/get/", date, date_sale_online)
     get_doublons_ticket_return_api(url_config.url_server, token, "/tickets_doublons_ticket_return_sale/get/", date_return_doublons)
 
     set_status_ticket_put()
@@ -112,8 +112,19 @@ def synchronization():
     clean_ticket()
 
     if date_synchro:
-        date_synchro.time_all = datetime.datetime.now().time()
-        date_synchro.put()
+        if token:
+            Synchro = SynchroModel()
+            Synchro.agency_synchro = url_config.local_ref
+            Synchro.put()
+        else:
+            date_synchro.time_all = datetime.datetime.now().time()
+            date_synchro.time_departure = datetime.datetime.now().time()
+            date_synchro.time_customer = datetime.datetime.now().time()
+            date_synchro.time_customer_put = datetime.datetime.now().time()
+            date_synchro.time_ticket_sale_put = datetime.datetime.now().time()
+            date_synchro.time_ticket_sale_online = datetime.datetime.now().time()
+            date_synchro.time_return_and_doublons_foreign = datetime.datetime.now().time()
+            date_synchro.put()
     else:
         Synchro = SynchroModel()
         Synchro.agency_synchro = url_config.local_ref
@@ -217,30 +228,31 @@ def active_local_agency():
         date = sychro_agency.date
 
         if not sychro_agency.time_departure:
-            date_combine_departure = datetime.datetime.combine(date, sychro_agency.time_all)
+            date_combine_departure = function.time_convert(sychro_agency.time_all)
         else:
-            date_combine_departure = datetime.datetime.combine(date, sychro_agency.time_departure)
+            date_combine_departure = function.time_convert(sychro_agency.time_departure)
 
         if not sychro_agency.time_customer:
-            date_combine_customer = datetime.datetime.combine(date, sychro_agency.time_all)
+            date_combine_customer = function.time_convert(sychro_agency.time_all)
         else:
-            date_combine_customer = datetime.datetime.combine(date, sychro_agency.time_customer)
+            date_combine_customer = function.time_convert(sychro_agency.time_customer)
 
         if not sychro_agency.time_ticket_sale_online:
-            date_sale_online = sychro_agency.time_all
+            date_sale_online = function.time_convert(sychro_agency.time_all)
         else:
-            date_sale_online = sychro_agency.time_ticket_sale_online
+            date_sale_online = function.time_convert(sychro_agency.time_ticket_sale_online)
 
         if not sychro_agency.time_return_and_doublons_foreign:
-            date_return_doublons = sychro_agency.time_all
+            date_return_doublons = function.time_convert(sychro_agency.time_all)
         else:
-            date_return_doublons = sychro_agency.time_return_and_doublons_foreign
+            date_return_doublons = function.time_convert(sychro_agency.time_return_and_doublons_foreign)
     else:
         date = None
         date_combine_departure = None
         date_combine_customer = None
         date_sale_online= None
         date_return_doublons = None
+
     # ajout des informations
     data_vessel = vessel_api(url_config.url_server, url_config.token_agency, "/vessel/get/", date)
     data_currency = currency_api(url_config.url_server, url_config.token_agency, "/currency/get/", date)
@@ -251,18 +263,18 @@ def active_local_agency():
     profil_api(url_config.url_server, url_config.token_agency, "/profil/get/", date)
     user_api(url_config.url_server, url_config.token_agency, "/user/get/", date)
 
-    departure_api(url_config.url_server, url_config.token_agency, "/departure/get/", date_combine_departure)
+    departure_api(url_config.url_server, url_config.token_agency, "/departure/get/", date, date_combine_departure)
 
     data_class = class_api(url_config.url_server, url_config.token_agency, "/class/get/", date)
     data_journey = journey_api(url_config.url_server, url_config.token_agency, "/journey/get/", date)
     data_category = category_api(url_config.url_server, url_config.token_agency, "/category/get/", date)
     tickettype_api(url_config.url_server, url_config.token_agency, "/tickets/get/", date)
 
-    customer_api(url_config.url_server, url_config.token_agency, "/customer/get/", date_combine_customer)
+    customer_api(url_config.url_server, url_config.token_agency, "/customer/get/", date, date_combine_customer)
 
     # Insertion des tickets alloues
     ticket_allocated_api(url_config.url_server, url_config.token_agency, "/tickets_allocated/get/", date)
-    get_ticket_sale_online(url_config.url_server, url_config.token_agency, "/get_ticket_online/get/", date_sale_online)
+    get_ticket_sale_online(url_config.url_server, url_config.token_agency, "/get_ticket_online/get/", date, date_sale_online)
     get_doublons_ticket_return_api(url_config.url_server, url_config.token_agency, "/tickets_doublons_ticket_return_sale/get/", date_return_doublons)
 
     # Netoyage de la base de donnee
@@ -601,11 +613,11 @@ def user_api(url, tocken, segment, date=None):
                 data_save.put()
 
 
-def departure_api(url, tocken, segment, date=None):
+def departure_api(url, tocken, segment, date=None, time=None):
     from ..departure.models_departure import DepartureModel, TravelModel, VesselModel
     from ..config.model_config import SynchroModel, AgencyModel
 
-    url = ""+url+segment+tocken+"?last_update="+str(date)
+    url = ""+url+segment+tocken+"?last_update="+str(date)+"&time="+str(time)
     result = urlfetch.fetch(url)
     result = result.content
     result = json.loads(result)
@@ -645,17 +657,6 @@ def departure_api(url, tocken, segment, date=None):
                 data_save.vessel = vessel_departure.key
 
                 data_save.put()
-
-        active_agency = AgencyModel.query(
-            AgencyModel.local_status == True
-        ).get()
-
-        date_synchro = SynchroModel.query(
-            SynchroModel.agency_synchro == active_agency.key
-        ).order(-SynchroModel.date).get()
-
-        date_synchro.time_departure = function.time_convert(datetime.datetime.now().time())
-        date_synchro.put()
 
 
 def class_api(url, tocken, segment, date=None):
@@ -810,11 +811,11 @@ def tickettype_api(url, tocken, segment, date=None):
     return _ids
 
 
-def customer_api(url, tocken, segment, date=None):
+def customer_api(url, tocken, segment, date=None, time=None):
     from ..customer.models_customer import CustomerModel
     from ..config.model_config import SynchroModel, AgencyModel
 
-    url = ""+url+segment+tocken+"?last_update="+str(date)
+    url = ""+url+segment+tocken+"?last_update="+str(date)+"&time="+str(time)
     result = urlfetch.fetch(url)
     result = result.content
     result = json.loads(result)
@@ -855,24 +856,14 @@ def customer_api(url, tocken, segment, date=None):
                 data_save.status = data_get['customer_status']
                 data_save.put()
 
-        active_agency = AgencyModel.query(
-            AgencyModel.local_status == True
-        ).get()
-
-        date_synchro = SynchroModel.query(
-            SynchroModel.agency_synchro == active_agency.key
-        ).order(-SynchroModel.date).get()
-
-        date_synchro.time_customer = function.time_convert(datetime.datetime.now().time())
-        date_synchro.put()
 
 
-def customer_api_put(url, tocken, segment, date):
+def customer_api_put(url, tocken, segment, date, time):
     from ..customer.models_customer import CustomerModel
     from ..config.model_config import SynchroModel, AgencyModel
     import urllib
 
-    date = function.datetime_convert(date)
+    date = datetime.datetime.combine(date, time)
 
     customer_new = CustomerModel.query(
         CustomerModel.date_update >= date
@@ -894,17 +885,6 @@ def customer_api_put(url, tocken, segment, date):
             flash(result['message'], "warning")
         else:
             flash(result['message'], "success")
-
-        active_agency = AgencyModel.query(
-            AgencyModel.local_status == True
-        ).get()
-
-        date_synchro = SynchroModel.query(
-            SynchroModel.agency_synchro == active_agency.key
-        ).order(-SynchroModel.date).get()
-
-        date_synchro.time_customer_put = function.time_convert(datetime.datetime.now().time())
-        date_synchro.put()
 
 
 def ticket_allocated_api(url, tocken, segment, date):
@@ -1044,25 +1024,14 @@ def get_doublons_ticket_return_api(url, tocken, segment, date):
 
                     duplicate_ticket.put()
 
-        active_agency = AgencyModel.query(
-            AgencyModel.local_status == True
-        ).get()
-
-        date_synchro = SynchroModel.query(
-            SynchroModel.agency_synchro == active_agency.key
-        ).order(-SynchroModel.date).get()
-
-        date_synchro.time_return_and_doublons_foreign = function.time_convert(datetime.datetime.now().time())
-        date_synchro.put()
 
 
-def ticket_sale_put_api(url, tocken, segment, date):
+def ticket_sale_put_api(url, tocken, segment, date, time):
 
     from ..ticket.models_ticket import TicketModel, AgencyModel
-    from ..config.model_config import SynchroModel
     import urllib
 
-    date = function.datetime_convert(date)
+    date = datetime.datetime.combine(date, time)
 
     data = {}
     data['ticket_sale'] = []
@@ -1096,27 +1065,16 @@ def ticket_sale_put_api(url, tocken, segment, date):
     else:
         flash(result['message'], "success")
 
-    active_agency = AgencyModel.query(
-        AgencyModel.local_status == True
-    ).get()
 
-    date_synchro = SynchroModel.query(
-        SynchroModel.agency_synchro == active_agency.key
-    ).order(-SynchroModel.date).get()
-
-    date_synchro.time_ticket_sale_put = function.time_convert(datetime.datetime.now().time())
-    date_synchro.put()
-
-
-def get_ticket_sale_online(url, tocken, segment, date):
+def get_ticket_sale_online(url, tocken, segment, date, time=None):
 
     from ..ticket.models_ticket import TicketModel, CurrencyModel, CustomerModel, TicketTypeNameModel, JourneyTypeModel,\
         ClassTypeModel, TravelModel, AgencyModel, DepartureModel, UserModel
-    from ..config.model_config import SynchroModel
 
-    url = ""+url+segment+tocken+"?last_update="+str(date)
+    url = ""+url+segment+tocken+"?last_update="+str(date)+"&time="+str(time)
     result = urlfetch.fetch(url)
     result = result.content
+
     result = json.loads(result)
 
     if result['status'] and result['status'] == 404:
@@ -1198,16 +1156,7 @@ def get_ticket_sale_online(url, tocken, segment, date):
                 data_save.date_reservation = function.datetime_convert(data_get['date_reservation'])
 
                 data_save.put()
-        active_agency = AgencyModel.query(
-            AgencyModel.local_status == True
-        ).get()
 
-        date_synchro = SynchroModel.query(
-            SynchroModel.agency_synchro == active_agency.key
-        ).order(-SynchroModel.date).get()
-
-        date_synchro.time_ticket_sale_online = function.time_convert(datetime.datetime.now().time())
-        date_synchro.put()
 
 
 def set_status_ticket_put():

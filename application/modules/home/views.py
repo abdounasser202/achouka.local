@@ -212,7 +212,7 @@ def Home():
                     config.local_ref = agency_save
                     config.put()
 
-                    flash('Agency Synchronize', 'success')
+                    flash('Agency connected. Now click on synchronize', 'success')
                     return redirect(url_for('Home'))
         else:
             if not user_login.is_active():
