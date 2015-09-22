@@ -3,7 +3,7 @@ __author__ = 'wilrona'
 from ...modules import *
 from application import login_manager
 
-from ..user.models_user import UserModel
+from ..user.models_user import UserModel, ndb
 from ..user.forms_user import FormLogin
 
 cache = Cache(app)
@@ -35,14 +35,25 @@ def Home():
     from ..destination.models_destination import DestinationModel
     from ..config.model_config import ConfigModel, SynchroModel
 
-    admin_role = RoleModel.query(
+    super_admin_role = RoleModel.query(
         RoleModel.name == "super_admin"
+    ).get()
+
+    admin_role = RoleModel.query(
+        RoleModel.name == "admin"
     ).get()
 
     # Verification de l'exitance d'un profil super admin dans la base de donnee
     exist_super_admin = 0
-    if admin_role:
+    if super_admin_role:
         exist_super_admin = UserRoleModel.query(
+            UserRoleModel.role_id == super_admin_role.key
+        ).count()
+
+    # Verification de l'exitance d'un profil super admin dans la base de donnee
+    exist_admin = 0
+    if admin_role:
+        exist_admin = UserRoleModel.query(
             UserRoleModel.role_id == admin_role.key
         ).count()
 
@@ -58,7 +69,7 @@ def Home():
 
     form = FormLogin(request.form)
 
-    if exist_super_admin >= 1 and exist_config_active >= 1:
+    if (exist_super_admin >= 1 or exist_admin >= 1) and exist_config_active >= 1:
         exist = True
         verified_token = 0
         #information de l'agence active
