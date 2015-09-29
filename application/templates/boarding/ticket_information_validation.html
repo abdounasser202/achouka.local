@@ -59,10 +59,10 @@
 
 
     var btn = $('button#confirm');
-    btn.click(function(e) {
+    btn.on('click', function(e){
         e.preventDefault();
-        var btn = $(this);
-        btn.button('loading');
+        var btns = $(this);
+        btns.button('loading');
         $.ajax({
             url: "{{ url_for('ticket_information', ticket_id=ticket_id, departure_id=departure_id) }}"+"?confirm=1",
             type: 'GET',

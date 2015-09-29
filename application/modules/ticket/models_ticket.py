@@ -81,11 +81,11 @@ class TicketModel(TicketPoly):
         to_dict['travel_ticket'] = self.travel_ticket.id()
         to_dict['generate_boarding'] = self.generate_boarding
         to_dict['is_boarding'] = self.is_boarding
+        to_dict['is_count'] = self.is_count
 
+        to_dict['parent_return'] = None
         if self.parent_return:
             to_dict['parent_return'] = self.parent_return.id()
-        else:
-            to_dict['parent_return'] = None
 
         to_dict['parent_child'] = None
         if self.parent_child:
@@ -95,7 +95,6 @@ class TicketModel(TicketPoly):
         if self.is_upgrade:
             to_dict['is_upgrade'] = self.is_upgrade
             to_dict['upgrade_parent'] = self.upgrade_parent.id()
-            to_dict['is_count'] = self.is_count
             upgrade = True
         to_dict['child_upgrade'] = upgrade
 

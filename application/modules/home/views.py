@@ -405,6 +405,7 @@ def Dashboard():
 
     return render_template('/index/dashboard.html', **locals())
 
+
 @app.route('/settings')
 @login_required
 @roles_required(('admin', 'super_admin'))

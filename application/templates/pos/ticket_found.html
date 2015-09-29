@@ -160,7 +160,7 @@
                                       <thead>
                                       <tr>
                                           <th colspan="2">
-                                                    Previous ticket
+                                                    <h3 class="text-center">Previous ticket</h3>
                                           </th>
                                       </tr>
                                       </thead>
@@ -171,7 +171,7 @@
                                       </tr>
                                       <tr>
                                           <td><strong>Price of ticket</strong></td>
-                                          <td>{{ ticket.upgrade_parent.get().sellprice }}</td>
+                                          <td>{{ ticket.upgrade_parent.get().sellprice|format_price() }} {{ ticket.upgrade_parent.get().sellpriceCurrency.get().code }}</td>
                                       </tr>
                                       <tr>
                                           <td><strong>Reservation date</strong></td>
@@ -194,7 +194,7 @@
                                       <thead>
                                       <tr>
                                           <th colspan="2">
-                                                    First journey
+                                                    <h3 class="text-center">First journey</h3>
                                           </th>
                                       </tr>
                                       </thead>
@@ -205,7 +205,7 @@
                                       </tr>
                                       <tr>
                                           <td><strong>Price of ticket</strong></td>
-                                          <td>{{ ticket.parent_return.get().sellprice }}</td>
+                                          <td>{{ ticket.parent_return.get().sellprice|format_price() }} {{ ticket.parent_return.get().sellpriceCurrency.get().code }}</td>
                                       </tr>
                                       <tr>
                                           <td><strong>Reservation date</strong></td>
@@ -228,7 +228,7 @@
                                       <thead>
                                       <tr>
                                           <th colspan="2">
-                                                    Gardian ticket
+                                                    <h3 class="text-center">Gardian ticket</h3>
                                           </th>
                                       </tr>
                                       </thead>
@@ -239,11 +239,11 @@
                                       </tr>
                                       <tr>
                                           <td><strong>Price of ticket</strong></td>
-                                          <td>{{ ticket.parent_child.get().sellprice }}</td>
+                                          <td>{{ ticket.parent_child.get().sellprice|format_price() }} {{ ticket.parent_child.get().sellpriceCurrency.get().code }}</td>
                                       </tr>
                                       <tr>
                                           <td><strong>Reservation date</strong></td>
-                                          <td>{{ ticket.parent_child.get().date_reservation }}</td>
+                                          <td>{{ ticket.parent_child.get().date_reservation|format_date("%d-%m-%Y %H:%M") }}</td>
                                       </tr>
                                       </tbody>
                                   </table>
