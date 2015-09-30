@@ -131,7 +131,7 @@ def synchronization():
         Synchro.put()
 
     if token:
-        flash('Success Synchronization', 'success')
+        flash('Synchronization Successful', 'success')
         return redirect(url_for('Home'))
     else:
         return "true"
@@ -1025,21 +1025,19 @@ def get_doublons_ticket_return_api(url, tocken, segment, date):
                     duplicate_ticket.put()
 
 
-
 def ticket_sale_put_api(url, tocken, segment, date, time):
 
     from ..ticket.models_ticket import TicketModel, AgencyModel
     import urllib
 
-    date = datetime.datetime.combine(date, time)
+    datetimes = datetime.datetime.combine(date, time)
 
     data = {}
     data['ticket_sale'] = []
 
     ticket_sale = TicketModel.query(
-        TicketModel.date_update >= date,
-        TicketModel.selling == True,
-        TicketModel.statusValid == True
+        TicketModel.date_update >= datetimes,
+        TicketModel.selling == True
     )
 
     active_local_agency = AgencyModel.query(
