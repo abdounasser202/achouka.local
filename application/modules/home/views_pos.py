@@ -505,9 +505,12 @@ def create_customer_and_ticket_pos(customer_id=None, departure_id=None):
     if departure_id:
         form.current_departure.data = str(departure_id)
 
+    # recuperer la liste des classes et des categories
     class_ticket = ClassTypeModel.query()
     ticket_type_name = TicketTypeNameModel.query()
 
+    # initialiser le controle du type de vente (ticket enfant ou parent)
+    # si child cela signie que c'est une vente de ticket enfant
     child = request.args.get('child')
     parent_ticket = None
     if child:
@@ -516,6 +519,8 @@ def create_customer_and_ticket_pos(customer_id=None, departure_id=None):
         class_ticket = ClassTypeModel.query(
             ClassTypeModel.key == parent.class_name
         )
+        # initialisation de la categorie enfant pour les tickets enfants afin du supprimer la valeur precedente
+        # de cette variable
         ticket_type_name = TicketTypeNameModel.query(
             TicketTypeNameModel.is_child == True
         )

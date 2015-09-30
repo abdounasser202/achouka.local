@@ -32,6 +32,18 @@
                         <span class="help-block text-danger">{{ message }}</span>
                       {% endfor %}
                 </div>
+                <div class="form-group">
+                    <label>{{ form.nationality.label }} :</label>
+                    <select name="nationality" id="" class="form-control g-select input-lg">
+                        <option value=""> Select {{ form.nationality.label }}</option>
+                        {% for key, val in nationalList.items() %}
+                            <option value="{{ key }}" {% if form.nationality.data == key %} selected {% endif %}>{{ val }}</option>
+                        {% endfor %}
+                    </select>
+                    {% for message in form.nationality.errors %}
+                        <span class="help-block text-danger">{{ message }}</span>
+                    {% endfor %}
+                </div>
 
                 <div class="form-group {% if form.passport_number.errors %} has-error {% endif %} has-feedback">
                     <label>{{ form.passport_number.label }} :</label>
@@ -78,15 +90,6 @@
                   <div class="form-group">
                     <label>{{ form.profession.label }} :</label>
                     {{ form.profession(class_='form-control')|safe }}
-                </div>
-                  <div class="form-group">
-                    <label>{{ form.nationality.label }} :</label>
-                    <select name="nationality" id="" class="form-control g-select input-lg">
-                        <option value="">Select {{ form.nationality.label }}</option>
-                        {% for key, val in nationalList.items() %}
-                            <option value="{{ key }}" {% if form.nationality.data == key %} selected {% endif %}>{{ val }}</option>
-                        {% endfor %}
-                    </select>
                 </div>
 
               </div>
