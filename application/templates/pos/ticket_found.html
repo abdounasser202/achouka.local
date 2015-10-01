@@ -166,16 +166,12 @@
                                       </thead>
                                       <tbody>
                                       <tr>
-                                          <td><strong>Number ticket</strong></td>
+                                          <td><strong>Ticket Number</strong></td>
                                           <td>{{ ticket.upgrade_parent.get().id() }}</td>
                                       </tr>
                                       <tr>
-                                          <td><strong>Price of ticket</strong></td>
-                                          <td>{{ ticket.upgrade_parent.get().sellprice|format_price() }} {{ ticket.upgrade_parent.get().sellpriceCurrency.get().code }}</td>
-                                      </tr>
-                                      <tr>
-                                          <td><strong>Reservation date</strong></td>
-                                          <td>{{ ticket.upgrade_parent.get().date_reservation }}</td>
+                                          <td><strong>Customer ticket</strong></td>
+                                          <td>{{ ticket.upgrade_parent.get().customer.get().first_name }} {{ ticket.upgrade_parent.get().customer.get().last_name }}</td>
                                       </tr>
                                       </tbody>
                                   </table>
@@ -200,16 +196,12 @@
                                       </thead>
                                       <tbody>
                                       <tr>
-                                          <td><strong>Number ticket</strong></td>
+                                          <td><strong>Ticket Number</strong></td>
                                           <td>{{ ticket.parent_return.get().id() }}</td>
                                       </tr>
                                       <tr>
-                                          <td><strong>Price of ticket</strong></td>
-                                          <td>{{ ticket.parent_return.get().sellprice|format_price() }} {{ ticket.parent_return.get().sellpriceCurrency.get().code }}</td>
-                                      </tr>
-                                      <tr>
-                                          <td><strong>Reservation date</strong></td>
-                                          <td>{{ ticket.parent_return.get().date_reservation }}</td>
+                                          <td><strong>Customer ticket</strong></td>
+                                          <td>{{ ticket.parent_return.get().customer.get().first_name }} {{ ticket.parent_return.get().customer.get().last_name }}</td>
                                       </tr>
                                       </tbody>
                                   </table>
@@ -234,16 +226,12 @@
                                       </thead>
                                       <tbody>
                                       <tr>
-                                          <td><strong>Number ticket</strong></td>
+                                          <td><strong>Ticket Number</strong></td>
                                           <td>{{ ticket.parent_child.get().key.id() }}</td>
                                       </tr>
                                       <tr>
-                                          <td><strong>Price of ticket</strong></td>
-                                          <td>{{ ticket.parent_child.get().sellprice|format_price() }} {{ ticket.parent_child.get().sellpriceCurrency.get().code }}</td>
-                                      </tr>
-                                      <tr>
-                                          <td><strong>Reservation date</strong></td>
-                                          <td>{{ ticket.parent_child.get().date_reservation|format_date("%d-%m-%Y %H:%M") }}</td>
+                                          <td><strong>Customer ticket</strong></td>
+                                          <td>{{ ticket.parent_child.get().customer.get().first_name }} {{ ticket.parent_child.get().customer.get().last_name }}</td>
                                       </tr>
                                       </tbody>
                                   </table>
