@@ -47,14 +47,23 @@
                                   <tr>
                                       <td><strong>Status</strong></td>
                                       <td>
-                                          {% if ticket.statusValid %}
-                                                Valid
+                                          {% if not ticket.generate_boarding %}
+                                              Reserved
                                           {% else %}
-                                                Not valid
+                                              {% if ticket.is_boarding %}
+                                                  Onboarding
+                                              {% else %}
+                                                  Boarding
+                                              {% endif %}
+                                          {% endif %}
+                                          {% if ticket.statusValid  %}
+                                                <span class="text-success"><i class="glyphicon glyphicon-ok-circle"></i></span>
+                                          {% else %}
+                                              <span class="text-danger"><i class="glyphicon glyphicon-remove-circle"></i></span>
                                           {% endif %}
 
                                           {% if ticket.is_upgrade %}
-                                                (<span class="text-danger"><i>Upgrade Ticket</i></span>)
+                                              <br/>(<small><span class="text-danger"><i>Upgrade Ticket</i></span></small>)
                                           {% endif %}
                                       </td>
                                   </tr>
@@ -220,7 +229,7 @@
                                       <thead>
                                       <tr>
                                           <th colspan="2">
-                                                    <h3 class="text-center">Gardian ticket</h3>
+                                                    <h3 class="text-center">Guardian ticket</h3>
                                           </th>
                                       </tr>
                                       </thead>

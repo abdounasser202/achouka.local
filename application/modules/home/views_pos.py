@@ -19,8 +19,7 @@ cache = Cache(app)
 @roles_required(('employee_POS', 'super_admin'))
 def Pos(departure_id=None):
     menu = 'pos'
-    from ..agency.models_agency import AgencyModel
-    from ..departure.models_departure import DepartureModel
+    from ..ticket.models_ticket import TicketModel, AgencyModel, DepartureModel
 
     #implementation de l'heure local
     time_zones = pytz.timezone('Africa/Douala')
@@ -37,6 +36,7 @@ def Pos(departure_id=None):
     )
 
     if not departure_id:
+        current_departure = None
         if current_user.have_agency():
             agence_id = session.get('agence_id_local')
             user_agence = AgencyModel.get_by_id(int(agence_id))
@@ -56,6 +56,15 @@ def Pos(departure_id=None):
                     break
     else:
         current_departure = DepartureModel.get_by_id(departure_id)
+
+
+    if current_departure:
+        last_sale = TicketModel.query(
+            TicketModel.departure == current_departure.key,
+            TicketModel.selling == True,
+            TicketModel.statusValid == True
+        ).order(-TicketModel.date_reservation).fetch(limit=3)
+
     age = date_age
     return render_template('/index/pos.html', **locals())
 
@@ -70,6 +79,21 @@ def reset_remaining_ticket():
         number = 'No Ticket'
 
     return number+' Available'
+
+
+@app.route('/ticket_sale_current/<int:departure_id>')
+def ticket_sale_current(departure_id):
+
+    from ..departure.models_departure import DepartureModel
+
+    current_departure = DepartureModel.get_by_id(departure_id)
+    last_sale = TicketModel.query(
+            TicketModel.departure == current_departure.key,
+            TicketModel.selling == True,
+            TicketModel.statusValid == True
+        ).order(-TicketModel.date_reservation)
+
+    return render_template('/pos/ticket_sale_current.html', **locals())
 
 
 @app.route('/reset_current_departure/<int:departure_id>')
@@ -348,6 +372,8 @@ def create_customer_and_ticket_return(ticket_id, departure_id=None):
     #information du client
     customer = CustomerModel.get_by_id(Ticket_Return.customer.get().key.id())
     form = FormCustomerPOS(obj=customer)
+    if request.args.get('child'):
+            form.child.data = 1
 
     # Envoie des informations par default sur la vue
     form.type_name.data = Ticket_Return.type_name.get().key.id()
@@ -494,6 +520,8 @@ def create_customer_and_ticket_pos(customer_id=None, departure_id=None):
     if customer_id:
         customer = CustomerModel.get_by_id(customer_id)
         form = FormCustomerPOS(obj=customer)
+        if request.args.get('child'):
+            form.child.data = 1
     else:
         customer = CustomerModel()
         # recuperation du formulaire en fonction de la methode
@@ -623,6 +651,7 @@ def create_customer_and_ticket_pos(customer_id=None, departure_id=None):
 @login_required
 @roles_required(('employee_POS', 'super_admin'))
 def modal_generate_pdf_ticket(ticket_id=None):
+    ticket_generate = TicketPoly.get_by_id(ticket_id)
     return render_template('/pos/view-pdf.html', **locals())
 
 
@@ -789,9 +818,26 @@ def Search_Ticket_Type():
 @login_required
 @roles_required(('employee_POS', 'super_admin'))
 def remaining_ticket():
+    from ..departure.models_departure import DepartureModel
     number = current_user.remaining_ticket()
+    departure_id = DepartureModel.get_by_id(int(request.args.get('departure')))
+
+    last_sale = TicketModel.query(
+                TicketModel.departure == departure_id.key,
+                TicketModel.selling == True,
+                TicketModel.statusValid == True
+            ).order(-TicketModel.date_reservation).fetch(limit=3)
+
+    tickets = []
+    for ticket in last_sale.run(limit=3):
+        last = {}
+        last['id'] = str(ticket.key.id())
+        last['customer'] = ticket.customer.get().last_name+" "+ticket.customer.get().first_name
+        tickets.append(last)
+
     data = json.dumps({
-        'ticket': number
+        'ticket': number,
+        'ticket_sale': tickets
     }, sort_keys=True)
 
     return data
@@ -1013,6 +1059,8 @@ def create_upgrade_ticket(departure_id, ticket_id, ticket_type_same_id, ticket_t
     #information du client
     customer = CustomerModel.get_by_id(Ticket_Return.customer.get().key.id())
     form = FormCustomerPOS(obj=customer)
+    if request.args.get('child'):
+        form.child.data = 1
 
     ticket_type_choice_get = TicketTypeModel.get_by_id(ticket_type_id)
     ticket_type_same_get = TicketTypeModel.get_by_id(ticket_type_same_id)

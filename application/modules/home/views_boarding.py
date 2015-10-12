@@ -349,20 +349,14 @@ def customer_aboard(departure_id):
     ticket_user_query = TicketModel.query(
         TicketModel.selling == True,
         TicketModel.departure == departure_get.key,
-        TicketModel.generate_boarding == True
+        TicketModel.generate_boarding == True,
+        TicketModel.is_boarding == True
     ).order(TicketModel.class_name)
 
     search = False
     printer = False
     if request.args.get('printer'):
         printer = True
-
-        ticket_user_query = TicketModel.query(
-            TicketModel.selling == True,
-            TicketModel.departure == departure_get.key,
-            TicketModel.generate_boarding == True,
-            TicketModel.is_boarding == True
-        ).order(TicketModel.class_name)
 
     return render_template('/boarding/customer_aboard.html', **locals())
 

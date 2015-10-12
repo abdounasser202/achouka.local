@@ -30,11 +30,10 @@
                                 <div class="panel panel-info">
                                   <div class="panel-heading text-center">CURRENT JOURNEY</div>
                                       <div id="current_departure" class="update">
-                                        <br/><br/>
                                         {% if current_departure %}
                                             <span id="current_departure_start" class="hidden">{{ current_departure.destination.get().destination_start.get().key.id() }}</span>
                                             <span id="current_departure_check" class="hidden">{{ current_departure.destination.get().destination_check.get().key.id() }}</span>
-                                            <table class="table text-center">
+                                            <table class="table text-center" style="margin-bottom: 0;">
                                                 <tbody>
                                                     <tr>
                                                         <td><strong>Journey</strong></td>
@@ -67,6 +66,62 @@
                                         <button class="btn btn-info btn-block btn-sm disabled" id="change_current_departure">Change Current Journey</button>
                                     </div>
                                 </div>
+
+                                {% if current_departure %}
+
+                                    <div class="panel panel-info last_ticket" style="margin-bottom: 0;">
+                                        <div class="panel-footer">
+                                            <table class="table"  id="last_ticket">
+                                                <tbody>
+                                                {% for ticket in last_sale %}
+                                                    <tr>
+                                                        <td><a href="{{ url_for('modal_generate_pdf_ticket', ticket_id=ticket.key.id()) }}" data-toggle="modal" data-target="#myReprint" data-backdrop="static">{{ ticket.key.id() }}</a></td>
+                                                        <td>{{ ticket.customer.get().last_name }} {{ ticket.customer.get().first_name }}</td>
+                                                    </tr>
+                                                {% else %}
+                                                    <tr>
+                                                        <td><h4 class="text-center">No last ticket sales</h4></td>
+                                                    </tr>
+                                                {% endfor %}
+                                                </tbody>
+                                            </table>
+                                            <button class="btn btn-warning btn-block btn-sm" id="list_ticket_sale">View ticket sales in current journey</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Modal -->
+                                    <div class="modal fade" id="myReprint" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+                                      <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+
+
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <script>
+
+                                            $('#myReprint').on('hide.bs.modal', function(e) {
+                                                $('.modal-content').html('');
+                                                $(this).removeData('bs.modal');
+                                            });
+
+                                            $('#list_ticket_sale').on('click', function(e){
+                                                e.preventDefault();
+                                                url = "{{ url_for('ticket_sale_current', departure_id=current_departure.key.id()) }}";
+                                                $.ajax({
+                                                    url: url,
+                                                    type: 'GET',
+                                                    success: function(data) {
+                                                        $('#list_all_departure').hide();
+                                                        $('#info_ticket').removeClass('hidden').html(data);
+                                                    }
+                                                });
+                                            });
+
+                                    </script>
+
+                                {% endif %}
 
                             </div>
                             <div class="col-lg-8">
@@ -197,6 +252,7 @@
 
                     $('#list_all_departure').html('');
                     $('#list_all_departure').html(rq2[0]);
+                    $('.last_ticket').addClass('hidden');
                 });
 
 

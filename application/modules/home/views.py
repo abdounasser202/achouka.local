@@ -379,16 +379,13 @@ def Dashboard():
             DepartureModel.departure_date == datetime.date.today(),
             DepartureModel.schedule < heure
         ).order(
-            DepartureModel.departure_date,
-            DepartureModel.schedule,
-            DepartureModel.time_delay
+            -DepartureModel.schedule,
+            -DepartureModel.time_delay
         )
 
         for dep in departure_current:
-            interval = datetime.datetime.combine(datetime.date.today(), heure) - datetime.datetime.combine(dep.departure_date, function.add_time(dep.schedule, dep.time_delay))
-            time_travel = function.time_convert(dep.destination.get().time)
-            time_travel = datetime.timedelta(hours=time_travel.hour, minutes=time_travel.minute)
-            if interval <= time_travel:
+            interval = datetime.datetime.combine(dep.departure_date, function.add_time(dep.schedule, dep.time_delay))
+            if interval.time() <= heure and dep.destination.get().destination_start == agency_user.destination:
                 current_departure_in_progress = dep
                 break
 

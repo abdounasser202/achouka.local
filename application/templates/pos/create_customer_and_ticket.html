@@ -32,7 +32,7 @@
                         <span class="help-block text-danger">{{ message }}</span>
                       {% endfor %}
                 </div>
-                <div class="form-group">
+                <div class="form-group {% if form.nationality.errors %} has-error {% endif %} has-feedback">
                     <label>{{ form.nationality.label }} :</label>
                     <select name="nationality" id="" class="form-control g-select input-lg">
                         <option value=""> Select {{ form.nationality.label }}</option>
@@ -42,24 +42,29 @@
                     </select>
                     {% for message in form.nationality.errors %}
                         <span class="help-block text-danger">{{ message }}</span>
-                    {% endfor %}
-                </div>
-
-                <div class="form-group {% if form.passport_number.errors %} has-error {% endif %} has-feedback">
-                    <label>{{ form.passport_number.label }} :</label>
-                    {{ form.passport_number(class_='form-control', id="passport")|safe }}
-                    {% for message in form.passport_number.errors %}
-                        <span class="help-block text-danger">{{ message }}</span>
                       {% endfor %}
                 </div>
 
-                <div class="form-group {% if form.nic_number.errors %} has-error {% endif %} has-feedback">
-                    <label>{{ form.nic_number.label }} :</label>
-                    {{ form.nic_number(class_='form-control', id="nic")|safe }}
-                    {% for message in form.nic_number.errors %}
-                        <span class="help-block text-danger">{{ message }}</span>
-                      {% endfor %}
-                </div>
+                {% if not child %}
+                    <div class="form-group {% if form.passport_number.errors or form.nic_number.errors %} has-error {% endif %} has-feedback">
+                        <label for="">Passport Number <small>OR</small> NIC Number :</label>
+                        <div class="row">
+                            <div class="col-lg-6">
+                                {{ form.passport_number(class_='form-control', id="passport", placeholder="Passport Number", style="padding-right: 8px !important;")|safe }}
+                                {% for message in form.passport_number.errors %}
+                                    <span class="help-block text-danger">{{ message }}</span>
+                                {% endfor %}
+                            </div>
+
+                            <div class="col-lg-6">
+                                {{ form.nic_number(class_='form-control', id="nic", placeholder="NIC Number", style="padding-right: 8px !important;")|safe }}
+                                {% for message in form.nic_number.errors %}
+                                    <span class="help-block text-danger">{{ message }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
 
                 <div class="form-group {% if form.email.errors %} has-error {% endif %} has-feedback">
                     <label>{{ form.email.label }} :</label>
@@ -427,7 +432,7 @@
 
         $('#myModal').on('hidden.bs.modal', function () {
 
-            var url_remaining = "{{ url_for('remaining_ticket') }}";
+            var url_remaining = "{{ url_for('remaining_ticket') }}?departure={{ print_depature.key.id() }}";
 
             $.ajax({
                 url: url_remaining,
@@ -436,6 +441,19 @@
                 dataType: "json",
                 success: function(data) {
                     $('#remaining_ticket').text(data['ticket']);
+                    var person = data['ticket_sale'];
+                    var table = $("#last_ticket").find('tbody').empty();
+                    jQuery.each( person, function( i, val ) {
+                        var $url = "{{ url_for('modal_generate_pdf_ticket') }}/+val['id']";
+                        table.append(
+                                $('<tr>').append(
+                                        $('<td>').append(
+                                                $('<a>').append(val['id']).attr({'href': $url})
+                                        ),
+                                        $('<td>').append(val['customer'])
+                                )
+                        )
+                    });
                     $('#ScreenCreateTicket').addClass('hidden').html('');
                     $('#ScreenIndexPos').show();
                     $('.datepickerbirth').val('');

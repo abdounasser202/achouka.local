@@ -3,6 +3,7 @@ __author__ = 'wilrona'
 from lib.flaskext import wtf
 from lib.flaskext.wtf import validators
 
+
 def unique_email_validator(form, field):
     if not field.data:
         field.errors[:] = []
@@ -42,6 +43,7 @@ def first_name_validator(form, field):
         if char not in valid_chars:
             raise wtf.ValidationError("Username may only contain letters, numbers, '-', '.' and '_'.")
 
+
 def last_name_validator(form, field):
     """ Username must cont at least 3 alphanumeric characters long"""
     last_name = field.data
@@ -54,17 +56,30 @@ def last_name_validator(form, field):
             raise wtf.ValidationError("Username may only contain letters, numbers, '-', '.' and '_'.")
 
 
+def passport_number_validator(form, field):
+    if not form.child.data:
+        if not field.data and not form.nic_number.data:
+            raise wtf.ValidationError("Field required")
+
+
+def nic_number_validator(form, field):
+    if not form.child.data:
+        if not field.data and not form.passport_number.data:
+            raise wtf.ValidationError("Field required")
+
+
 class FormCustomer(wtf.Form):
     first_name = wtf.StringField(label='First name', validators=[validators.Required(), first_name_validator])
     last_name = wtf.StringField(label='Last name', validators=[validators.Required(), last_name_validator])
     birthday = wtf.DateField(label='Birthday', validators=[validators.Required()], format="%d/%m/%Y")
-    passport_number = wtf.StringField(label="Passport number")
-    nic_number = wtf.StringField(label="NIC number")
+    passport_number = wtf.StringField(label="Passport number", validators=[passport_number_validator])
+    nic_number = wtf.StringField(label="NIC number", validators=[nic_number_validator])
     profession = wtf.StringField(label='Occupation')
     nationality = wtf.StringField(label='Nationality', validators=[validators.Required()])
     email = wtf.StringField(label='Email', validators=[unique_email_validator, validators.Email()])
     dial_code = wtf.StringField(label='Country code', validators=[verify_dial_code])
     phone = wtf.StringField(label='Mobile Phone Number', validators=[verify_format_number])
+    child = wtf.HiddenField()
 
 
 class FormCustomerSearch(wtf.Form):
@@ -77,8 +92,8 @@ class FormCustomerPOS(wtf.Form):
     first_name = wtf.StringField(label='First name', validators=[validators.Required(), first_name_validator])
     last_name = wtf.StringField(label='Last name', validators=[validators.Required(), last_name_validator])
     birthday = wtf.DateField(label='Birthday', validators=[validators.Required()], format="%d/%m/%Y")
-    passport_number = wtf.StringField(label="Passport number")
-    nic_number = wtf.StringField(label="NIC number")
+    passport_number = wtf.StringField(label="Passport number", validators=[passport_number_validator])
+    nic_number = wtf.StringField(label="NIC number", validators=[nic_number_validator])
     profession = wtf.StringField(label='Occupation')
     nationality = wtf.StringField(label='Nationality', validators=[validators.Required()])
     email = wtf.StringField(label='Email', validators=[unique_email_validator, validators.Email()])
@@ -88,3 +103,4 @@ class FormCustomerPOS(wtf.Form):
     class_name = wtf.StringField(validators=[validators.Required()])
     journey_name = wtf.StringField(validators=[validators.Required()])
     current_departure = wtf.HiddenField()
+    child = wtf.HiddenField()

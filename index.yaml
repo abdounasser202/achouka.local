@@ -25,6 +25,14 @@ indexes:
 - kind: DepartureModel
   properties:
   - name: departure_date
+  - name: schedule
+    direction: desc
+  - name: time_delay
+    direction: desc
+
+- kind: DepartureModel
+  properties:
+  - name: departure_date
     direction: desc
   - name: schedule
   - name: time_delay
@@ -171,6 +179,15 @@ indexes:
   - name: generate_boarding
   - name: selling
   - name: class_name
+
+- kind: TicketPoly
+  properties:
+  - name: class
+  - name: departure
+  - name: selling
+  - name: statusValid
+  - name: date_reservation
+    direction: desc
 
 - kind: TicketPoly
   properties:
