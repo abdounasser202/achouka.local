@@ -14,10 +14,11 @@ class UserModel(ndb.Model):
     reset_password_token = ndb.StringProperty()
 
     email = ndb.StringProperty()
+    confirmed_token = ndb.StringProperty()
     confirmed_at = ndb.DateTimeProperty()
     date_create = ndb.DateTimeProperty(auto_now_add=True)
 
-    is_enabled = ndb.BooleanProperty(default=True)
+    is_enabled = ndb.BooleanProperty(default=False)
     first_name = ndb.StringProperty()
     last_name = ndb.StringProperty()
     phone = ndb.StringProperty()
