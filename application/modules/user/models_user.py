@@ -16,6 +16,7 @@ class UserModel(ndb.Model):
     email = ndb.StringProperty()
     confirmed_token = ndb.StringProperty()
     confirmed_at = ndb.DateTimeProperty()
+    confirmed = ndb.BooleanProperty(default=True)
     date_create = ndb.DateTimeProperty(auto_now_add=True)
 
     is_enabled = ndb.BooleanProperty(default=False)
